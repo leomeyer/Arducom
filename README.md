@@ -133,10 +133,10 @@ You can list directories using "dir" or "ls". To change a directory, use "cd". Y
 one directory level at at time. To change a directory up, use "cd ..". To change to root, use "cd /" or
 "reset".
 
-To retrieve files, use "get <filename>". If a file with the same name already exists on the master and
+To retrieve files, use "get &lt;filename&gt;". If a file with the same name already exists on the master and
 the variable "continue" is on (default), the file content is appended. If you use "set continue off" files
 are always overwritten.
 
-To change the number of retries, use "set retries <n>".
-To change the command delay, use "set delay <n>" with n in milliseconds.
+To change the number of retries, use "set retries &lt;n&gt;".
+To change the command delay, use "set delay &lt;n&gt;" with n in milliseconds.
 
