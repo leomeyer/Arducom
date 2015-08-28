@@ -57,22 +57,22 @@ arducom allows communicating with Arducom slaves via the command line.
 
 arducom has a number of options:
 
-  -t &lt;transport&gt;: defines the transport layer. Currently "i2c" and "serial" are supported.
-  -d &lt;device&gt;: the device that is to be used for the transport, i. e. "/dev/i2c-1".
-  -a &lt;address&gt;: the slave address. For I2C, a number between 2 and 127.
-  -b &lt;baudrate&gt;: For serial devices, the baud rate to use (TODO).
-  -c &lt;code&gt;: the numeric command code that is to be sent to the slave.
-  -l &lt;delay&gt;: the delay in milliseconds between sending and requesting data.
-  -x &lt;retries&gt;: the number of retries in case of errors.
-  -i &lt;format&gt;: the input format for command parameters.
-  -o &lt;format&gt;: the output format for the received payload.
-  -s &lt;separator&gt;: sets the input and output separators to &lt;separator&gt;. Default is comma (,).
-  -si &lt;separator&gt;: sets the input separator to &lt;separator&gt;.
-  -so &lt;separator&gt;: sets the output separator to &lt;separator&gt;.
-  -v: verbose mode.
-  --no-newline: omit newline character(s) after outputting the payload.
-  -r: read input from stdin. Cannot be used together with -p.
-  -p &lt;parameters&gt;: command parameters in the input format.
+    -t &lt;transport&gt;: defines the transport layer. Currently "i2c" and "serial" are supported.
+    -d &lt;device&gt;: the device that is to be used for the transport, i. e. "/dev/i2c-1".
+    -a &lt;address&gt;: the slave address. For I2C, a number between 2 and 127.
+    -b &lt;baudrate&gt;: For serial devices, the baud rate to use (TODO).
+    -c &lt;code&gt;: the numeric command code that is to be sent to the slave.
+    -l &lt;delay&gt;: the delay in milliseconds between sending and requesting data.
+    -x &lt;retries&gt;: the number of retries in case of errors.
+    -i &lt;format&gt;: the input format for command parameters.
+    -o &lt;format&gt;: the output format for the received payload.
+    -s &lt;separator&gt;: sets the input and output separators to &lt;separator&gt;. Default is comma (,).
+    -si &lt;separator&gt;: sets the input separator to &lt;separator&gt;.
+    -so &lt;separator&gt;: sets the output separator to &lt;separator&gt;.
+    -v: verbose mode.
+    --no-newline: omit newline character(s) after outputting the payload.
+    -r: read input from stdin. Cannot be used together with -p.
+    -p &lt;parameters&gt;: command parameters in the input format.
   
 For input and output formats the following values are recognized:
 Hex, Raw, Byte, Int16, Int32, Int64.
@@ -89,6 +89,7 @@ Int64 input/output consists of a sequence of numeric values in range -(2^63)..2^
 optionally separated by the respective separator.
 
 Examples:
+
     ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -o Raw
 Sends the command number 0 via I2C to address 5 and prints the result as string.
 
@@ -97,6 +98,7 @@ Sends the command number 9 via I2C to address 5 and prints the result as hex.
 The command parameters are three bytes: 0x00, 0x00, 0x04.
 
 Input formats can also be mixed:
+
     ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 10 -i Byte -p 10,0 -i Raw -p 'Hello, World!'
 Sends the command number 10 via I2C to address 5 and prints the result as hex.
 The command parameters are two bytes: 0x10, 0x00. The input format is then switched to
@@ -110,15 +112,16 @@ file names.
 
 arducom-ftp understands the following parameters:
 
-  -t &lt;transport&gt;: defines the transport layer. Currently "i2c" and "serial" are supported.
-  -d &lt;device&gt;: the device that is to be used for the transport, i. e. "/dev/i2c-1".
-  -a &lt;address&gt;: the slave address. For I2C, a number between 2 and 127.
-  -b &lt;baudrate&gt;: For serial devices, the baud rate to use (TODO).
-  -l &lt;delay&gt;: the delay in milliseconds between sending and requesting data.
-  -v: verbose mode.
-  -x &lt;retries&gt;: the number of retries in case of errors.
+    -t &lt;transport&gt;: defines the transport layer. Currently "i2c" and "serial" are supported.
+    -d &lt;device&gt;: the device that is to be used for the transport, i. e. "/dev/i2c-1".
+    -a &lt;address&gt;: the slave address. For I2C, a number between 2 and 127.
+    -b &lt;baudrate&gt;: For serial devices, the baud rate to use (TODO).
+    -l &lt;delay&gt;: the delay in milliseconds between sending and requesting data.
+    -v: verbose mode.
+    -x &lt;retries&gt;: the number of retries in case of errors.
   
 Example:
+
     ./arducom-ftp -t serial -d /dev/ttyACM0 -x 30
 This example connects to the slave using the serial device ttyACM0 specifying 30 retries.
 
