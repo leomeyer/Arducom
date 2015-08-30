@@ -145,22 +145,22 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 		throw std::runtime_error("Error: number of bytes to send exceeds serial block size limit");
 
 	// clear buffers
-	tcflush(this->fileHandle, TCIOFLUSH);	
-		
-	int my_retries = retries;
-	while (true) {
-		if ((write(this->fileHandle, buffer, size)) != size) {
+	tcflush(this->fileHandle, TCIOFLUSH);
+	
+	for (uint8_t i = 0; i < size; i++) {
+		int my_retries = retries;
+repeat:
+		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
 				perror("Error sending data to serial device");
 				throw std::runtime_error("Error sending data to serial device");
 			} else {
 				my_retries--;
-				continue;
+				goto repeat;
 			}
 		}
-		fsync(this->fileHandle);
-		break;
 	}
+	fsync(this->fileHandle);
 }
 
 uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
