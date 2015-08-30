@@ -24,6 +24,9 @@
 #include <ArducomStream.h>
 #include <ArducomFTP.h>
 
+// LED pin; undefine this if you don't want to use the LED as status indicator
+// #define LED					13
+
 // Define this macro if you are using an SD card.
 // The chipselect pin depends on the type of SD card shield.
 #define SDCARD_CHIPSELECT	10	
@@ -34,10 +37,10 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		9600
+// #define SERIAL_STREAM		Serial
+#define SERIAL_BAUDRATE		115200
 
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -102,8 +105,20 @@ void dateTime(uint16_t* date, uint16_t* time) {
 }
 #endif  // USE_DS1307
 
+// RAM variables to expose via Arducom
+uint8_t testByte;
+int16_t testInt16;
+int32_t testInt32;
+int64_t testInt64;
+#define TEST_BLOCK_SIZE	10
+uint8_t testBlock[TEST_BLOCK_SIZE];
+
 void setup()
 {
+#ifdef LED
+	pinMode(LED, OUTPUT); 
+#endif
+
 #ifdef SERIAL_STREAM
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 #endif
@@ -111,26 +126,16 @@ void setup()
 #ifdef DEBUG_OUTPUT
 	DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
-
-	// give the debug console time to connect
-	delay(2000);
 	
 	DEBUG(print(F("FreeRam: ")));
 	DEBUG(println(FreeRam()));	
 #endif
 
-#if USE_DS1307
-	// connect to RTC
-	Wire.begin();
-	if (!RTC.begin()) {
-		DEBUG(println(F("RTC not functional")));
-	} else {
-		// set date time callback function (sets file creation date)
-		SdFile::dateTimeCallback(dateTime);
-	}
-#endif  // USE_DS1307
-
+	// reserved version command (it's recommended to leave this in
+	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
+
+	// EEPROM access command
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
 	arducom.addCommand(new ArducomWriteEEPROMByte(2));
 	arducom.addCommand(new ArducomReadEEPROMInt16(3));
@@ -142,6 +147,29 @@ void setup()
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 	
+	// expose RAM test variables
+	arducom.addCommand(new ArducomReadByte(11, &testByte));
+	arducom.addCommand(new ArducomWriteByte(12, &testByte));
+	arducom.addCommand(new ArducomReadInt16(13, &testInt16));
+	arducom.addCommand(new ArducomWriteInt16(14, &testInt16));
+	arducom.addCommand(new ArducomReadInt32(15, &testInt32));
+	arducom.addCommand(new ArducomWriteInt32(16, &testInt32));
+	arducom.addCommand(new ArducomReadInt64(17, &testInt64));
+	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
+	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock));
+	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
+
+	#if USE_DS1307
+	// connect to RTC
+	Wire.begin();
+	if (!RTC.begin()) {
+		DEBUG(println(F("RTC not functional")));
+	} else {
+		// set date time callback function (sets file creation date)
+		SdFile::dateTimeCallback(dateTime);
+	}
+#endif  // USE_DS1307
+
 #ifdef SDCARD_CHIPSELECT
 	// initialize SD system
 	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
@@ -149,6 +177,16 @@ void setup()
 		arducomFTP.init(&arducom, &sdFat);
 	}
 #endif
+
+#ifdef LED
+	// signal ready on LED
+	for (int i = 0; i < 5; i++) {
+		digitalWrite(LED, HIGH);
+		delay(200);
+		digitalWrite(LED, LOW);
+		delay(200);
+	}
+#endif LED
 }
 
 void loop()
@@ -157,6 +195,16 @@ void loop()
 	if (code != ARDUCOM_OK) {
 		DEBUG(print(F("Arducom error: ")));
 		DEBUG(println(code));
+		
+#ifdef LED
+		// signal error on LED
+		for (int i = 0; i < code; i++) {
+			digitalWrite(LED, HIGH);
+			delay(200);
+			digitalWrite(LED, LOW);
+			delay(200);
+		}
+#endif LED
 	}
 	
 	return;

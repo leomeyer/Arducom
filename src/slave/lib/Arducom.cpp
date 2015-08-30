@@ -3,6 +3,10 @@
 
 #include <Arducom.h>
 
+/******************************************************************************************	
+* Arducom transport base class implementation
+******************************************************************************************/
+
 void ArducomTransport::reset(void) {
 	this->status = NO_DATA;
 	this->size = 0;
@@ -14,15 +18,6 @@ int8_t ArducomTransport::hasData(void) {
 	return this->size;
 }
 
-int8_t ArducomTransport::sendError(uint8_t errorCode, uint8_t info) {
-	// signal error
-	this->data[0] = ARDUCOM_ERROR_CODE;
-	this->data[1] = errorCode;
-	this->data[2] = info;
-	this->size = 3;
-	this->status = READY_TO_SEND;
-}
-
 /******************************************************************************************	
 * Arducom main class implementation
 ******************************************************************************************/
@@ -31,7 +26,6 @@ Arducom::Arducom(ArducomTransport* transport, Print* debugPrint, uint16_t receiv
 	this->transport = transport;
 	this->debug = debugPrint;
 	this->origDebug = debugPrint;	// remember original pointer (debug is switched off by NULLing debug)
-	this->currentCommand = 0;
 	this->lastDataSize = -1;
 	this->receiveTimeout = receiveTimeout;
 	this->lastReceiveTime = 0;
@@ -67,8 +61,9 @@ uint8_t Arducom::doWork(void) {
 		this->lastDataSize = dataSize;
 		// reset timeout counter
 		this->lastReceiveTime = millis();
-		// the first byte is always the command byte
+		// the first byte is the command byte
 		uint8_t commandByte = this->transport->data[0];
+		// the first byte is the code byte which contains the length
 		uint8_t code = this->transport->data[1];
 		// check whether the specified number of bytes has already been received
 		// the lower six bits of the code denote the payload size
@@ -130,8 +125,11 @@ uint8_t Arducom::doWork(void) {
 				this->debug->print(F(" Info: "));
 				this->debug->println((int)errorInfo);
 			}
-			this->transport->sendError(result, errorInfo);
-			this->transport->reset();
+			// send error code back
+			destBuffer[0] = ARDUCOM_ERROR_CODE;
+			destBuffer[1] = result;
+			destBuffer[2] = errorInfo;
+			this->transport->send(destBuffer, 3);
 			return ARDUCOM_COMMAND_ERROR;
 		}
 		// the command has been handled, send data back
@@ -140,6 +138,7 @@ uint8_t Arducom::doWork(void) {
 		// prepare return code: lower six bits are length of payload
 		destBuffer[1] = (dataSize & 0b00111111);
 		this->transport->send(destBuffer, 2 + dataSize);
+		return ARDUCOM_COMMAND_HANDLED;
 	} else {
 		// new data is not available
 		// check whether receive timeout is up
@@ -210,10 +209,14 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 	return ARDUCOM_OK;
 }
 
+/***************************************
+* Predefined EEPROM access commands
+****************************************/
+
 ArducomWriteEEPROMByte::ArducomWriteEEPROMByte(uint8_t commandCode) : ArducomCommand(commandCode, 3) {}
 	
 int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects three bytes from the master; a two-byte address and a one-byte value
+	// this method expects three bytes; a two-byte address and a one-byte value
 	#define EXPECTED_PARAM_BYTES 3
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -228,7 +231,7 @@ int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBu
 ArducomReadEEPROMByte::ArducomReadEEPROMByte(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
 int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master
+	// this method expects a two-byte address
 	#define EXPECTED_PARAM_BYTES 2
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -243,7 +246,7 @@ int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuf
 ArducomWriteEEPROMInt16::ArducomWriteEEPROMInt16(uint8_t commandCode) : ArducomCommand(commandCode, 4) {}
 	
 int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects six bytes from the master; a two-byte address and a two-byte value
+	// this method expects four bytes; a two-byte address and a two-byte value
 	#define EXPECTED_PARAM_BYTES 4
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -258,7 +261,7 @@ int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataB
 ArducomReadEEPROMInt16::ArducomReadEEPROMInt16(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
 int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master
+	// this method expects a two-byte address
 	#define EXPECTED_PARAM_BYTES 2
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -273,7 +276,7 @@ int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBu
 ArducomWriteEEPROMInt32::ArducomWriteEEPROMInt32(uint8_t commandCode) : ArducomCommand(commandCode, 6) {}
 	
 int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects six bytes from the master; a two-byte address and a four-byte value
+	// this method expects six bytes; a two-byte address and a four-byte value
 	#define EXPECTED_PARAM_BYTES 6
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -288,7 +291,7 @@ int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataB
 ArducomReadEEPROMInt32::ArducomReadEEPROMInt32(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
 int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master
+	// this method expects a two-byte address
 	#define EXPECTED_PARAM_BYTES 2
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -303,7 +306,7 @@ int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBu
 ArducomWriteEEPROMInt64::ArducomWriteEEPROMInt64(uint8_t commandCode) : ArducomCommand(commandCode, 10) {}
 	
 int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects ten bytes from the master; a two-byte address and an eight-byte value
+	// this method expects ten bytes; a two-byte address and an eight-byte value
 	#define EXPECTED_PARAM_BYTES 10
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -318,7 +321,7 @@ int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataB
 ArducomReadEEPROMInt64::ArducomReadEEPROMInt64(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
 int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master
+	// this method expects a two-byte address
 	#define EXPECTED_PARAM_BYTES 2
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -333,7 +336,7 @@ int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBu
 ArducomWriteEEPROMBlock::ArducomWriteEEPROMBlock(uint8_t commandCode) : ArducomCommand(commandCode, -1) {}
 	
 int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master plus at least one byte to write
+	// this method expects a two-byte address plus at least one byte to write
 	#define EXPECTED_PARAM_BYTES 3
 	if (*dataSize < EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -349,7 +352,7 @@ int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataB
 ArducomReadEEPROMBlock::ArducomReadEEPROMBlock(uint8_t commandCode) : ArducomCommand(commandCode, 3) {}
 	
 int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this method expects a two-byte address from the master plus a length byte
+	// this method expects a two-byte address plus a length byte
 	#define EXPECTED_PARAM_BYTES 3
 	if (*dataSize != EXPECTED_PARAM_BYTES) {
 		*errorInfo = EXPECTED_PARAM_BYTES;
@@ -357,11 +360,193 @@ int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataBu
 	}
 	uint16_t address = *((uint16_t*)dataBuffer);
 	uint8_t length = dataBuffer[2];
+	// validate length
 	if (length > maxBufferSize) {
 		*errorInfo = maxBufferSize;
 		return ARDUCOM_BUFFER_OVERRUN;
 	}
 	eeprom_read_block(destBuffer, (uint16_t*)address, length);
+	*dataSize = length;
+	return ARDUCOM_OK;
+}
+
+/***************************************
+* Predefined RAM access commands
+****************************************/
+
+ArducomWriteByte::ArducomWriteByte(uint8_t commandCode, uint8_t* address) : ArducomCommand(commandCode, 1) {
+	this->address = address;
+}
+	
+int8_t ArducomWriteByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a one-byte value
+	#define EXPECTED_PARAM_BYTES 1
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*this->address = dataBuffer[0];
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadByte::ArducomReadByte(uint8_t commandCode, uint8_t* address) : ArducomCommand(commandCode, 0) {
+	this->address = address;
+}
+
+int8_t ArducomReadByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects no parameters
+	#define EXPECTED_PARAM_BYTES 0
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	destBuffer[0] = *this->address;
+	*dataSize = 1;
+	return ARDUCOM_OK;
+}
+
+ArducomWriteInt16::ArducomWriteInt16(uint8_t commandCode, int16_t* address) : ArducomCommand(commandCode, 2) {
+	this->address = address;
+}
+	
+int8_t ArducomWriteInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a two-byte value
+	#define EXPECTED_PARAM_BYTES 2
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*this->address = *((int16_t*)dataBuffer);
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadInt16::ArducomReadInt16(uint8_t commandCode, int16_t* address) : ArducomCommand(commandCode, 0) {
+	this->address = address;
+}
+	
+int8_t ArducomReadInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects no parameters
+	#define EXPECTED_PARAM_BYTES 0
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*((int16_t*)destBuffer) = *this->address;
+	*dataSize = 2;
+	return ARDUCOM_OK;
+}
+
+ArducomWriteInt32::ArducomWriteInt32(uint8_t commandCode, int32_t* address) : ArducomCommand(commandCode, 4) {
+	this->address = address;
+}
+	
+int8_t ArducomWriteInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a four-byte value
+	#define EXPECTED_PARAM_BYTES 4
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*this->address = *((int32_t*)dataBuffer);
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadInt32::ArducomReadInt32(uint8_t commandCode, int32_t* address) : ArducomCommand(commandCode, 0) {
+	this->address = address;
+}	
+int8_t ArducomReadInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects no parameters
+	#define EXPECTED_PARAM_BYTES 0
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*((int32_t*)destBuffer) = *this->address;
+	*dataSize = 4;
+	return ARDUCOM_OK;
+}
+
+ArducomWriteInt64::ArducomWriteInt64(uint8_t commandCode, int64_t* address) : ArducomCommand(commandCode, 8) {
+	this->address = address;
+}
+	
+int8_t ArducomWriteInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects an eight-byte value
+	#define EXPECTED_PARAM_BYTES 10
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*this->address = *((int64_t*)dataBuffer);
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadInt64::ArducomReadInt64(uint8_t commandCode, int64_t* address) : ArducomCommand(commandCode, 0) {
+	this->address = address;
+}
+	
+int8_t ArducomReadInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects no parameters
+	#define EXPECTED_PARAM_BYTES 0
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	*((int64_t*)destBuffer) = *this->address;
+	*dataSize = 8;
+	return ARDUCOM_OK;
+}
+
+ArducomWriteBlock::ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize) : ArducomCommand(commandCode, -1) {
+	this->address = address;
+	this->maxBlockSize = maxBlockSize;
+}
+	
+int8_t ArducomWriteBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a two-byte offset plus at least one byte to write
+	#define EXPECTED_PARAM_BYTES 3
+	if (*dataSize < EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	uint16_t offset = *((uint16_t*)dataBuffer);
+	// validate block boundary
+	if (offset + *dataSize > this->maxBlockSize) {
+		*errorInfo = maxBufferSize;
+		return ARDUCOM_BUFFER_OVERRUN;
+	}
+	// write remaining data to the RAM
+	for (uint8_t i = 2; i < *dataSize; i++) {
+		this->address[offset + i - 2] = dataBuffer[i];
+	}
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadBlock::ArducomReadBlock(uint8_t commandCode, uint8_t* address) : ArducomCommand(commandCode, 3) {
+	this->address = address;
+}
+	
+int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a two-byte offset plus a length byte
+	#define EXPECTED_PARAM_BYTES 3
+	if (*dataSize != EXPECTED_PARAM_BYTES) {
+		*errorInfo = EXPECTED_PARAM_BYTES;
+		return ARDUCOM_PARAMETER_MISMATCH;
+	}
+	uint16_t offset = *((uint16_t*)dataBuffer);
+	uint8_t length = dataBuffer[2];
+	if (length > maxBufferSize) {
+		*errorInfo = maxBufferSize;
+		return ARDUCOM_BUFFER_OVERRUN;
+	}
+	for (uint8_t i = 0; i < length; i++) {
+		destBuffer[i] = this->address[offset + i];
+	}
 	*dataSize = length;
 	return ARDUCOM_OK;
 }

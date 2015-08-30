@@ -5,12 +5,13 @@
 
 // Arducom status codes that are used internally
 #define ARDUCOM_OK						0
-#define ARDUCOM_COMMAND_ERROR			1
+#define ARDUCOM_COMMAND_HANDLED			1
 #define ARDUCOM_COMMAND_ALREADY_EXISTS	2
 #define ARDUCOM_COMMANDCODE_INVALID		3
 #define ARDUCOM_TIMEOUT					4
 #define ARDUCOM_ERROR					5
 #define ARDUCOM_OVERFLOW				6
+#define ARDUCOM_COMMAND_ERROR			7
 
 // Arducom error codes that are being sent back to the master
 #define ARDUCOM_NO_DATA					128
@@ -31,6 +32,10 @@
 #define ARDUCOM_FLAG_ENABLEDEBUG		1
 
 #ifdef ARDUINO
+
+/******************************************************************************************	
+* Arducom transport base class definition
+******************************************************************************************/
 
 /** This class encapsulates the transport mechanism for Arducom commands.
 *   Messages from the master always start with a one-byte command code, optionally followed by
@@ -73,9 +78,6 @@ public:
 	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
 	virtual int8_t send(uint8_t* buffer, uint8_t count) = 0;
 	
-	/** Sends the specified error code to the master. */
-	virtual int8_t sendError(uint8_t errorCode, uint8_t info);
-	
 	/** Performs regular housekeeping; called from the Arducom main class; returns -1 in case of errors. */
 	virtual int8_t doWork(void) = 0;
 };
@@ -85,23 +87,8 @@ class Arducom;
 /** This class is the base class for command handlers. If the command code and the number of expected bytes
 * matches its definition its handle() method is called. This method can inspect the supplied data and send
 * data back to the master. The number of expected bytes is optional. If it is > -1 the Arducom system will
-* wait for enough data to arrive until the command is handled. Too much data for the command counts as an error. */
+* let the class handle all received data. If a value is specified, too much data for a command counts as an error. */
 class ArducomCommand {
-
-public:
-	uint8_t commandCode;
-	int8_t expectedBytes;	// number of expected bytes
-	
-	// forms a linked list of supported commands
-	ArducomCommand* next;
-	
-	/** Is called when the command code of this command has been received and the number of expected bytes match. 
-	* This method should evaluate the data in the dataBuffer. Return data should be placed in the destBuffer,
-	* up to a length of maxBufferSize. The length of the returned data should be placed in dataSize. 
-	* The result data is sent back to the master if this method returns a code of 0 (ARDUCOM_OK). 
-	* Any other return code is interpreted as an error. Additional error information can be returned in errorInfo.
-	*/
-	virtual int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
 
 protected:
 	/** Initializes an ArducomCommand for a variable number of expected data bytes. */
@@ -117,19 +104,40 @@ protected:
 		this->expectedBytes = expectedBytes;
 		this->next = 0;
 	};
+
+	uint8_t commandCode;
+	int8_t expectedBytes;	// number of expected bytes
+	
+	/** Is called when the command code of this command has been received and the number of expected bytes match. 
+	* This method should evaluate the data in the dataBuffer. Return data should be placed in the destBuffer,
+	* up to a length of maxBufferSize. The length of the returned data should be placed in dataSize. 
+	* The result data is sent back to the master if this method returns a code of 0 (ARDUCOM_OK). 
+	* Any other return code is interpreted as an error. Additional error information can be returned in errorInfo.
+	*/
+	virtual int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
+
+	// forms a linked list of supported commands (internal data structure)
+	ArducomCommand* next;
+
+friend class Arducom;	
 };
+
+/******************************************************************************************	
+* Arducom main class definition
+******************************************************************************************/
 
 /** This class is the main class that handles the communication. */
 class Arducom {
 public:
-	const uint8_t VERSION = 1;
+	static const uint8_t VERSION = 1;
 	
+	/** Debug Print instance as supplied in the constructor. If this value is != 0 it means that debugging
+	* is enabled for this Ardudom instance. */
 	Print* debug;
 
 	/** Initializes the Arducom system with the specified transport.
-	* Default receive timeout is one second. A complete command must be received
-	* within this time window. Otherwise, the transport is being reset which will 
-	* discard the incomplete command. */
+	* Default receive timeout is zero (wait forever). If specified, a complete command must be received
+	* within this time window. Otherwise, the transport is being reset which will discard the incomplete command. */
 	Arducom(ArducomTransport* transport, Print* debugPrint = 0, uint16_t receiveTimeout = 0);
 
 	/** Adds the specified command to the internal list. When the command is
@@ -152,22 +160,27 @@ protected:
 	// linked list of commands
 	ArducomCommand* list;
 	
-	ArducomCommand* currentCommand;
 	// performance optimization: store data size of last check
 	int8_t lastDataSize;
 	
 	uint16_t receiveTimeout;
 	long lastReceiveTime;
 	
+	// backup of Print instance for re-enabling debug
 	Print* origDebug;
 };
+
+/******************************************************************************************	
+* Arducom command definitions
+******************************************************************************************/
 
 /** This class implements a test command with code 0 and one optional flag byte
 *   returning the following info:
 *	Byte 0: Arducom version number
 *   Bytes 1 - 4: result of the millis() function, LSB first; roughly speaking, the uptime of the slave
-*   Bytes 5 - n: character data (for example, the slave name)
+*   Byte 5: flag byte
 *   Bit 0 of the flags enables/disables debug output (if an Arducom debugPrint has been specified).
+*   Bytes 5 - n: character data (for example, the slave name)
 */
 class ArducomVersionCommand: public ArducomCommand {
 public:
@@ -181,6 +194,9 @@ private:
 	const char *data;
 };
 
+/***************************************
+* Predefined EEPROM access commands
+****************************************/
 
 /** This class implements a command to write a byte value to a specified EEPROM address.
 *   It expects a two-byte EEPROM address and the byte value to write. All values are LSB first.
@@ -290,6 +306,147 @@ public:
 	ArducomReadEEPROMBlock(uint8_t commandCode);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+};
+
+/***************************************
+* Predefined RAM access commands
+****************************************/
+
+/** This class implements a command to write a byte value to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects the byte value to write. All values are LSB first.
+*/
+class ArducomWriteByte: public ArducomCommand {
+public:
+	ArducomWriteByte(uint8_t commandCode, uint8_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t* address;
+};
+
+/** This class implements a command to read a byte value from a specified RAM address.
+*   The address must be specified at creation time.
+*   It returns the following info:
+*   Byte 0: result
+*/
+class ArducomReadByte: public ArducomCommand {
+public:
+	ArducomReadByte(uint8_t commandCode, uint8_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t* address;
+};
+
+/** This class implements a command to write a two-byte integer value to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects the two-byte value to write. All values are LSB first.
+*/
+class ArducomWriteInt16: public ArducomCommand {
+public:
+	ArducomWriteInt16(uint8_t commandCode, int16_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int16_t* address;
+};
+
+/** This class implements a command to read a two-byte integer value from a specified RAM address.
+*   The address must be specified at creation time.
+*   It returns the following info:
+*   Bytes 0 - 1: result (LSB first)
+*/
+class ArducomReadInt16: public ArducomCommand {
+public:
+	ArducomReadInt16(uint8_t commandCode, int16_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int16_t* address;
+};
+
+/** This class implements a command to write a four-byte integer value to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects the four-byte value to write. All values are LSB first.
+*/
+class ArducomWriteInt32: public ArducomCommand {
+public:
+	ArducomWriteInt32(uint8_t commandCode, int32_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int32_t* address;
+};
+
+/** This class implements a command to read a four-byte integer value from a specified RAM address.
+*   The address must be specified at creation time.
+*   It returns the following info:
+*   Bytes 0 - 3: result (LSB first)
+*/
+class ArducomReadInt32: public ArducomCommand {
+public:
+	ArducomReadInt32(uint8_t commandCode, int32_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int32_t* address;
+};
+
+/** This class implements a command to write an eight-byte integer value to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects the eight-byte value to write. All values are LSB first.
+*/
+class ArducomWriteInt64: public ArducomCommand {
+public:
+	ArducomWriteInt64(uint8_t commandCode, int64_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int64_t* address;
+};
+
+/** This class implements a command to read an eight-byte integer value from a specified EEPROM address.
+*   The address must be specified at creation time.
+*   It returns the following info:
+*   Bytes 0 - 7: result (LSB first)
+*/
+class ArducomReadInt64: public ArducomCommand {
+public:
+	ArducomReadInt64(uint8_t commandCode, int64_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	int64_t* address;
+};
+
+/** This class implements a command to write an arbitrary data block to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects a two-byte offset and the data to write. All values are LSB first.
+*/
+class ArducomWriteBlock: public ArducomCommand {
+public:
+	ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t* address;
+	uint16_t maxBlockSize;
+};
+
+/** This class implements a command to read an arbitrary data block from a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects a two-byte offset, LSB first, plus one byte containing the number of bytes to read.
+*   It returns the following info:
+*   Bytes 0 - n: the data read from the block
+*/
+class ArducomReadBlock: public ArducomCommand {
+public:
+	ArducomReadBlock(uint8_t commandCode, uint8_t* address);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t* address;
 };
 
 #endif

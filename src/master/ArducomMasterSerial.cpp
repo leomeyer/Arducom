@@ -15,6 +15,37 @@
 #include "ArducomMasterSerial.h"
 #include "../slave/lib/Arducom.h"
 
+struct baud_mapping {
+	long baud;
+	speed_t speed;
+};
+
+static struct baud_mapping baud_lookup_table [] = {
+  { 1200,   B1200 },
+  { 2400,   B2400 },
+  { 4800,   B4800 },
+  { 9600,   B9600 },
+  { 19200,  B19200 },
+  { 38400,  B38400 },
+  { 57600,  B57600 },
+  { 115200, B115200 },
+  { 230400, B230400 },
+  { 0,      0 }                 /* Terminator. */
+};
+
+static speed_t serial_baud_lookup(long baud)
+{
+  struct baud_mapping *map = baud_lookup_table;
+
+  while (map->baud) {
+    if (map->baud == baud)
+      return map->speed;
+    map++;
+  }
+
+  throw std::invalid_argument("Unknown baud rate");
+}
+
 ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename, int baudrate, int timeout) {
 	this->filename = filename;
 	this->baudrate = baudrate;
@@ -45,9 +76,9 @@ void ArducomMasterTransportSerial::init(void) {
 	}
 
 	if (this->baudrate > 0) {
-		// TODO calculate call constant from baud rate
-		cfsetospeed(&tty, B9600);
-		cfsetispeed(&tty, B9600);
+		// calculate call constant from baud rate
+		cfsetospeed(&tty, serial_baud_lookup(this->baudrate));
+		cfsetispeed(&tty, serial_baud_lookup(this->baudrate));
 	}
 
 	tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
@@ -136,8 +167,7 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 	if (bytesRead != 1) {
 		throw std::runtime_error("Timeout reading from serial device");
 	} else 
-	
-	return *buffer;
+		return *buffer;
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {

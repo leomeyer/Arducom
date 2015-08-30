@@ -259,6 +259,11 @@ int8_t ArducomFTPOpenRead::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 		return ARDUCOM_FUNCTION_ERROR;
 	}
 	
+	if (!_arducomFTP->openFile.isOpen()) {
+		*errorInfo = ARDUCOM_FTP_FILE_NOT_OPEN;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+	
 	pos = 0;
 	// transfer size (four bytes)
 	uint32_t* size = (uint32_t*)&destBuffer[pos];

@@ -21,12 +21,17 @@ int8_t ArducomTransportI2C::doWork(void) {
 int8_t ArducomTransportI2C::send(uint8_t* buffer, uint8_t count) {
 	if (this->status != HAS_DATA)
 		return -1;
-	if (count > ARDUCOM_BUFFERSIZE)
-		return this->sendError(ARDUCOM_TOO_MUCH_DATA, count);
-	// copy buffer data
-	for (uint8_t i = 0; i < count; i++)
-		this->data[i] = buffer[i];
-	this->size = count;
+	if (count > ARDUCOM_BUFFERSIZE) {
+		this->data[0] = ARDUCOM_ERROR_CODE;
+		this->data[1] = ARDUCOM_TOO_MUCH_DATA;
+		this->data[2] = count;
+		this->size = 3;
+	} else {
+		// copy buffer data
+		for (uint8_t i = 0; i < count; i++)
+			this->data[i] = buffer[i];
+		this->size = count;
+	}
 	this->status = READY_TO_SEND;
 }
 
