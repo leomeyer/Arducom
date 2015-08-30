@@ -1,5 +1,5 @@
-Arducom - Arduino communications library
-----------------------------------------
+Arducom - Arduino communication library
+=======================================
 
 WARNING - this is pretty much work in progress. Also, documentation is not yet complete.
 
@@ -25,8 +25,8 @@ on an Arduino Uno clone. The device calling the Arduino is dubbed the master.
 This master implementation has been tested on a Raspberry Pi. 
 Other systems may probably require some work.
 
-* Protocol description
-======================
+Protocol description
+--------------------
 
 Arducom operates using a block oriented protocol, i. e. data is transferred in packets.
 The maximum length of a packet is defined by the underlying transport layer;
@@ -47,14 +47,16 @@ payload and send data back. In case of errors, or if no matching command can be 
 an error message is returned. Error messages consist of three bytes: the error token 0xFF,
 the error code, and an implementation defined info byte.
 
-* Implementing your own commands
-================================
+Implementing your own commands
+------------------------------
 
 Arducom makes it easy to implement your own commands. Each command is represented by
 a class that derives from the ArducomCommand class.
 
-* Master implementation
-=======================
+See hello-world.ino for a simple example.
+
+Master implementation
+---------------------
 
 The master implementation is a command line program called "arducom". 
 arducom allows communicating with Arducom slaves via the command line.
@@ -64,7 +66,7 @@ arducom has a number of options:
     -t <transport>: defines the transport layer. Currently "i2c" and "serial" are supported.
     -d <device>: the device that is to be used for the transport, i. e. "/dev/i2c-1".
     -a <address>: the slave address. For I2C, a number between 2 and 127.
-    -b <baudrate>: For serial devices, the baud rate to use (TODO).
+    -b <baudrate>: For serial devices, the baud rate to use.
     -c <commandcode>: the numeric command code that is to be sent to the slave.
     -l <delay>: the delay in milliseconds between sending and requesting data.
     -x <retries>: the number of retries in case of errors.
@@ -108,8 +110,8 @@ Sends the command number 10 via I2C to address 5 and prints the result as hex.
 The command parameters are two bytes: 0x10, 0x00. The input format is then switched to
 Raw allowing to append additional parameter bytes as the string 'Hello, World!'.
 
-* FTP transfer
-==============
+FTP transfer
+------------
 
 The program arducom-ftp implements a simple FTP client. It works with the hello-world.ino sketch
 when an SD card is present. There are currently some limitations: arducom-ftp supports only 8.3
@@ -120,7 +122,7 @@ arducom-ftp understands the following parameters:
     -t <transport>: defines the transport layer. Currently "i2c" and "serial" are supported.
     -d <device>: the device that is to be used for the transport, i. e. "/dev/i2c-1".
     -a <address>: the slave address. For I2C, a number between 2 and 127.
-    -b <baudrate>: For serial devices, the baud rate to use (TODO).
+    -b <baudrate>: For serial devices, the baud rate to use.
     -l <delay>: the delay in milliseconds between sending and requesting data.
     -v: verbose mode.
     -x <retries>: the number of retries in case of errors.
@@ -132,7 +134,7 @@ This example connects to the slave using the serial device ttyACM0 specifying 30
 
 After start, arducom-ftp will try to connect to the slave. If successful, a message will be displayed:
 
-Connected. SD card type: SD1  FAT16 Size: 127 MB
+    Connected. SD card type: SD1  FAT16 Size: 127 MB
 
 You can list directories using "dir" or "ls". To change a directory, use "cd". You can specify only
 one directory level at at time. To change a directory up, use "cd ..". To change to root, use "cd /" or
