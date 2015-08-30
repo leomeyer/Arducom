@@ -56,7 +56,8 @@
 // Undefine this if you don't want to use debugging.
 // You cannot use the same Print object for Arducom serial communication
 // (for example, Serial).
-// Using serial debugging will greatly slow down communication.
+// Note: This define is for the hello-world test sketch. To debug Arducom,
+// use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // #define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
@@ -66,7 +67,7 @@
 #define DEBUG(x) /* x */
 #endif
 
-// If this is defined Arducom will output debug messages.
+// If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use
 // this during normal operation.
 // #define USE_ARDUCOM_DEBUG	1

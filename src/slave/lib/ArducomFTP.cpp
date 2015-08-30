@@ -278,13 +278,6 @@ ArducomFTPReadFile::ArducomFTPReadFile(uint8_t commandCode) : ArducomCommand(com
 }
 
 int8_t ArducomFTPReadFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-	// this command expects a four-byte position to read from
-	#define EXPECTED_PARAM_BYTES 4
-	if (*dataSize != EXPECTED_PARAM_BYTES) {
-		*errorInfo = EXPECTED_PARAM_BYTES;
-		return ARDUCOM_PARAMETER_MISMATCH;
-	}
-
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
