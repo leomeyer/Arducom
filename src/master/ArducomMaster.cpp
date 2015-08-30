@@ -106,10 +106,13 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 }
 	
 void ArducomMaster::invalidResponse(uint8_t commandByte) {
-	std::cout << "Received reply to command ";
-	this->printBuffer(&commandByte, 1);
-	std::cout << " but expected ";
+	uint8_t expectedReply = this->lastCommand | 0x80;
+	std::cout << "Expected reply to command ";
 	this->printBuffer(&this->lastCommand, 1);
+	std::cout << " (";
+	this->printBuffer(&expectedReply, 1);
+	std::cout << ") but received ";
+	this->printBuffer(&commandByte, 1);
 	std::cout << std::endl;
 	throw std::runtime_error("Invalid response");
 }

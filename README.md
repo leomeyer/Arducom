@@ -1,4 +1,5 @@
 Arducom - Arduino communications library
+----------------------------------------
 
 WARNING - this is pretty much work in progress. Also, documentation is not yet complete.
 
@@ -25,6 +26,7 @@ This master implementation has been tested on a Raspberry Pi.
 Other systems may probably require some work.
 
 * Protocol description
+======================
 
 Arducom operates using a block oriented protocol, i. e. data is transferred in packets.
 The maximum length of a packet is defined by the underlying transport layer;
@@ -46,11 +48,13 @@ an error message is returned. Error messages consist of three bytes: the error t
 the error code, and an implementation defined info byte.
 
 * Implementing your own commands
+================================
 
 Arducom makes it easy to implement your own commands. Each command is represented by
 a class that derives from the ArducomCommand class.
 
 * Master implementation
+=======================
 
 The master implementation is a command line program called "arducom". 
 arducom allows communicating with Arducom slaves via the command line.
@@ -105,6 +109,7 @@ The command parameters are two bytes: 0x10, 0x00. The input format is then switc
 Raw allowing to append additional parameter bytes as the string 'Hello, World!'.
 
 * FTP transfer
+==============
 
 The program arducom-ftp implements a simple FTP client. It works with the hello-world.ino sketch
 when an SD card is present. There are currently some limitations: arducom-ftp supports only 8.3

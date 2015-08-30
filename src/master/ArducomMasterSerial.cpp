@@ -143,6 +143,10 @@ void ArducomMasterTransportSerial::init(void) {
 void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > SERIAL_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds serial block size limit");
+
+	// clear buffers
+	tcflush(this->fileHandle, TCIOFLUSH);	
+		
 	int my_retries = retries;
 	while (true) {
 		if ((write(this->fileHandle, buffer, size)) != size) {
@@ -154,6 +158,7 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 				continue;
 			}
 		}
+		fsync(this->fileHandle);
 		break;
 	}
 }
@@ -164,34 +169,47 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 		perror("Unable to read from serial device");
 		throw std::runtime_error("Unable to read from serial device");
 	} else 
-	if (bytesRead != 1) {
+	if (bytesRead == 0) {
 		throw std::runtime_error("Timeout reading from serial device");
 	} else 
+	if (bytesRead > 1) {
+		throw std::runtime_error("Big trouble! Read returned more than one byte");
+	} else {
+/*
+		std::cout << "Byte read: ";
+		ArducomMaster::printBuffer(buffer, 1);
+		std::cout << std::endl;
+*/
 		return *buffer;
+	}
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {
 	if (expectedBytes > SERIAL_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to receive exceeds serial block size limit");
-	int pos = 0;
+	uint8_t pos = 0;
 	memset(&this->buffer, 0, SERIAL_BLOCKSIZE_LIMIT);
 	
 	// read the first byte
 	uint8_t resultCode = this->readByteInternal(&this->buffer[pos++]);
-	// inspect first byte of the reply
-	// error?
-	if (resultCode == ARDUCOM_ERROR_CODE) {
-		// read the next two bytes (error code plus error info)
-		this->readByteInternal(&this->buffer[pos++]);
-		this->readByteInternal(&this->buffer[pos++]);
-	} else {
-		// read code byte
-		uint8_t code = this->readByteInternal(&this->buffer[pos++]);
-		// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
-		for (uint8_t i = 0; (i < expectedBytes) && (i < (code & 0b00111111)); i++) {
+	if (expectedBytes > 1) {
+		// inspect first byte of the reply
+		// error?
+		if (resultCode == ARDUCOM_ERROR_CODE) {
+			// read the next two bytes (error code plus error info)
 			this->readByteInternal(&this->buffer[pos++]);
-		if (pos > SERIAL_BLOCKSIZE_LIMIT)
-			throw std::runtime_error("Error: number of received bytes exceeds serial block size limit");
+			if (expectedBytes > 2)
+				this->readByteInternal(&this->buffer[pos++]);
+		} else {
+			// read code byte
+			uint8_t code = this->readByteInternal(&this->buffer[pos++]);
+//			std::cout << "Expecting: " << (int)(code & 0b00111111) << " bytes" << std::endl;
+			// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
+			while ((pos < expectedBytes) && (pos < (code & 0b00111111) + 2)) {
+				this->readByteInternal(&this->buffer[pos++]);
+			if (pos > SERIAL_BLOCKSIZE_LIMIT)
+				throw std::runtime_error("Error: number of received bytes exceeds serial block size limit");
+			}
 		}
 	}
 	this->pos = 0;

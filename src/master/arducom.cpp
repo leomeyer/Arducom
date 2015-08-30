@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 	bool noNewline = false;
 	char outputSeparator = ',';
 	char inputSeparator = outputSeparator;
-	int retries;
+	int retries = 0;
 	
 	std::vector<std::string> args;
 	args.reserve(argc);
@@ -418,8 +418,8 @@ int main(int argc, char *argv[]) {
 		if ((expectedBytes < 0) || (expectedBytes > 64))
 			throw std::invalid_argument("Expected number of bytes must be within range 0..64 (argument -e)");
 
-		if (retries < 1)
-			throw std::invalid_argument("Number of retries must not be 0 or negative (argument -x)");
+		if (retries < 0)
+			throw std::invalid_argument("Number of retries must not be negative (argument -x)");
 
 		// initialize protocol
 		ArducomMaster master(transport, verbose);
@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
 		uint8_t errorInfo;
 		
 		// retry loop
-		while (retries > 0) {
+		while (retries >= 0) {
 			// wait for the specified delay
 			usleep(delayMs * 1000);
 			size = 0;

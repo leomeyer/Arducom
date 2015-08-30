@@ -29,10 +29,10 @@
 std::string transportType;
 std::string device;
 int deviceAddress = 0;
-int baudrate;
+int baudrate = 9600;
 bool verbose = false;
 long delayMs = 0;
-int retries;
+int retries = 0;
 uint8_t commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 bool continueFile = true;
 
@@ -87,7 +87,7 @@ void execute(ArducomMaster &master, uint8_t command, std::vector<uint8_t> &param
 	int delay = delayMs;
 
 	// retry loop
-	while (m_retries > 0) {
+	while (m_retries >= 0) {
 		if (!sent || canResend) {
 			// send command
 			master.send(command + commandBase, params.data(), params.size(), retries);
@@ -405,8 +405,8 @@ int main(int argc, char *argv[]) {
 		} else
 			throw std::invalid_argument("Error: transport type not supported (argument -t), use 'i2c' or 'serial'");
 
-		if (retries < 1)
-			throw std::invalid_argument("Number of retries must not be 0 or negative (argument -x)");
+		if (retries < 0)
+			throw std::invalid_argument("Number of retries must not be negative (argument -x)");
 
 		// initialize protocol
 		ArducomMaster master(transport, verbose);
@@ -606,9 +606,10 @@ int main(int argc, char *argv[]) {
 
 							int fd;
 							uint32_t position = 0;
+							bool fileExists = false;
 							// check whether the file already exists on the master
 							if (access(parts.at(1).c_str(), F_OK) != -1) {
-								// file exists
+								fileExists = true;
 								// open local file for reading
 								fd = open(parts.at(1).c_str(), O_RDONLY);
 								if (fd < 0) {
@@ -631,7 +632,7 @@ int main(int argc, char *argv[]) {
 							
 							// overwrite or continue?
 							if (continueFile && position > 0) {
-								std::cout << "Appending data to existing file" << std::endl;
+								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
@@ -639,6 +640,8 @@ int main(int argc, char *argv[]) {
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 							} else {
+								if (fileExists)
+									std::cout << "Overwriting existing file (to append data, use 'set continue on')" << std::endl;
 								// open local file for writing; create from scratch
 								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
