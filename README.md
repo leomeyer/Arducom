@@ -106,8 +106,11 @@ optionally separated by the respective separator.
 
 Examples:
 
-    ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -o Raw
-Sends the command number 0 via I2C to address 5 and prints the result as string.
+    ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0
+Sends the command number 0 (version command) via I2C to address 5. By default arducom interprets
+the result and may output something like:
+
+	Arducom slave version: 1; Uptime: 2413668 ms; Flags: 0 (debug off); Free RAM: 292 bytes; Info: HelloWorld
 
     ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 9 -o Hex -i Byte -p 0,0,4
 Sends the command number 9 via I2C to address 5 and prints the result as hex.
