@@ -36,6 +36,7 @@ int retries = 0;
 uint8_t commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 bool continueFile = true;
 bool useChecksum = true;
+bool interactive = true;		// if false (piping input) errors cause immediate exit
 
 std::vector<std::string> pathComponents;
 
@@ -240,6 +241,20 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 		parts.push_back("");	// push dummy
 	}
 	bool found = false;
+	if (parts.at(1) == "interactive" || printOnly) {
+		if (parts.size() > 2) {
+			if (parts.at(2) == "on")
+				interactive = true;
+			else
+			if (parts.at(2) == "off")
+				interactive = false;
+			else
+				throw std::invalid_argument("Expected 'on' or 'off'");
+		}
+		if (print)
+			std::cout << "set interactive " << (interactive ? "on" : "off") << std::endl;
+		found = true;
+	}
 	if (parts.at(1) == "continue" || printOnly) {
 		if (parts.size() > 2) {
 			if (parts.at(2) == "on")
@@ -290,6 +305,8 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 }
 
 int main(int argc, char *argv[]) {
+	
+	interactive = isatty(fileno(stdin));
 	
 	std::vector<std::string> args;
 	args.reserve(argc);
@@ -430,6 +447,10 @@ int main(int argc, char *argv[]) {
 			try {
 				std::string command;
 				getline(std::cin, command);
+				// stdin is a file or a pipe?
+				if (!isatty(fileno(stdin)))
+					std::cout << command << std::endl;
+				
 				command = trim(command);
 				
 				// split parameters
@@ -705,6 +726,11 @@ int main(int argc, char *argv[]) {
 				needEndl = false;
 				
 				print_what(e);
+				
+				// non-interactive mode causes immediate exit on errors
+				// this way an exit code can be queried by scripts
+				if (!interactive)
+					exit(master.lastError);
 			}
 		}
 		

@@ -3,6 +3,14 @@
 
 #include <inttypes.h>
 
+#define ARDUCOM_GENERAL_ERROR		1
+#define ARDUCOM_NO_COMMAND			2
+#define ARDUCOM_INVALID_REPLY		3
+#define ARDUCOM_INVALID_RESPONSE	4
+#define ARDUCOM_PAYLOAD_TOO_LONG	5
+#define ARDUCOM_TRANSPORT_ERROR		6
+
+
 class ArducomMasterTransport {
 
 public:
@@ -31,15 +39,22 @@ public:
 class ArducomMaster {
 
 public:
+
+	/** The code of the last error that occurred using this master. 
+	* Codes lower than 128 are local. Codes greater than 127 come from the slave. */
+	uint8_t lastError;
+
 	ArducomMaster(ArducomMasterTransport *transport, bool verbose) {
 		this->transport = transport;
 		this->verbose = verbose;
 		this->lastCommand = 255;	// set to invalid command
+		this->lastError = 0;
 	};
 	
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);
 
+	/** Sends the specified command and the content of the buffer to the slave. */
 	virtual void send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries = 0);
 	
 	/** Places up to the number of expected bytes in the destBuffer if expected is >= 0.

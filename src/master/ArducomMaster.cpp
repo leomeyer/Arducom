@@ -45,6 +45,8 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 }
 
 void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries) {
+	this->lastError = ARDUCOM_OK;
+
 	uint8_t data[size + (checksum ? 3 : 2)];
 	data[0] = command;
 	data[1] = size | (checksum ? 0x80 : 0);
@@ -58,52 +60,93 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 		this->printBuffer(data, size + (checksum ? 3 : 2));
 		std::cout << std::endl;
 	}
-	this->transport->send(data, size + (checksum ? 3 : 2), retries);
+	try {
+		this->transport->send(data, size + (checksum ? 3 : 2), retries);
+	} catch (const std::exception &e) {
+		this->lastError = ARDUCOM_TRANSPORT_ERROR;
+		std::throw_with_nested(std::runtime_error("Error sending data"));
+	}
 	this->lastCommand = command;
 }
 
 uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo) {
-	if (this->lastCommand > 127)
-		throw std::runtime_error("Cannot receive without sending a command first");
+	this->lastError = ARDUCOM_OK;
 	
-	this->transport->request(expected);
+	if (this->lastCommand > 127) {
+		this->lastError = ARDUCOM_NO_COMMAND;
+		throw std::runtime_error("Cannot receive without sending a command first");
+	}
+	
+	try {
+		this->transport->request(expected);
+	} catch (const std::exception &e) {
+		this->lastError = ARDUCOM_TRANSPORT_ERROR;
+		std::throw_with_nested(std::runtime_error("Error requesting data"));
+	}
+	
 	if (verbose) {
 		std::cout << "Receive buffer: ";
 		this->transport->printBuffer();
 		std::cout << std::endl;
 	}
 	// read first byte of the reply
-	uint8_t resultCode = this->transport->readByte();
+	uint8_t resultCode;
+	try	{
+		resultCode = this->transport->readByte();
+	} catch (const std::exception &e) {
+		this->lastError = ARDUCOM_TRANSPORT_ERROR;
+		std::throw_with_nested(std::runtime_error("Error reading data"));
+	}
+		
 	// error?
 	if (resultCode == ARDUCOM_ERROR_CODE) {
 		if (this->verbose)
 			std::cout << "Received error code 0xff" << std::endl;
-		resultCode = this->transport->readByte();
+		try	{
+			resultCode = this->transport->readByte();
+		} catch (const std::exception &e) {
+			this->lastError = ARDUCOM_TRANSPORT_ERROR;
+			std::throw_with_nested(std::runtime_error("Error reading data"));
+		}
 		if (this->verbose) {
 			std::cout << "Error: ";
 			this->printBuffer(&resultCode, 1);
 		}
-		*errorInfo = this->transport->readByte();
+		try	{
+			*errorInfo = this->transport->readByte();
+		} catch (const std::exception &e) {
+			this->lastError = ARDUCOM_TRANSPORT_ERROR;
+			std::throw_with_nested(std::runtime_error("Error reading data"));
+		}
 		if (this->verbose) {
 			std::cout << ", additional info: ";
 			this->printBuffer(errorInfo, 1);
 			std::cout << std::endl;
 		}
+		this->lastError = resultCode;
 		return resultCode;
 	} else
 	if (resultCode == 0) {
+		this->lastError = ARDUCOM_INVALID_REPLY;
 		throw std::runtime_error("Communication error: Didn't receive a valid reply");
 	}
 
 	// device reacted to different command (result command code has highest bit set)?
 	if (resultCode != (this->lastCommand | 0x80)) {
+		this->lastError = ARDUCOM_INVALID_RESPONSE;
 		this->invalidResponse(resultCode & ~0x80);
 	}
 	if (this->verbose) {
 		std::cout << "Response command code is ok." << std::endl;
 	}
 	// read code byte
-	uint8_t code = this->transport->readByte();
+	uint8_t code;
+	try	{
+		code = this->transport->readByte();
+	} catch (const std::exception &e) {
+		this->lastError = ARDUCOM_TRANSPORT_ERROR;
+		std::throw_with_nested(std::runtime_error("Error reading data"));
+	}
 	uint8_t length = (code & 0b00111111);
 	bool checksum = (code & 0x80) == 0x80;
 	if (this->verbose) {
@@ -114,16 +157,30 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 			std::cout << " Verifying data using checksum.";
 		std::cout << std::endl;
 	}
-	if (length > ARDUCOM_BUFFERSIZE) 
+	if (length > ARDUCOM_BUFFERSIZE) {
+		this->lastError = ARDUCOM_PAYLOAD_TOO_LONG;
 		throw std::runtime_error("Protocol error: Returned payload length exceeds maximum buffer size");
+	}
 
 	// checksum expected?
-	uint8_t checkbyte = (checksum ? this->transport->readByte() : 0);
+	uint8_t checkbyte = 0;
+	if (checksum)
+		try	{
+			checkbyte = this->transport->readByte();
+		} catch (const std::exception &e) {
+			this->lastError = ARDUCOM_TRANSPORT_ERROR;
+			std::throw_with_nested(std::runtime_error("Error reading data"));
+		}
 	
 	*size = 0;
 	// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
 	for (uint8_t i = 0; (i < expected) && (i < length); i++) {
-		destBuffer[i] = this->transport->readByte();
+		try {
+			destBuffer[i] = this->transport->readByte();
+		} catch (const std::exception &e) {
+			this->lastError = ARDUCOM_TRANSPORT_ERROR;
+			std::throw_with_nested(std::runtime_error("Error reading data"));
+		}
 		*size = i + 1;
 	}
 	if (this->verbose) {
@@ -134,7 +191,8 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 	if (checksum) {
 		uint8_t ckbyte = calculateChecksum(resultCode, code, destBuffer, *size);
 		if (ckbyte != checkbyte) {
-			*errorInfo = checkbyte;
+			*errorInfo = ckbyte;
+			this->lastError = ARDUCOM_CHECKSUM_ERROR;
 			return ARDUCOM_CHECKSUM_ERROR;
 		}
 	}

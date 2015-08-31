@@ -194,6 +194,7 @@ int main(int argc, char *argv[]) {
 	int retries = 0;
 	bool tryInterpret = true;
 	bool useChecksum = true;
+	ArducomMaster* master;
 	
 	std::vector<std::string> args;
 	args.reserve(argc);
@@ -431,10 +432,10 @@ int main(int argc, char *argv[]) {
 			throw std::invalid_argument("Number of retries must not be negative (argument -x)");
 
 		// initialize protocol
-		ArducomMaster master(transport, verbose);
+		master = new ArducomMaster(transport, verbose);
 		
 		// send command
-		master.send(command, useChecksum, params.data(), params.size());
+		master->send(command, useChecksum, params.data(), params.size());
 		
 		// receive response
 		uint8_t buffer[255];
@@ -447,7 +448,7 @@ int main(int argc, char *argv[]) {
 			usleep(delayMs * 1000);
 			size = 0;
 			
-			uint8_t result = master.receive(expectedBytes, buffer, &size, &errorInfo);
+			uint8_t result = master->receive(expectedBytes, buffer, &size, &errorInfo);
 
 			// no error?
 			if (result == ARDUCOM_OK)
@@ -558,7 +559,7 @@ int main(int argc, char *argv[]) {
 		}	// output received
 	} catch (const std::exception& e) {
 		print_what(e);
-		exit(1);
+		exit(master->lastError);
 	}
 
 	return 0;
