@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <cstdint>
 #include <unistd.h>
+#include <cstring>
 
 #include "../slave/lib/Arducom.h"
 #include "ArducomMaster.h"
@@ -191,6 +192,8 @@ int main(int argc, char *argv[]) {
 	char outputSeparator = ',';
 	char inputSeparator = outputSeparator;
 	int retries = 0;
+	bool tryInterpret = false;
+	bool useChecksum = true;
 	
 	std::vector<std::string> args;
 	args.reserve(argc);
@@ -211,6 +214,12 @@ int main(int argc, char *argv[]) {
 			} else
 			if (args.at(i) == "-v") {
 				verbose = true;
+			} else
+			if (args.at(i) == "-i") {
+				tryInterpret = true;
+			} else
+			if (args.at(i) == "-n") {
+				useChecksum = false;
 			} else
 			if (args.at(i) == "-p") {
 				i++;
@@ -425,7 +434,7 @@ int main(int argc, char *argv[]) {
 		ArducomMaster master(transport, verbose);
 		
 		// send command
-		master.send(command, params.data(), params.size());
+		master.send(command, useChecksum, params.data(), params.size());
 		
 		// receive response
 		uint8_t buffer[255];
@@ -462,62 +471,87 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			case ARDUCOM_COMMAND_UNKNOWN:
-				throw std::runtime_error((std::string("Device error ") + errstr + ": Command unknown: " + numstr).c_str());
+				throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
 			case ARDUCOM_TOO_MUCH_DATA:
-				throw std::runtime_error((std::string("Device error ") + errstr + ": Too much data; expected bytes: " + numstr).c_str());
+				throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
 			case ARDUCOM_PARAMETER_MISMATCH:
-				throw std::runtime_error((std::string("Device error ") + errstr + ": Mismatched number of parameters; expected bytes: " + numstr).c_str());
+				throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
 			case ARDUCOM_BUFFER_OVERRUN:
-				throw std::runtime_error((std::string("Device error ") + errstr + ": Buffer overrun; buffer size is: " + numstr).c_str());
+				throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
+			case ARDUCOM_CHECKSUM_ERROR:
+				throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
+			case ARDUCOM_FUNCTION_ERROR:
+				throw std::runtime_error((std::string("Function error ") + errstr + ": info code: " + numstr).c_str());
 			}
 			throw std::runtime_error((std::string("Device error ") + errstr + "; info code: " + numstr).c_str());
 		}
 		
 		// output received?
 		if (size > 0) {
-			switch (outputFormat) {
-			case HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
-			case RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
-			case BYTE: {
-				for (uint8_t i = 0; i < size; i++) {
-					std::cout << (int)buffer[i];
-					if ((i < size - 1) && (outputSeparator > '\0'))
-						std::cout << outputSeparator;
+			// interpret command 0 (version command)?
+			if (tryInterpret && command == 0) {
+				struct __attribute__((packed)) VersionInfo {
+					uint8_t version;
+					uint32_t uptime;
+					uint8_t flags;
+					uint16_t freeRAM;
+					char info[64];
+				} versionInfo;
+				// clear structure
+				memset(&versionInfo, 0, sizeof(versionInfo));
+				// copy received data
+				memcpy(&versionInfo, buffer, size);
+				std::cout << "Arducom slave version: " << (int)versionInfo.version;
+				std::cout << "; Uptime: " << versionInfo.uptime << " ms";
+				std::cout << "; Flags: " << (int)versionInfo.flags << (versionInfo.flags & 1 ? " (debug on)" : " (debug off)");
+				std::cout << "; Free RAM: " << versionInfo.freeRAM << " bytes";
+				std::cout << "; Info: " << versionInfo.info;
+			} else {
+				// cannot or should not interpret
+				switch (outputFormat) {
+				case HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
+				case RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
+				case BYTE: {
+					for (uint8_t i = 0; i < size; i++) {
+						std::cout << (int)buffer[i];
+						if ((i < size - 1) && (outputSeparator > '\0'))
+							std::cout << outputSeparator;
+					}
+					break;
 				}
-				break;
-			}
-			case INT16: {
-				if (size % 2 != 0)
-					throw std::invalid_argument("Output size must fit into two byte blocks for output format Int16");
-				for (uint8_t i = 0; i < size; i += 2) {
-					std::cout << ((int)buffer[i] + (buffer[i + 1] << 8));
-					if ((i < size - 2) && (outputSeparator > '\0'))
-						std::cout << outputSeparator;
+				case INT16: {
+					if (size % 2 != 0)
+						throw std::invalid_argument("Output size must fit into two byte blocks for output format Int16");
+					for (uint8_t i = 0; i < size; i += 2) {
+						std::cout << ((int)buffer[i] + (buffer[i + 1] << 8));
+						if ((i < size - 2) && (outputSeparator > '\0'))
+							std::cout << outputSeparator;
+					}
+					break;
 				}
-				break;
-			}
-			case INT32: {
-				if (size % 4 != 0)
-					throw std::invalid_argument("Output size must fit into four byte blocks for output format Int32");
-				for (uint8_t i = 0; i < size; i += 4) {
-					std::cout << ((int)buffer[i] + (buffer[i + 1] << 8) + (buffer[i + 2] << 16) + (buffer[i + 3] << 24));
-					if ((i < size - 4) && (outputSeparator > '\0'))
-						std::cout << outputSeparator;
+				case INT32: {
+					if (size % 4 != 0)
+						throw std::invalid_argument("Output size must fit into four byte blocks for output format Int32");
+					for (uint8_t i = 0; i < size; i += 4) {
+						std::cout << ((int)buffer[i] + (buffer[i + 1] << 8) + (buffer[i + 2] << 16) + (buffer[i + 3] << 24));
+						if ((i < size - 4) && (outputSeparator > '\0'))
+							std::cout << outputSeparator;
+					}
+					break;
 				}
-				break;
-			}
-			case INT64: {
-				if (size % 8 != 0)
-					throw std::invalid_argument("Output size must fit into eight byte blocks for output format Int64");
-				for (uint8_t i = 0; i < size; i += 8) {
-					std::cout << ((long long)buffer[0] + ((long long)buffer[i + 1] << 8) + ((long long)buffer[i + 2] << 16) + ((long long)buffer[i + 3] << 24) + ((long long)buffer[i + 4] << 32) + ((long long)buffer[i + 5] << 40) + ((long long)buffer[i + 6] << 48) + ((long long)buffer[i + 7] << 56));
-					if ((i < size - 8) && (outputSeparator > '\0'))
-						std::cout << outputSeparator;
+				case INT64: {
+					if (size % 8 != 0)
+						throw std::invalid_argument("Output size must fit into eight byte blocks for output format Int64");
+					for (uint8_t i = 0; i < size; i += 8) {
+						std::cout << ((long long)buffer[0] + ((long long)buffer[i + 1] << 8) + ((long long)buffer[i + 2] << 16) + ((long long)buffer[i + 3] << 24) + ((long long)buffer[i + 4] << 32) + ((long long)buffer[i + 5] << 40) + ((long long)buffer[i + 6] << 48) + ((long long)buffer[i + 7] << 56));
+						if ((i < size - 8) && (outputSeparator > '\0'))
+							std::cout << outputSeparator;
+					}
+					break;
 				}
-				break;
-			}
-			default:
-				throw std::invalid_argument("Output format not supported");
+				default:
+					throw std::invalid_argument("Output format not supported");
+				}
 			}
 			if (!noNewline)
 				std::cout << std::endl;

@@ -5,6 +5,22 @@
 #include "../slave/lib/Arducom.h"
 #include "ArducomMaster.h"
 
+static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* data, uint8_t dataSize) {
+	int16_t sum = commandByte + code;
+	// carry overflow?
+	if (sum > 255) {
+		sum = (sum & 0xFF) + 1;
+	}
+	for (uint8_t i = 0; i < dataSize; i++) {
+		sum += data[i];
+		if (sum > 255) {
+			sum = (sum & 0xFF) + 1;
+		}
+	}
+	// return two's complement of result
+	return ~(uint8_t)sum;
+}
+
 void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool noRAW) {
 	if (size == 0)
 		return;
@@ -28,19 +44,21 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 	}
 }
 
-void ArducomMaster::send(uint8_t command, uint8_t* buffer, uint8_t size, int retries) {
-	uint8_t data[size + 2];
+void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries) {
+	uint8_t data[size + (checksum ? 3 : 2)];
 	data[0] = command;
-	data[1] = size;
+	data[1] = size | (checksum ? 0x80 : 0);
 	for (uint8_t i = 0; i < size; i++) {
-		data[i + 2] = buffer[i];
+		data[i + (checksum ? 3 : 2)] = buffer[i];
 	}
+	if (checksum)
+		data[2] = calculateChecksum(data[0], data[1], &data[3], size);
 	if (this->verbose) {
 		std::cout << "Sending bytes: " ;
-		this->printBuffer(data, size + 2);
+		this->printBuffer(data, size + (checksum ? 3 : 2));
 		std::cout << std::endl;
 	}
-	this->transport->send(data, size + 2, retries);
+	this->transport->send(data, size + (checksum ? 3 : 2), retries);
 	this->lastCommand = command;
 }
 
@@ -82,18 +100,29 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->invalidResponse(resultCode & ~0x80);
 	}
 	if (this->verbose) {
-		std::cout << "Response command code is ok" << std::endl;
+		std::cout << "Response command code is ok." << std::endl;
 	}
 	// read code byte
 	uint8_t code = this->transport->readByte();
+	uint8_t length = (code & 0b00111111);
+	bool checksum = (code & 0x80) == 0x80;
 	if (this->verbose) {
 		std::cout << "Code byte: ";
 		this->printBuffer(&code, 1);
+		std::cout << " Payload length is " << (int)length << " bytes.";
+		if (checksum)
+			std::cout << " Verifying data using checksum.";
 		std::cout << std::endl;
 	}
+	if (length > ARDUCOM_BUFFERSIZE) 
+		throw std::runtime_error("Protocol error: Returned payload length exceeds maximum buffer size");
+
+	// checksum expected?
+	uint8_t checkbyte = (checksum ? this->transport->readByte() : 0);
+	
 	*size = 0;
 	// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
-	for (uint8_t i = 0; (i < expected) && (i < (code & 0b00111111)); i++) {
+	for (uint8_t i = 0; (i < expected) && (i < length); i++) {
 		destBuffer[i] = this->transport->readByte();
 		*size = i + 1;
 	}
@@ -101,6 +130,13 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		std::cout << "Received payload: ";
 		this->printBuffer(destBuffer, *size);
 		std::cout << std::endl;
+	}
+	if (checksum) {
+		uint8_t ckbyte = calculateChecksum(resultCode, code, destBuffer, *size);
+		if (ckbyte != checkbyte) {
+			*errorInfo = checkbyte;
+			return ARDUCOM_CHECKSUM_ERROR;
+		}
 	}
 	return ARDUCOM_OK;
 }

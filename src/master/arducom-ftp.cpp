@@ -35,6 +35,7 @@ long delayMs = 0;
 int retries = 0;
 uint8_t commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 bool continueFile = true;
+bool useChecksum = true;
 
 std::vector<std::string> pathComponents;
 
@@ -90,7 +91,7 @@ void execute(ArducomMaster &master, uint8_t command, std::vector<uint8_t> &param
 	while (m_retries >= 0) {
 		if (!sent || canResend) {
 			// send command
-			master.send(command + commandBase, params.data(), params.size(), retries);
+			master.send(command + commandBase, useChecksum, params.data(), params.size(), retries);
 			sent = true;
 		}
 
@@ -137,13 +138,15 @@ receive:
 		case ARDUCOM_NO_DATA:
 				throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
 		case ARDUCOM_COMMAND_UNKNOWN:
-			throw std::runtime_error((std::string("Device error ") + errstr + ": Command unknown: " + numstr).c_str());
+			throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
 		case ARDUCOM_TOO_MUCH_DATA:
-			throw std::runtime_error((std::string("Device error ") + errstr + ": Too much data; expected bytes: " + numstr).c_str());
+			throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
 		case ARDUCOM_PARAMETER_MISMATCH:
-			throw std::runtime_error((std::string("Device error ") + errstr + ": Mismatched number of parameters; expected bytes: " + numstr).c_str());
+			throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
 		case ARDUCOM_BUFFER_OVERRUN:
-			throw std::runtime_error((std::string("Device error ") + errstr + ": Buffer overrun; buffer size is: " + numstr).c_str());
+			throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
+		case ARDUCOM_CHECKSUM_ERROR:
+			throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
 		case ARDUCOM_FUNCTION_ERROR:
 			switch (errorInfo) {
 			case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": SD card unavailable").c_str());
@@ -190,7 +193,7 @@ void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
 	// send INIT message
 	execute(master, ARDUCOM_FTP_COMMAND_INIT, params, transport->getDefaultExpectedBytes(), result);
 	
-	struct CardInfo {
+	struct __attribute__((packed)) CardInfo {
 		char cardType[4];
 		uint8_t fatType;
 		uint8_t size1;	// size is little-endian
@@ -307,6 +310,9 @@ int main(int argc, char *argv[]) {
 			} else
 			if (args.at(i) == "-v") {
 				verbose = true;
+			} else
+			if (args.at(i) == "-n") {
+				useChecksum = false;
 			} else
 			if (args.at(i) == "-t") {
 				i++;
@@ -441,7 +447,7 @@ int main(int argc, char *argv[]) {
 				} else
 				if ((parts.at(0) == "ls") || (parts.at(0) == "dir")) {
 					// directory listing data structure
-					struct FileInfo {
+					struct __attribute__((packed)) FileInfo {
 						char name[13];
 						uint8_t isDir;
 						uint8_t size1;	// size is little-endian
@@ -473,6 +479,8 @@ int main(int argc, char *argv[]) {
 							break;
 					}
 					
+					std::cout << std::endl;
+
 					size_t totalDirs = 0;
 					size_t totalFiles = 0;
 					uint32_t totalSize = 0;
@@ -594,7 +602,7 @@ int main(int argc, char *argv[]) {
 						if (result.size() < 4) {
 							std::cout << "Error: device did not send a proper file size" << std::endl;
 						} else {
-							struct FileSize {
+							struct __attribute__((packed)) FileSize {
 								uint8_t size1;	// size is little-endian
 								uint8_t size2;
 								uint8_t size3;

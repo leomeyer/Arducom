@@ -21,6 +21,14 @@ struct baud_mapping {
 };
 
 static struct baud_mapping baud_lookup_table [] = {
+  { 50,     B50 },
+  { 75,     B75 },
+  { 110,    B110 },
+  { 134,    B134 },
+  { 150,    B150 },
+  { 200,    B200 },
+  { 300,    B300 },
+  { 600,    B600 },
   { 1200,   B1200 },
   { 2400,   B2400 },
   { 4800,   B4800 },
@@ -30,7 +38,7 @@ static struct baud_mapping baud_lookup_table [] = {
   { 57600,  B57600 },
   { 115200, B115200 },
   { 230400, B230400 },
-  { 0,      0 }                 /* Terminator. */
+  { 0,      0 }
 };
 
 static speed_t serial_baud_lookup(long baud)
@@ -65,7 +73,6 @@ void ArducomMasterTransportSerial::init(void) {
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		perror("Failed to open serial device");
-//		printf("error %d opening %s: %s\n", errno, portName, strerror (errno));
 		throw std::runtime_error("Failed to open serial device: " + this->filename);
 	}
 
@@ -203,9 +210,12 @@ void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {
 		} else {
 			// read code byte
 			uint8_t code = this->readByteInternal(&this->buffer[pos++]);
-//			std::cout << "Expecting: " << (int)(code & 0b00111111) << " bytes" << std::endl;
+			uint8_t length = (code & 0b00111111);
+
+//			std::cout << "Expecting: " << (int)length << " bytes" << std::endl;
 			// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
-			while ((pos < expectedBytes) && (pos < (code & 0b00111111) + 2)) {
+			bool checksum = (code & 0x80) == 0x80;
+			while ((pos < expectedBytes) && (pos < length + (checksum ? 3 : 2))) {
 				this->readByteInternal(&this->buffer[pos++]);
 			if (pos > SERIAL_BLOCKSIZE_LIMIT)
 				throw std::runtime_error("Error: number of received bytes exceeds serial block size limit");

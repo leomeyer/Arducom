@@ -3,6 +3,22 @@
 
 #include <Arducom.h>
 
+static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* data, uint8_t dataSize) {
+	int16_t sum = commandByte + code;
+	// carry overflow?
+	if (sum > 255) {
+		sum = (sum & 0xFF) + 1;
+	}
+	for (uint8_t i = 0; i < dataSize; i++) {
+		sum += data[i];
+		if (sum > 255) {
+			sum = (sum & 0xFF) + 1;
+		}
+	}
+	// return two's complement of result
+	return ~(uint8_t)sum;
+}
+
 /******************************************************************************************	
 * Arducom transport base class implementation
 ******************************************************************************************/
@@ -70,10 +86,18 @@ uint8_t Arducom::doWork(void) {
 		if (dataSize - 2 < (code & 0b00111111))
 			// not enough data
 			return ARDUCOM_OK;
+		// checksum expected? highest bit of the code byte
+		bool checksum = (code >> 7);
+		// check whether checksum byte arrived
+		if (checksum) {
+			if (dataSize - 3 < (code & 0b00111111))
+				// not enough data
+				return ARDUCOM_OK;
+		}
 		// the command has been fully received
 		uint8_t destBuffer[ARDUCOM_BUFFERSIZE];
-		// payload data size is always without command and code
-		dataSize -= 2;
+		// payload data size is always without command and code and optional checksum byte
+		dataSize -= (checksum ? 3 : 2);
 		// go through commands to find a match
 		ArducomCommand* command = this->list;
 		result = ARDUCOM_COMMAND_UNKNOWN;
@@ -95,6 +119,16 @@ uint8_t Arducom::doWork(void) {
 				}
 				
 				if (handle) {
+					if (checksum) {
+						// calculate and verify checksum 
+						uint8_t cksum = calculateChecksum(commandByte, code, (uint8_t*)&this->transport->data[3], dataSize);
+						if (cksum != this->transport->data[2]) {
+							result = ARDUCOM_CHECKSUM_ERROR;
+							errorInfo = cksum;
+							break;
+						}
+					}
+					
 					if (this->debug) {
 						this->debug->print(F("Cmd: "));
 						this->debug->print((int)commandByte);
@@ -102,7 +136,8 @@ uint8_t Arducom::doWork(void) {
 						this->debug->println((int)dataSize);
 					}
 					// let the command do the work
-					result = command->handle(this, &this->transport->data[2], &dataSize, &destBuffer[2], ARDUCOM_BUFFERSIZE - 2, &errorInfo);
+					result = command->handle(this, &this->transport->data[(checksum ? 3 : 2)], &dataSize, 
+						&destBuffer[(checksum ? 3 : 2)], ARDUCOM_BUFFERSIZE - (checksum ? 3 : 2), &errorInfo);
 					if (this->debug) {
 						this->debug->print(F("Ret: "));
 						this->debug->print((int)result);
@@ -129,6 +164,7 @@ uint8_t Arducom::doWork(void) {
 			destBuffer[0] = ARDUCOM_ERROR_CODE;
 			destBuffer[1] = result;
 			destBuffer[2] = errorInfo;
+			// error codes are not checksummed
 			this->transport->send(destBuffer, 3);
 			return ARDUCOM_COMMAND_ERROR;
 		}
@@ -137,7 +173,15 @@ uint8_t Arducom::doWork(void) {
 		destBuffer[0] = command->commandCode | 0x80;
 		// prepare return code: lower six bits are length of payload
 		destBuffer[1] = (dataSize & 0b00111111);
-		this->transport->send(destBuffer, 2 + dataSize);
+		// checksum calculation
+		if (checksum) {
+			// indicate checksum to master
+			destBuffer[1] |= 0x80;
+			// calculate checksum
+			destBuffer[2] = calculateChecksum(destBuffer[0], destBuffer[1], &destBuffer[3], dataSize);
+		}
+		
+		this->transport->send(destBuffer, (checksum ? 3 : 2) + dataSize);
 		return ARDUCOM_COMMAND_HANDLED;
 	} else {
 		// new data is not available
@@ -172,6 +216,10 @@ uint8_t Arducom::getFlags(void) {
 /******************************************************************************************	
 * Arducom command implementations
 ******************************************************************************************/
+
+// for calculation of free RAM
+extern char *__brkval;
+extern char __bss_end;
 	
 int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 
@@ -193,8 +241,13 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 	uint8_t *flagDest = (uint8_t *)&destBuffer[pos];
 	*flagDest = arducom->getFlags();
 	pos += 1;
-	// copy data to destination buffer
+	// send free RAM info
+	char top;
+	uint16_t *freeRamDest = (uint16_t *)&destBuffer[pos];
+	*freeRamDest = __brkval ? &top - __brkval : &top - &__bss_end;
+	pos += 2;
 	uint8_t c = 0;
+	// copy data to destination buffer
 	while (this->data[c]) {
 		destBuffer[pos] = this->data[c];
 		pos++;

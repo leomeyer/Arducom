@@ -41,11 +41,14 @@ command codes can be defined by the implementation. There is a number of pre-def
 commands that can be used to support e. g. reading from and writing to the EEPROM.
 
 Commands and replies consist of at least two bytes, the command code, a payload length byte, 
-and an optional payload. After receiving a command, the slave tries to find an implementation
-for this command code which is executed when found. The implementation can examine the
-payload and send data back. In case of errors, or if no matching command can be found,
-an error message is returned. Error messages consist of three bytes: the error token 0xFF,
-the error code, and an implementation defined info byte.
+an optional checksum byte, and an optional payload. After receiving a command, the slave
+tries to find an implementation for this command code which is executed when found.
+The implementation can examine the payload and send data back. In case of errors, 
+or if no matching command can be found, an error message is returned. 
+Error messages consist of three bytes: the error token 0xFF, the error code, and an
+implementation defined info byte.
+The checksum byte is optional. The system verifies the checksum if the highest bit of the
+payload length byte is set. Using a checksum makes communication slower but more secure.
 
 Implementing your own commands
 ------------------------------
@@ -79,6 +82,8 @@ arducom has a number of options:
     --no-newline: omit newline character(s) after outputting the payload.
     -r: read input from stdin. Cannot be used together with -p.
     -p <parameters>: command parameters in the input format.
+    -n: do not use a checksum on data packets (not recommended).
+    -i: try to interpret the result of the version command 0 (display slave information).
   
 For input and output formats the following values are recognized:
 Hex, Raw, Byte, Int16, Int32, Int64.
@@ -126,7 +131,8 @@ arducom-ftp understands the following parameters:
     -l <delay>: the delay in milliseconds between sending and requesting data.
     -v: verbose mode.
     -x <retries>: the number of retries in case of errors.
-  
+    -n: do not use a checksum on data packets (not recommended).
+
 Example:
 
     ./arducom-ftp -t serial -d /dev/ttyACM0 -x 30

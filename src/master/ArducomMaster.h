@@ -40,7 +40,7 @@ public:
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);
 
-	virtual void send(uint8_t command, uint8_t* buffer, uint8_t size, int retries = 0);
+	virtual void send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries = 0);
 	
 	/** Places up to the number of expected bytes in the destBuffer if expected is >= 0.
 	* size indicates the number of received payload bytes. 

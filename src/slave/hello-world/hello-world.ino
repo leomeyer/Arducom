@@ -29,6 +29,12 @@
 * Configuration
 *******************************************************/
 
+// Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
+// https://learn.adafruit.com/adafruit-data-logger-shield 
+
+// Feel free to play with different settings (see comments for the defines).
+
+
 // LED pin; define this if you want to use the LED as a status indicator.
 // Note that using the LED will greatly slow down operations like FTP which use
 // lots of commands. Also, if you are using an SD card you won't probably see the
@@ -39,6 +45,15 @@
 // Define this macro if you are using an SD card.
 // The chipselect pin depends on the type of SD card shield.
 #define SDCARD_CHIPSELECT	10	
+
+// If an SD card is present, periodically appends simulated log data to the file
+// specified in this macro.
+// It is important to specify the full path for this file. Otherwise, if you connect 
+// using the FTP master and change the working directory, the file would be created
+// in this directory, so you'd possibly end up with multiple files across the SD card.
+// Do not use this if you leave the Arduino running for a longer time because of the
+// wear imposed on your SD card.
+// #define GENERATE_LOGFILE	"/TESTFILE.TXT"
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
@@ -55,7 +70,8 @@
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
 // You cannot use the same Print object for Arducom serial communication
-// (for example, Serial).
+// (for example, Serial). Instead, use a SoftwareSerial port or another
+// HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for the hello-world test sketch. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // #define DEBUG_OUTPUT		Serial
@@ -161,7 +177,6 @@ uint8_t testBlock[TEST_BLOCK_SIZE];
 *******************************************************/
 
 #if defined SDCARD_CHIPSELECT && defined USE_DS1307
-//------------------------------------------------------------------------------
 // call back for file timestamps
 void dateTime(uint16_t* date, uint16_t* time) {
   DateTime now = RTC.now();
@@ -286,12 +301,10 @@ void loop()
 #endif LED
 	}
 	
-	return;
-
-#ifdef SDCARD_CHIPSELECT
+#if defined SDCARD_CHIPSELECT && defined GENERATE_LOGFILE
 	// write to a file every few seconds
 	if (millis() - lastWriteMs > 5000) {
-		if (logFile.open("/testfil2.txt", O_RDWR | O_CREAT | O_AT_END)) {
+		if (logFile.open(GENERATE_LOGFILE, O_RDWR | O_CREAT | O_AT_END)) {
 			logFile.println(millis());
 			logFile.close();
 			lastWriteMs = millis();
