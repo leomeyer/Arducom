@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 	char outputSeparator = ',';
 	char inputSeparator = outputSeparator;
 	int retries = 0;
-	bool tryInterpret = false;
+	bool tryInterpret = true;
 	bool useChecksum = true;
 	
 	std::vector<std::string> args;
@@ -215,8 +215,8 @@ int main(int argc, char *argv[]) {
 			if (args.at(i) == "-v") {
 				verbose = true;
 			} else
-			if (args.at(i) == "-i") {
-				tryInterpret = true;
+			if (args.at(i) == "--no-interpret") {
+				tryInterpret = false;
 			} else
 			if (args.at(i) == "-n") {
 				useChecksum = false;

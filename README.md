@@ -83,20 +83,25 @@ arducom has a number of options:
     -r: read input from stdin. Cannot be used together with -p.
     -p <parameters>: command parameters in the input format.
     -n: do not use a checksum on data packets (not recommended).
-    -i: try to interpret the result of the version command 0 (display slave information).
+    --no-interpret: do not try to interpret the result of the version command 0 (display slave information).
   
 For input and output formats the following values are recognized:
 Hex, Raw, Byte, Int16, Int32, Int64.
-Hex input/output consists of groups of two characters matching [0-9a-fA-F], optionally
+
+* Hex input/output consists of groups of two characters matching [0-9a-fA-F], optionally
 separated by the respective separator (default).
-Raw input/output consists of raw bytes, i. e. strings. There is no separation.
+
+* Raw input/output consists of raw bytes, i. e. strings. There is no separation.
 Byte input/output consists of a sequence of numeric values in range 0..255, optionally
 separated by the respective separator.
-Int16 input/output consists of a sequence of numeric values in range -32768..32767, 
+
+* Int16 input/output consists of a sequence of numeric values in range -32768..32767, 
 optionally separated by the respective separator.
-Int32 input/output consists of a sequence of numeric values in range -2147483648..2147483647, 
+
+* Int32 input/output consists of a sequence of numeric values in range -2147483648..2147483647, 
 optionally separated by the respective separator.
-Int64 input/output consists of a sequence of numeric values in range -(2^63)..2^63-1, 
+
+* Int64 input/output consists of a sequence of numeric values in range -(2^63)..2^63-1, 
 optionally separated by the respective separator.
 
 Examples:
@@ -114,6 +119,10 @@ Input formats can also be mixed:
 Sends the command number 10 via I2C to address 5 and prints the result as hex.
 The command parameters are two bytes: 0x10, 0x00. The input format is then switched to
 Raw allowing to append additional parameter bytes as the string 'Hello, World!'.
+
+    date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
+Outputs the current datetime as Unix timestamp and sends it to arducom which reads the value
+from the command line and sends it via I2C to address 5 with command 22.
 
 FTP transfer
 ------------
