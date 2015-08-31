@@ -17,7 +17,7 @@ Arduino already uses these for data acquisition. Software serial might also be
 impractical due to timing constraints.
 
 Arducom allows you to communicate with the Arduino under these circumstances and
-even transfer files to and from the Arduino's SD card.
+even transfer files from the Arduino's SD card.
 
 Arducom currently supports I2C and serial communication. The Arduino running the
 Arducom library code is called the slave. This slave implementation has been tested
@@ -112,8 +112,10 @@ the result and may output something like:
 
 	Arducom slave version: 1; Uptime: 2413668 ms; Flags: 0 (debug off); Free RAM: 292 bytes; Info: HelloWorld
 
+Use -p to send parameters to the slave:
+	
     ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 9 -o Hex -i Byte -p 0,0,4
-Sends the command number 9 via I2C to address 5 and prints the result as hex.
+This example sends the command number 9 via I2C to address 5 and prints the result as hex.
 The command parameters are three bytes: 0x00, 0x00, 0x04.
 
 Input formats can also be mixed:
@@ -132,7 +134,7 @@ FTP transfer
 
 The program arducom-ftp implements a simple FTP client. It works with the hello-world.ino sketch
 when an SD card is present. There are currently some limitations: arducom-ftp supports only 8.3
-file names.
+file names and no uploads.
 
 arducom-ftp understands the following parameters:
 
