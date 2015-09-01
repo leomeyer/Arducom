@@ -66,6 +66,11 @@ Arducom:
 
     $ sudo ln -s ~/Arducom/src/slave/lib/ /usr/share/arduino/libraries/Arducom
 
+Go back to the hello-world folder and make again:
+
+    $ cd -
+    $ make
+
 The make command should now produce output similar to this:
 
     ...
@@ -76,6 +81,7 @@ The make command should now produce output similar to this:
     Data:       1429 bytes (69.8% Full)
     (.data + .bss + .noinit)
 
+Check that the Arduino's serial port is correctly set in the Makefile.
 Upload the compiled sketch to your Arduino:
 
     $ make upload
