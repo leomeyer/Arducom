@@ -98,7 +98,7 @@ arducom will try to interpret the reply. The output is something like:
 
     Arducom slave version: 1; Uptime: 175696 ms; Flags: 0 (debug off); Free RAM: 289 bytes; Info: HelloWorld
 
-If you have a DS1307 Real Time Clock connected you can query the current time:
+If you have a DS1307 Real Time Clock connected you can query its current time:
 
     $ date -d @`./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 21 -o Int32 -l 10`
 
@@ -106,11 +106,46 @@ The output should be something like:
 
     Di 1. Sep 13:21:34 CEST 2015
 
-If the RTC has not been set you can use the following command to set it:
+If the RTC has not yet been set you can use the following command to set it:
 
     $ date +"%s" | ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 22 -i Int32 -r -l 10
 
-You can experiment with the EEPROM (commands 1 - 10) and the RAM variables (commands 11 - 20). 
+You can experiment with the EEPROM (commands 1 - 10) and the RAM variables (commands 11 - 20). These commands allow you to read and set EEPROM and RAM space. Some of them take parameters that you can supply on the command line using -p xx with xx being a sequence of hexadecimal byte values. The following commands are defined:
+
+| Command | Parameters | Meaning                                                            | Result |
+|---------|------------|--------------------------------------------------------------------|--------|
+| 1       | 2 bytes    | Read byte at EEPROM address                                        | byte   |
+| 2       | 3 bytes    | Write byte at EEPROM address                                       | -      |
+| 3       | 2 bytes    | Read Int16 at EEPROM address                                       | Int16  |
+| 4       | 4 bytes    | Write Int16 at EEPROM address                                      | -      |
+| 5       | 2 bytes    | Read Int32 at EEPROM address                                       | Int32  |
+| 6       | 6 bytes    | Write Int32 at EEPROM address                                      | -      |
+| 7       | 2 bytes    | Read Int64 at EEPROM address                                       | Int64  |
+| 8       | 10 bytes   | Write Int64 at EEPROM address                                      | -      |
+| 9       | 3 bytes    | Read block at EEPROM address; third byte is the length of data     | data   |
+| 10      | n bytes    | Write EEPROM block data; the first two bytes are the start address | -      |
+| 11      | -          | Read byte variable                                                 | byte   |
+| 12      | 1 byte     | Write byte variable                                                | -      |
+| 13      | -          | Read Int16 variable                                                | Int16  |
+| 14      | 2 bytes    | Write Int16 variable                                               | -      |
+| 15      | -          | Read Int32 variable                                                | Int32  |
+| 16      | 4 bytes    | Write Int32 variable                                               | -      |
+| 17      | -          | Read Int64  variable                                               | Int64  |
+| 18      | 8 bytes    | Write Int64 variable                                               | -      |
+| 19      | 3 bytes    | Read from RAM array; specify offset (two bytes) and length         | data   |
+| 20      | n bytes    | Write to RAM array; the first two bytes are the start offset       | -      |
+
+For example, to read the 8 bytes at EEPROM address 0x0A issue the following command:
+
+    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 7 -p 0A00
+
+To write four bytes into the (predefined) RAM array issue the following command:
+
+    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 20 -p 000001020304
+
+To read them out again use:
+
+    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 19 -p 000004
 
 If you have a FAT-formatted SD card connected you can access it using the arducom-ftp command:
 
