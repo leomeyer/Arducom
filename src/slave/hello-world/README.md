@@ -113,7 +113,7 @@ If you have a FAT-formatted SD card connected you can access it using the arduco
 You should get an output similar to this:
 
     Connected. SD card type: SD1  FAT16 Size: 127 MB
-    /&gt;
+    />
 
 Use the "dir" or "ls" commands to list the current directory. Use "get _file_" to retrieve _file_. Use "cd _folder_" to descend into a folder and "cd .." to change one level up.
 
