@@ -1,12 +1,12 @@
 Arducom - Arduino communication library
 =======================================
 
-WARNING - this is pretty much work in progress. Also, documentation is not yet complete.
+_Please note - this project is pretty much work in progress. Also, documentation is not yet complete._
 
 Arducom attempts to make communications between Arduinos and other devices easier.
 It is designed to be easy to extend and flexible. Moreover, it tries to abstract
 away the transport layer, i. e. data can be transferred over serial, I2C, TCP or
-other connections without affecting the actual command implementations.
+other connections without affecting the actual functionality.
 
 A common scenario is using an Arduino as a data logger with an SD card. More often
 than not it is impractical to remove the SD card and insert it into a reader to
@@ -17,16 +17,22 @@ Arduino already uses these for data acquisition. Software serial might also be
 impractical due to timing constraints.
 
 Arducom allows you to communicate with the Arduino under these circumstances and
-even transfer files from the Arduino's SD card.
+can even transfer files from the Arduino's SD card.
 
-Arducom currently supports I2C and serial communication. The Arduino running the
-Arducom library code is called the slave. This slave implementation has been tested
-on an Arduino Uno clone. The device calling the Arduino is dubbed the master.
-This master implementation has been tested on a Raspberry Pi. 
-Other systems may probably require some work.
+Arducom currently supports I2C and serial communication. 
+
+Quick start
+-----------
+
+For a quick introduction how to setup the hello-world demo and connect to it from
+a Linux machine, see here:
+
+https://github.com/leomeyer/Arducom/tree/master/src/slave/hello-world
 
 Protocol description
 --------------------
+
+The Arduino running the Arducom library code is called the slave. The device calling the Arduino is dubbed the master.
 
 Arducom operates using a block oriented protocol, i. e. data is transferred in packets.
 The maximum length of a packet is defined by the underlying transport layer;
