@@ -14,7 +14,7 @@ Connect your Arduino. Start the Arduino IDE:
 
     $ arduino &
 
-Load the Basics -$ Blink example. Select the serial port
+Open the Blink example. Select the serial port
 you use for the connection and the correct type of board.
 Upload the sketch.
 Do not continue until you get this step working.
@@ -78,7 +78,7 @@ The make command should now produce output similar to this:
 
 Upload the compiled sketch to your Arduino:
 
-   $ make upload
+    $ make upload
 
 The default hello-world sketch uses serial communication at 57600 baud. To test the sketch go to the folder ~/Arducom/src/master. Build the programs:
 
@@ -112,8 +112,8 @@ If you have a FAT-formatted SD card connected you can access it using the arduco
 
 You should get an output similar to this:
 
-Connected. SD card type: SD1  FAT16 Size: 127 MB
-/&gt;
+    Connected. SD card type: SD1  FAT16 Size: 127 MB
+    /&gt;
 
 Use the "dir" or "ls" commands to list the current directory. Use "get _file_" to retrieve _file_. Use "cd _folder_" to descend into a folder and "cd .." to change one level up.
 
@@ -121,7 +121,7 @@ It is possible that you are getting errors like this:
 
     Error requesting data: Timeout reading from serial device
 
-In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something from 3 to 10. You can also set a delay time which is applied after each command to give the device some time to prepare the reply, using the option -d _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. Be aware that this will slow down FTP file transfers because those use many requests. In these cases it is better to increase the number of retries.
+In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something from 3 to 10. You can also set a delay time which is applied after each command to give the device some time to prepare the reply, using the option -d _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. Be aware that this will slow down FTP file transfers because those use many requests. It is better to increase the number of retries.
 
 You can also set these options interactively in arducom-ftp by using "set retries _number_" and "set delay _delay_" respectively.
 
