@@ -51,7 +51,7 @@ static speed_t serial_baud_lookup(long baud)
     map++;
   }
 
-  throw std::invalid_argument("Unknown baud rate");
+  throw std::invalid_argument("Unsupported baud rate");
 }
 
 ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename, int baudrate, int timeout) {
