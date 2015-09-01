@@ -1,7 +1,7 @@
-// Arducom based datalogger
+// Arducom based data logger
 // by Leo Meyer <leomeyer@gmx.de>
 
-// Data logger using an SD card and a Real Time Clock DS1307
+// Example data logger using an SD card and a Real Time Clock DS1307
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
 
@@ -15,11 +15,13 @@
 // This data logger supports:
 // - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM
 // - one D0 input (requires the RX pin and one digital output for the optical transistor supply voltage)
-// - up to two DHT22 temperature/humidity sensors
+// - up to two DHT22 temperature/humidity sensors (suggested data pins are 2 and 3)
 // - up to four analog values (analog pins A0 - A3).
 
 // The S0 lines are queried once a ms using software debouncing.
 // The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
+// Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
+// Each detected S0 impulse increments its RAM variable by 1. 
 
 // The D0 input is a serial input used by electronic power meters. Data is transmitted via an IR LED.
 // As the Arduino should still be programmable via USB cable, D0 serial data must be disabled during
@@ -74,11 +76,11 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM		Serial
+// #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -104,6 +106,12 @@
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
 #endif
+
+// DHT22 sensor definitions
+
+#define DHT22_A_PIN			2
+// #define DHT22_B_PIN			3
+#define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 (sensor limit)
 
 
 #define LOG_FILENAME		"/datalog.txt"
@@ -180,8 +188,20 @@ SdFat sdFat;
 SdFile logFile;
 long lastWriteMs;
 
+dht DHT;
+int16_t dht22poll;
+
 // RAM variables to expose via Arducom
 volatile int16_t interruptCalls;
+
+#ifdef DHT22_A_PIN
+int16_t dht22_A_temp;
+int16_t dht22_A_humid;
+#endif
+#ifdef DHT22_B_PIN
+int16_t dht22_B_temp;
+int16_t dht22_B_humid;
+#endif
 
 /*******************************************************
 * Routines
@@ -269,6 +289,26 @@ void setup()
 		arducomFTP.init(&arducom, &sdFat);
 	}
 
+	dht22poll = DHT22_POLL_INTERVAL_MS;
+
+	#ifdef DHT22_A_PIN
+	dht22_A_temp = -9999;
+	dht22_A_humid = -9999;
+	// expose DHT sensor variables
+	arducom.addCommand(new ArducomReadInt16(12, &dht22_A_temp));
+	arducom.addCommand(new ArducomReadInt16(13, &dht22_A_humid));
+	#endif
+	
+	#ifdef DHT22_B_PIN
+	dht22_A_temp = -9999;
+	dht22_A_humid = -9999;
+	// expose DHT sensor variables
+	arducom.addCommand(new ArducomReadInt16(14, &dht22_B_temp));
+	arducom.addCommand(new ArducomReadInt16(15, &dht22_B_humid));
+	#endif
+
+	// S0 polling interrupt setup
+
 	// configure interrupt (once per ms)
 	/* First disable the timer overflow interrupt while we're configuring */
 	TIMSK2 &= ~(1<<TOIE2);
@@ -313,13 +353,55 @@ void loop()
 		DEBUG(print(F("Arducom error: ")));
 		DEBUG(println(code));
 	}
-	
+
+	// DHT22
+	dht22poll--;
+	// poll interval reached?
+	if (dht22poll <= 0) {
+		// read sensor values
+		#ifdef DHT22_A_PIN
+		{
+			int chk = DHT.read22(DHT22_A_PIN);
+			if (chk == DHTLIB_OK) {
+				dht22_A_humid = DHT.humidity;
+				dht22_A_temp = DHT.temperature;
+			}
+		}
+		#endif
+		#ifdef DHT22_B_PIN
+		{
+			int chk = DHT.read22(DHT22_B_PIN);
+			if (chk == DHTLIB_OK) {
+				dht22_B_humid = DHT.humidity;
+				dht22_B_temp = DHT.temperature;
+			}
+		}
+		#endif
+
+		dht22poll = DHT22_POLL_INTERVAL_MS;
+	}
+
 	// write to a file every few seconds
 	if (millis() - lastWriteMs > LOG_INTERVAL_MS) {
 		if (logFile.open(LOG_FILENAME, O_RDWR | O_CREAT | O_AT_END)) {
-			logFile.print(millis());
-			logFile.print(" ");
-			logFile.println(interruptCalls);
+			// write timestamp
+			DateTime now = RTC.now();
+			logFile.print(now.unixtime());
+			logFile.print(";");
+			#ifdef DHT22_A_PIN
+			logFile.print(dht22_A_temp);
+			logFile.print(";");
+			logFile.print(dht22_A_humid);
+			logFile.print(";");
+			#endif
+			#ifdef DHT22_B_PIN
+			logFile.print(dht22_B_temp);
+			logFile.print(";");
+			logFile.print(dht22_B_humid);
+			logFile.print(";");
+			#endif
+			logFile.println();
+
 			logFile.close();
 			lastWriteMs = millis();
 			interruptCalls = 0;
