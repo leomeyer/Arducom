@@ -44,6 +44,8 @@
 
 // Define this macro if you are using an SD card.
 // The chipselect pin depends on the type of SD card shield.
+// Requires the SdFat library:
+// https://github.com/greiman/SdFat<a
 #define SDCARD_CHIPSELECT	10	
 
 // If an SD card is present, periodically appends simulated log data to the file
