@@ -1,15 +1,13 @@
 #ifndef __ARDUCOMMASTER_H
 #define __ARDUCOMMASTER_H
 
+#include <stdexcept>
 #include <inttypes.h>
 
-#define ARDUCOM_GENERAL_ERROR		1
-#define ARDUCOM_NO_COMMAND			2
-#define ARDUCOM_INVALID_REPLY		3
-#define ARDUCOM_INVALID_RESPONSE	4
-#define ARDUCOM_PAYLOAD_TOO_LONG	5
-#define ARDUCOM_TRANSPORT_ERROR		6
-
+class TimeoutException: public std::runtime_error {
+public:
+	TimeoutException(const char *what) : std::runtime_error(what) {}
+};
 
 class ArducomMasterTransport {
 

@@ -12,6 +12,12 @@
 #define ARDUCOM_ERROR					5
 #define ARDUCOM_OVERFLOW				6
 #define ARDUCOM_COMMAND_ERROR			7
+#define ARDUCOM_GENERAL_ERROR			8
+#define ARDUCOM_NO_COMMAND				9
+#define ARDUCOM_INVALID_REPLY			10
+#define ARDUCOM_INVALID_RESPONSE		11
+#define ARDUCOM_PAYLOAD_TOO_LONG		12
+#define ARDUCOM_TRANSPORT_ERROR			13
 
 // Arducom error codes that are being sent back to the master
 #define ARDUCOM_NO_DATA					128

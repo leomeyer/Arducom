@@ -79,6 +79,9 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 	
 	try {
 		this->transport->request(expected);
+	} catch (const TimeoutException &te) {
+		this->lastError = ARDUCOM_TIMEOUT;
+		return ARDUCOM_NO_DATA;
 	} catch (const std::exception &e) {
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error requesting data"));

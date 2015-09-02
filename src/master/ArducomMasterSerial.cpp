@@ -177,7 +177,7 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 		throw std::runtime_error("Unable to read from serial device");
 	} else 
 	if (bytesRead == 0) {
-		throw std::runtime_error("Timeout reading from serial device");
+		throw TimeoutException("Timeout");
 	} else 
 	if (bytesRead > 1) {
 		throw std::runtime_error("Big trouble! Read returned more than one byte");

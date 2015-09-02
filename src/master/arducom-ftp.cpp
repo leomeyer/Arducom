@@ -115,25 +115,19 @@ receive:
 		char numstr[21];
 		sprintf(numstr, "%d", errorInfo);
 		
-		m_retries--;
-		if (m_retries > 0) {
-			if (verbose) {
-				std::cout << "Error " << errstr << " (" << numstr << "), " << m_retries << " retries left" << std::endl;
-			}
-			// special case: if NO_DATA has been received, give the slave more time to react
-			// without resending the message
-			if (result == ARDUCOM_NO_DATA) {
+		// special case: if NO_DATA has been received, give the slave more time to react
+		// without resending the message
+		if (result == ARDUCOM_NO_DATA) {
+			m_retries--;
+			if (m_retries > 0) {
+				if (verbose) {
+					std::cout << "Error " << errstr << " (" << numstr << "), " << m_retries << " retries left" << std::endl;
+				}
 				// increase delay with each occurrence of this error
 				delay *= 2;
-				// after three times, resend
-				if (delay < delayMs * 8)
-					goto receive;
+				goto receive;
 			}
-			
-			// other cases reset the delay
-			delay = delayMs;
-			continue;
-		}
+		}		
 		
 		switch (result) {
 		case ARDUCOM_NO_DATA:
