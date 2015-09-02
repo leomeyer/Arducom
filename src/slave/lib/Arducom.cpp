@@ -217,10 +217,6 @@ uint8_t Arducom::getFlags(void) {
 * Arducom command implementations
 ******************************************************************************************/
 
-// for calculation of free RAM
-extern char *__brkval;
-extern char __bss_end;
-	
 int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 
 	uint8_t pos = 0;
@@ -242,9 +238,8 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 	*flagDest = arducom->getFlags();
 	pos += 1;
 	// send free RAM info
-	char top;
 	uint16_t *freeRamDest = (uint16_t *)&destBuffer[pos];
-	*freeRamDest = __brkval ? &top - __brkval : &top - &__bss_end;
+	*freeRamDest = this->freeRam;	
 	pos += 2;
 	uint8_t c = 0;
 	// copy data to destination buffer

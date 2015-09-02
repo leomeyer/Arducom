@@ -76,11 +76,11 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-// #define SERIAL_STREAM		Serial
+#define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
-#define I2C_SLAVE_ADDRESS	5
+// #define I2C_SLAVE_ADDRESS	5
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -111,7 +111,7 @@
 
 #define DHT22_A_PIN			2
 // #define DHT22_B_PIN			3
-#define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 (sensor limit)
+#define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
 
 
 #define LOG_FILENAME		"/datalog.txt"
@@ -166,6 +166,11 @@ public:
 /*******************************************************
 * Variables
 *******************************************************/
+
+// for calculation of free RAM
+extern char *__brkval;
+extern char __bss_end;
+	
 /* Timer2 reload value, globally available */
 unsigned int tcnt2;
 
@@ -186,10 +191,10 @@ ArducomFTP arducomFTP;
 
 SdFat sdFat;
 SdFile logFile;
-long lastWriteMs;
+uint32_t lastWriteMs;
 
 dht DHT;
-int16_t dht22poll;
+uint32_t lastDHT22poll;
 
 // RAM variables to expose via Arducom
 volatile int16_t interruptCalls;
@@ -235,6 +240,9 @@ ISR(TIMER2_OVF_vect) {
 
 void setup()
 {
+	char top;
+	uint16_t freeRam = __brkval ? &top - __brkval : &top - &__bss_end;
+
 #ifdef SERIAL_STREAM
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 #endif
@@ -243,13 +251,13 @@ void setup()
 	DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	
-	DEBUG(print(F("FreeRam: ")));
-	DEBUG(println(FreeRam()));	
+	DEBUG(print(F("Free RAM: ")));
+	DEBUG(println(freeRam));	
 #endif
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
-	arducom.addCommand(new ArducomVersionCommand("DataLogger"));
+	arducom.addCommand(new ArducomVersionCommand(freeRam, "DataLogger"));
 /*
 	// EEPROM access commands
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
@@ -288,8 +296,6 @@ void setup()
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
-
-	dht22poll = DHT22_POLL_INTERVAL_MS;
 
 	#ifdef DHT22_A_PIN
 	dht22_A_temp = -9999;
@@ -355,9 +361,9 @@ void loop()
 	}
 
 	// DHT22
-	dht22poll--;
+	
 	// poll interval reached?
-	if (dht22poll <= 0) {
+	if (millis() - lastDHT22poll > DHT22_POLL_INTERVAL_MS) {
 		// read sensor values
 		#ifdef DHT22_A_PIN
 		{
@@ -378,7 +384,7 @@ void loop()
 		}
 		#endif
 
-		dht22poll = DHT22_POLL_INTERVAL_MS;
+		lastDHT22poll = millis();
 	}
 
 	// write to a file every few seconds

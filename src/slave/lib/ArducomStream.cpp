@@ -12,6 +12,7 @@ int8_t ArducomTransportStream::send(uint8_t* buffer, uint8_t count) {
 	this->stream->flush();
 	this->status = SENT;
 	this->size = 0;
+	return ARDUCOM_OK;
 }
 
 int8_t ArducomTransportStream::doWork(void) {

@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) {
 			
 		if (params.size() > transport->getMaximumCommandSize()) {
 			char numstr[21];
-			sprintf(numstr, "%d", transport->getMaximumCommandSize());
+			sprintf(numstr, "%lu", transport->getMaximumCommandSize());
 			throw std::invalid_argument((std::string("Command parameter length must not exceed the transport's maximum command size: ") 
 				+ numstr).c_str());
 		}

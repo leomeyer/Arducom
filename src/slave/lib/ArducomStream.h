@@ -10,10 +10,10 @@ class ArducomTransportStream: public ArducomTransport {
 public:
 	ArducomTransportStream(Stream* stream);
 	
-	virtual int8_t doWork(void) override;
+	virtual int8_t doWork(void);
 	
 	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
-	virtual int8_t send(uint8_t* buffer, uint8_t count) override;
+	virtual int8_t send(uint8_t* buffer, uint8_t count);
 	
 protected:
 	Stream* stream;

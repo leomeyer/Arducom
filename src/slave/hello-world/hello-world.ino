@@ -145,6 +145,10 @@ public:
 * Variables
 *******************************************************/
 
+// for calculation of free RAM
+extern char *__brkval;
+extern char __bss_end;
+	
 #ifdef SERIAL_STREAM
 ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
@@ -197,6 +201,9 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 void setup()
 {
+	char top;
+	uint16_t freeRam = __brkval ? &top - __brkval : &top - &__bss_end;
+
 #ifdef LED
 	pinMode(LED, OUTPUT); 
 #endif
@@ -209,13 +216,13 @@ void setup()
 	DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	
-	DEBUG(print(F("FreeRam: ")));
-	DEBUG(println(FreeRam()));	
+	DEBUG(print(F("Free RAM: ")));
+	DEBUG(println(freeRam));	
 #endif
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
-	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
+	arducom.addCommand(new ArducomVersionCommand(freeRam, "HelloWorld"));
 
 	// EEPROM access commands
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
@@ -278,7 +285,7 @@ void setup()
 		digitalWrite(LED, LOW);
 		delay(200);
 	}
-#endif LED
+#endif
 }
 
 /*******************************************************
@@ -300,7 +307,7 @@ void loop()
 			digitalWrite(LED, LOW);
 			delay(200);
 		}
-#endif LED
+#endif
 	}
 	
 #if defined SDCARD_CHIPSELECT && defined GENERATE_LOGFILE
