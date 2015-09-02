@@ -227,6 +227,9 @@ private:
 	uint8_t F;
 	// linked list of variables to match
 	OBISVariable* varHead;
+	static const uint8_t FILEBUFFER_SIZE = 64;
+	uint8_t fileBuffer[FILEBUFFER_SIZE];
+	uint8_t bufPos;
 	
 	void startValue() {
 		DEBUG(println(F("OBIS startValue")));
@@ -247,6 +250,7 @@ public:
 		// start with unknown parse position
 		this->parsePos = UNDEF;
 		this->varHead = 0;
+		this->bufPos = 0;
 	}
 	
 	void addVariable(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E, uint8_t F, int vartype, void* ptr) {
@@ -344,6 +348,16 @@ public:
 		uint8_t c = this->inputStream->read();
 		DEBUG(print(F("c: ")));
 		DEBUG(println(c));
+		
+		this->fileBuffer[this->bufPos++] = c;
+		if (this->bufPos >= FILEBUFFER_SIZE) {
+			SdFile obisFile;
+			if (obisFile.open("/obisraw.txt", O_RDWR | O_CREAT | O_AT_END)) {
+				obisFile.write(this->fileBuffer, FILEBUFFER_SIZE);
+				obisFile.close();
+			}
+			this->bufPos = 0;
+		}
 		
 		if (parsePos == UNDEF) {
 			// ignore everything until line break
