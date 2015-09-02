@@ -16,7 +16,7 @@
 // - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM
 // - one D0 input (requires the RX pin and one digital output for the optical transistor supply voltage)
 // - up to two DHT22 temperature/humidity sensors (suggested data pins are 2 and 3)
-// - up to four analog values (analog pins A0 - A3).
+// - up to two analog values (analog pins A0 - A1).
 
 // The S0 lines are queried once a ms using software debouncing.
 // The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
@@ -49,11 +49,28 @@
 
 // The D0 port needs no persistent storage as the meter will transmit total values.
 
+// Pin map (for Uno; check whether this works with your board):
+
+// D0 - RX: D0 OBIS input (9600 7E1)
+// D1 - TX: used for programmer, do not use
+// D2: suggested Software Serial RX on Uno
+// D3: suggested Software Serial TX on Uno 
+// D4 - D7: S0 inputs (attention: 4 is Chip Select for some data logger shields)
+// D8: suggested data pin for DHT22 A
+// D9: suggested data pin for DHT22 B
+// D10: Chip Select for SD card on Keyes Data Logger Shield
+// D11 - D13: MOSI, MISO, CLK for SD card on Keyes Data Logger Shield
+// A0 - A1: analog input
+// A2: suggested power supply for OBIS serial input circuit
+// A3: Reserved
+// A4: I2C SDA
+// A5: I2C SCL
 
 
 // This example code is in the public domain.
 
 #include <SPI.h>
+#include <SoftwareSerial.h>
 
 #include <dht.h>
 
@@ -76,11 +93,16 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM		Serial
+// #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
+
+// If you use software serial output for debugging, specify its pins here.
+#define SOFTWARESERIAL_RX		2
+#define SOFTWARESERIAL_TX		3
+SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -109,10 +131,9 @@
 
 // DHT22 sensor definitions
 
-#define DHT22_A_PIN			2
-// #define DHT22_B_PIN			3
+#define DHT22_A_PIN			8
+// #define DHT22_B_PIN			9
 #define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
-
 
 #define LOG_FILENAME		"/datalog.txt"
 
@@ -164,6 +185,269 @@ public:
 };
 
 /*******************************************************
+* OBIS parser for D0
+*******************************************************/
+
+class OBISParser {
+public:
+	enum { VARTYPE_BYTE = 0, VARTYPE_INT16, VARTYPE_INT32, VARTYPE_INT64 };
+
+private:
+	enum { APOS = 0, BPOS, CPOS, DPOS, EPOS, FPOS, VALPOS };
+	
+	struct OBISVariable {
+		uint8_t A;
+		uint8_t B;
+		uint8_t C;
+		uint8_t D;
+		uint8_t E;
+		uint8_t F;
+		int vartype;
+		void* ptr;
+		OBISVariable* next;
+	};
+	
+	static const uint8_t UNDEF = 0xff;
+	Stream* inputStream;
+	// current parser state
+	uint8_t parsePos;
+	uint64_t parseVal;
+	uint8_t inDigit;
+	uint8_t A;
+	uint8_t B;
+	uint8_t C;
+	uint8_t D;
+	uint8_t E;
+	uint8_t F;
+	// linked list of variables to match
+	OBISVariable* varHead;
+	
+	void startValue() {
+		DEBUG(println(F("OBIS startValue")));
+		this->parseVal = 0;
+		this->inDigit = 0;
+	}
+	
+	void startRecord(void) {
+		DEBUG(println(F("OBIS startRecord")));
+		this->A = this->B = this->C = this->D = this->E = this->F = UNDEF;
+		this->parsePos = APOS;
+		this->startValue();
+	}
+	
+public:
+	OBISParser(Stream* inputStream) {
+		this->inputStream = inputStream;
+		// start with unknown parse position
+		this->parsePos = UNDEF;
+		this->varHead = 0;
+	}
+	
+	void addVariable(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E, uint8_t F, int vartype, void* ptr) {
+		OBISVariable* var = new OBISVariable();
+		var->A = A;
+		var->B = B;
+		var->C = C;
+		var->D = D;
+		var->E = E;
+		var->F = F;
+		var->vartype = vartype;
+		var->ptr = ptr;
+		// make linked list of variables
+		var->next = this->varHead;
+		this->varHead = var;
+	}
+	
+	void print64(Print* stream, int64_t n) {
+		// code copied from: http://www.hlevkin.com/C_progr/long64.c
+		  int i = 0;
+		  int m;
+		  int len;
+		  char c;
+		  char s = '+';
+		char str[21];
+		char *pStr = &str[0];
+
+		 // if(n == LONG_LONG_MIN) // _I64_MIN  for Windows Microsoft compiler
+		  if(n < -9223372036854775807)
+		  {
+		    stream->print(F("-9223372036854775808"));
+		    return;
+		  }
+
+		  if( n < 0 )
+		  {
+		    s = '-';
+		    n = - n;
+		    pStr[0]='-';
+		    i++;
+		  }
+
+		  do
+		  {
+		    m = n % (int64_t)10;
+		    pStr[i] = '0'+ m;
+		    n = n / (int64_t)10;
+		    i++;
+		  }
+		  while(n != 0);
+
+		  if(s == '+')
+		  {
+		    len = i;
+		  }
+		  else /* s=='-' */
+		  {
+		    len = i-1;
+		    pStr++;
+		  }
+
+		  for(i=0; i<len/2; i++)
+		  {
+		    c = pStr[i];
+		    pStr[i]       = pStr[len-1-i];
+		    pStr[len-1-i] = c;
+		  }
+		  pStr[len] = 0;
+
+		  if(s == '-')
+		  {
+		    pStr--;
+		  }
+		stream->print(pStr);
+	}
+	
+	void logData(Print* stream, char separator) {
+		OBISVariable* var = this->varHead;
+		while (var != 0) {
+			switch (var->vartype) {
+				case VARTYPE_BYTE: stream->print((int)*(uint8_t*)var->ptr); break;
+				case VARTYPE_INT16: stream->print(*(int16_t*)var->ptr); break;
+				case VARTYPE_INT32: stream->print(*(int32_t*)var->ptr); break;
+				case VARTYPE_INT64: this->print64(stream, *(int64_t*)var->ptr); break;
+			}
+			stream->print(separator);
+			var = var->next;
+		}
+	}
+
+	void doWork(void) {
+		if (!this->inputStream->available())
+			return;
+		
+		uint8_t c = this->inputStream->read();
+		DEBUG(print(F("c: ")));
+		DEBUG(println(c));
+		
+		if (parsePos == UNDEF) {
+			// ignore everything until line break
+			if (c == 10)
+				this->startRecord();
+		} else
+		if ((c >= '0') && (c <= '9')) {
+			parseVal = parseVal * 10 + (c - '0');
+		} else
+		if (this->parsePos != VALPOS) {
+			// manufacturer ID?
+			if (c == '/') {
+				// ignore until end
+				parsePos = UNDEF;
+			} else
+			// end of field A?
+			if (c == '-') {
+				if (this->parsePos != APOS) {
+					DEBUG(println(F("OBIS Err A")));
+					parsePos = UNDEF;
+				} else {
+					this->A = parseVal;
+					this->startValue();
+					this->parsePos = BPOS;
+				}
+			} else
+			// end of field B?
+			if (c == ':') {
+				this->B = parseVal;
+				this->startValue();
+				this->parsePos = CPOS;
+			} else
+			// end of field D?
+			if ((this->parsePos == DPOS) && (c == '.')) {
+				this->D = parseVal;
+				this->startValue();
+				this->parsePos = EPOS;
+			} else
+			// end of field C?
+			if (c == '.') {
+				this->C = parseVal;
+				this->startValue();
+				this->parsePos = DPOS;
+			} else
+			if ((this->parsePos == EPOS) && ((c == '*') || (c == '&'))) {
+				this->E = parseVal;
+				this->startValue();
+				this->parsePos = FPOS;
+			} else
+			if (c == '(') {
+				this->startValue();
+				this->parsePos = VALPOS;
+			}
+		} else {
+			// parsing VALPOS
+			if (c == ')') {
+				// end of value
+				DEBUG(print(F("A: ")));
+				DEBUG(print((int)this->A));
+				DEBUG(print(F(" B: ")));
+				DEBUG(print((int)this->B));
+				DEBUG(print(F(" C: ")));
+				DEBUG(print((int)this->C));
+				DEBUG(print(F(" D: ")));
+				DEBUG(print((int)this->D));
+				DEBUG(print(F(" E: ")));
+				DEBUG(print((int)this->E));
+				DEBUG(print(F(" F: ")));
+				DEBUG(print((int)this->F));
+				DEBUG(print(F(" Value: H: ")));
+				DEBUG(print((uint32_t)(this->parseVal >> 32)));
+				DEBUG(print(F(" L: ")));
+				DEBUG(println((uint32_t)this->parseVal));
+				
+				// try to match variables
+				OBISVariable* var = this->varHead;
+				while (var != 0) {
+					if ((var->A == this->A)
+						&& (var->B == this->B)
+						&& (var->C == this->C)
+						&& (var->D == this->D)
+						&& (var->E == this->E)
+						&& (var->F == this->F)) {
+						// match found
+						switch (var->vartype) {
+							case VARTYPE_BYTE: *(uint8_t*)var->ptr= (uint8_t)this->parseVal; break;
+							case VARTYPE_INT16: *(int16_t*)var->ptr = (int16_t)this->parseVal; break;
+							case VARTYPE_INT32: *(int32_t*)var->ptr = (int32_t)this->parseVal; break;
+							case VARTYPE_INT64: *(int64_t*)var->ptr = (int64_t)this->parseVal; break;
+							default: DEBUG(println(F("vartype error")));
+						}
+					}
+					var = var->next;
+				}
+				// parse up to line terminator
+				this->parsePos = UNDEF;
+			} else
+			// unexpected EOL?
+			if (c == 10) {
+				DEBUG(println(F("Unexpected EOL")));
+				this->startRecord();
+			} else {
+				// ignore all non-digits
+			}
+		}
+	}
+	
+};
+
+/*******************************************************
 * Variables
 *******************************************************/
 
@@ -199,6 +483,13 @@ uint32_t lastDHT22poll;
 // RAM variables to expose via Arducom
 volatile int16_t interruptCalls;
 
+// electric meter readings
+int64_t totalKWh;
+int32_t momPhase1;
+int32_t momPhase2;
+int32_t momPhase3;
+int32_t momTotal;
+
 #ifdef DHT22_A_PIN
 int16_t dht22_A_temp;
 int16_t dht22_A_humid;
@@ -207,6 +498,8 @@ int16_t dht22_A_humid;
 int16_t dht22_B_temp;
 int16_t dht22_B_humid;
 #endif
+
+OBISParser obisParser(&Serial);
 
 /*******************************************************
 * Routines
@@ -242,18 +535,29 @@ void setup()
 {
 	char top;
 	uint16_t freeRam = __brkval ? &top - __brkval : &top - &__bss_end;
+	
+	// initialize serial port for OBIS data
+	Serial.begin(9600, SERIAL_7E1);
 
 #ifdef SERIAL_STREAM
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 #endif
 	
 #ifdef DEBUG_OUTPUT
-	DEBUG_OUTPUT.begin(9600);
+	// DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
+#endif
 	
 	DEBUG(print(F("Free RAM: ")));
 	DEBUG(println(freeRam));	
-#endif
+	
+	// initialize OBIS parser variables
+	// the parser will log this data in reverse order!
+	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &totalKWh);
+	obisParser.addVariable(1, 0, 1, 7, 255, 255, OBISParser::VARTYPE_INT32, &momTotal);
+	obisParser.addVariable(1, 0, 61, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase3);
+	obisParser.addVariable(1, 0, 41, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase2);
+	obisParser.addVariable(1, 0, 21, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase1);
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
@@ -272,7 +576,14 @@ void setup()
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 */	
 	// expose variables
-	arducom.addCommand(new ArducomReadInt16(11, (int16_t*)&interruptCalls));
+//	arducom.addCommand(new ArducomReadInt16(11, (int16_t*)&interruptCalls));
+	
+	// meter readings
+	arducom.addCommand(new ArducomReadInt64(25, &totalKWh));
+	arducom.addCommand(new ArducomReadInt32(24, &momTotal));
+	arducom.addCommand(new ArducomReadInt32(23, &momPhase3));
+	arducom.addCommand(new ArducomReadInt32(22, &momPhase2));
+	arducom.addCommand(new ArducomReadInt32(21, &momPhase1));
 	
 	// connect to RTC
 	Wire.begin();
@@ -355,10 +666,15 @@ void setup()
 void loop()
 {
 	int code = arducom.doWork();
+	if (code == ARDUCOM_COMMAND_HANDLED) {
+		DEBUG(println(F("Arducom command handled")));
+	} else
 	if (code != ARDUCOM_OK) {
 		DEBUG(print(F("Arducom error: ")));
 		DEBUG(println(code));
 	}
+	
+	obisParser.doWork();
 
 	// DHT22
 	
@@ -406,6 +722,7 @@ void loop()
 			logFile.print(dht22_B_humid);
 			logFile.print(";");
 			#endif
+			obisParser.logData(&logFile, ';');
 			logFile.println();
 
 			logFile.close();
