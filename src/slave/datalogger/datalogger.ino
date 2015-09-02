@@ -13,22 +13,30 @@
 // communication can take place over I2C.
 
 // This data logger supports:
-// - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM
+// [PLANNED - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM]
 // - one D0 input (requires the RX pin and one digital output for the optical transistor supply voltage)
 // - up to two DHT22 temperature/humidity sensors (suggested data pins are 2 and 3)
-// - up to two analog values (analog pins A0 - A1).
+// [PLANNED - up to two analog values (analog pins A0 - A1)]
 
+// [ PLANNED
 // The S0 lines are queried once a ms using software debouncing.
 // The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
 // Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
 // Each detected S0 impulse increments its RAM variable by 1. 
+// The S0 EEPROM values can be adjusted ("primed") via arducom to set the current meter readings (make sure to 
+// take the impulse factor into consideration).
+// ]
 
 // The D0 input is a serial input used by electronic power meters. Data is transmitted via an IR LED.
 // As the Arduino should still be programmable via USB cable, D0 serial data must be disabled during
 // programming. It is easiest to switch on the receiving IR transistor's supply voltage on program start.
-// Also, the UART must be configured to support the serial protocol (e. g. for an Easymeter: 9600 baud, 7E1).
+// Also, the UART must be configured to support the serial protocol (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
+// The D0 port needs no persistent storage as the meter will always transmit total values.
 // The following circuit can be used to detect D0 data:
 
+// [...]
+
+// Parsed D0 records are matched against added variable definitions and stored in the respective variables.
 
 // Timestamped sensor readings are stored on the SD card in a configurable interval. It is recommended to
 // choose this interval wisely. Internal sensor data that is exposed to the host is also updated with
@@ -44,10 +52,6 @@
 // for querying (and operating on) current values as well as having an automated job download daily history
 // using arducom-ftp.
 
-// The S0 EEPROM values can be adjusted ("primed") via arducom to set the current meter readings (make sure to 
-// take the impulse factor into consideration).
-
-// The D0 port needs no persistent storage as the meter will transmit total values.
 
 // Pin map (for Uno; check whether this works with your board):
 
@@ -74,7 +78,7 @@
 
 #include <dht.h>
 
-// use SdFat:
+// SdFat:
 // https://github.com/greiman/SdFat
 #include <SdFat.h>
 #include <SdFatUtil.h> 
@@ -111,7 +115,7 @@ SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for the hello-world test sketch. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-// #define DEBUG_OUTPUT		Serial
+#define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -134,6 +138,8 @@ SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 #define DHT22_A_PIN			8
 // #define DHT22_B_PIN			9
 #define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
+
+#define OBIS_IR_POWER_PIN		A2
 
 #define LOG_FILENAME		"/datalog.txt"
 
@@ -444,7 +450,6 @@ public:
 			}
 		}
 	}
-	
 };
 
 /*******************************************************
@@ -538,6 +543,12 @@ void setup()
 	
 	// initialize serial port for OBIS data
 	Serial.begin(9600, SERIAL_7E1);
+	
+	// switch on OBIS power for serial IR circuitry
+#ifdef OBIS_IR_POWER_PIN
+	pinMode(OBIS_IR_POWER_PIN, OUTPUT);
+	digitalWrite(OBIS_IR_POWER_PIN, HIGH);
+#endif
 
 #ifdef SERIAL_STREAM
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
@@ -677,7 +688,6 @@ void loop()
 	obisParser.doWork();
 
 	// DHT22
-	
 	// poll interval reached?
 	if (millis() - lastDHT22poll > DHT22_POLL_INTERVAL_MS) {
 		// read sensor values
