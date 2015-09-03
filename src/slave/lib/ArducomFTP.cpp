@@ -365,9 +365,10 @@ int8_t ArducomFTPDeleteFile::handle(Arducom* arducom, volatile uint8_t* dataBuff
 	}
 	
 	SdFile file;
+	// regular files must be opened O_WRITE
 	if (!file.open(filename, O_WRITE)) {
-		*errorInfo = ARDUCOM_FTP_FILE_OPEN_ERROR;
-		return ARDUCOM_FUNCTION_ERROR;
+		// may be a folder; try to open as O_READ
+		file.open(filename, O_READ);
 	}
 	
 	if (!file.isOpen()) {
