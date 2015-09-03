@@ -640,11 +640,14 @@ int main(int argc, char *argv[]) {
 								uint8_t size4;
 							} fileSize;
 							memcpy(&fileSize, result.data(), sizeof(fileSize));
-							uint32_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
+							int32_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
 							std::cout << "File size: " << totalSize << std::endl;
-
+							if (totalSize < 0)  {
+								std::cout << "File size is negative, cannot download" << std::endl;
+								continue;	// next command
+							}
 							int fd;
-							uint32_t position = 0;
+							int32_t position = 0;
 							bool fileExists = false;
 							// check whether the file already exists on the master
 							if (access(parts.at(1).c_str(), F_OK) != -1) {
@@ -670,7 +673,7 @@ int main(int argc, char *argv[]) {
 							}
 							
 							// overwrite or continue?
-							if (continueFile && position > 0) {
+							if (continueFile && (position > 0) && (position < totalSize)) {
 								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -679,10 +682,23 @@ int main(int argc, char *argv[]) {
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 							} else {
-								if (fileExists)
-									std::cout << "Overwriting existing file (to append data, use 'set continue on')" << std::endl;
+								if (fileExists) {
+									if (!interactive) {
+										std::cout << "Cannot overwrite in non-interactive mode; cancelling" << std::endl;
+										continue;
+									} else {
+										// interactive
+										std::cout << "Overwrite existing file y/N (to append data, use 'set continue on')? ";
+										std::string input;
+										getline(std::cin, input);
+										if (input != "y") {
+											std::cout << "Download cancelled" << std::endl;
+											continue;
+										}
+									}
+								}
 								// open local file for writing; create from scratch
-								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
 									perror("Unable to create output file");
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
@@ -692,6 +708,10 @@ int main(int argc, char *argv[]) {
 							}
 
 							std::cout << "Remaining: " << totalSize - position << " bytes" << std::endl;
+							if (totalSize - position == 0)  {
+								std::cout << "File seems to be complete" << std::endl;
+								continue;	// next command
+							}
 							
 							// file read loop
 							while (true) {
@@ -760,7 +780,7 @@ int main(int argc, char *argv[]) {
 				if (!interactive)
 					exit(master.lastError);
 			}
-		}
+		}	// while (true)
 		
 	} catch (const std::exception& e) {
 		if (needEndl)
