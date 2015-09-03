@@ -179,9 +179,9 @@ raw_upload_hex:
 #endif
 
 #define S0_A_PIN			4
-#define S0_B_PIN			5
-#define S0_C_PIN			6
-#define S0_D_PIN			7
+// #define S0_B_PIN			5
+// #define S0_C_PIN			6
+// #define S0_D_PIN			7
 
 // DHT22 sensor definitions
 #define DHT22_A_PIN			8
@@ -194,6 +194,7 @@ raw_upload_hex:
 // serial data detection circuit (optical transistor or similar) that feeds its output into RX (pin 0).
 // During programming (via USB) the pin has high impedance, meaning that no data will arrive from the
 // external circuitry that could interfere with the flash data being uploaded.
+// Undefining this macro switches off OBIS functionality.
 #define OBIS_IR_POWER_PIN		A2
 
 #define LOG_INTERVAL_MS		60000
@@ -553,7 +554,7 @@ public:
 #define S0_B_VALUE			40		// 0x0028, length 8
 #define S0_C_VALUE			48		// 0x0030, length 8
 #define S0_D_VALUE			56		// 0x0038, length 8
-// S0 deltas
+// S0 deltas since last writing of log file
 #define S0_A_DELTA			64		// 0x0040, length 8
 #define S0_B_DELTA			72		// 0x0048, length 8
 #define S0_C_DELTA			80		// 0x0050, length 8
@@ -763,11 +764,10 @@ void setup()
 	int v; 	
 	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 	
+	#ifdef OBIS_IR_POWER_PIN
 	// initialize serial port for OBIS data
 	Serial.begin(9600, SERIAL_7E1);
-	
 	// switch on OBIS power for serial IR circuitry
-	#ifdef OBIS_IR_POWER_PIN
 	pinMode(OBIS_IR_POWER_PIN, OUTPUT);
 	digitalWrite(OBIS_IR_POWER_PIN, HIGH);
 	#endif
@@ -781,6 +781,9 @@ void setup()
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	#endif
 	
+	DEBUG(print(F("Free RAM: ")));
+	DEBUG(println(freeRam));
+
 	// initialize S0 lines
 	#ifdef S0_A_PIN
 	pinMode(S0_A_PIN, INPUT);
@@ -809,19 +812,17 @@ void setup()
 	eeprom_read_block(&readings[S0_D_VALUE], (const uint8_t*)32, 8);
 	sei();
 
-
-	DEBUG(print(F("Free RAM: ")));
-	DEBUG(println(freeRam));
-
 	// initialize OBIS parser variables
 	// the parser will log this data in reverse order!
 	// Easymeter Q3D OBIS records
+	#ifdef OBIS_IR_POWER_PIN
 	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &readings[TOTAL_KWH]);
 	obisParser.addVariable(1, 0, 1, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_TOTAL]);
 	obisParser.addVariable(1, 0, 61, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE3]);
 	obisParser.addVariable(1, 0, 41, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE2]);
 	obisParser.addVariable(1, 0, 21, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE1]);
-
+	#endif
+	
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand(freeRam, "Logger"));
@@ -836,9 +837,17 @@ void setup()
 	// RAM is read-only
 	arducom.addCommand(new ArducomReadBlock(20, &readings[0]));
 
-	// connect to RTC
+	// connect to RTC (try three times because I2C may be busy sometimes)
 	Wire.begin();
-	if (!RTC.begin()) {
+	bool rtcOK = false;
+	int repeat = 3;
+	while (!rtcOK && (repeat > 0))  {
+		rtcOK = RTC.begin();
+		repeat--;
+		delay(100);
+	}
+
+	if (!rtcOK) {
 		DEBUG(println(F("RTC not functional")));
 	} else {
 		// register RTC commands
@@ -909,9 +918,11 @@ void loop()
 		DEBUG(println(code));
 	}
 	
+	#ifdef OBIS_IR_POWER_PIN
 	// let the OBIS parser handle incoming data from the electricity meter
 	obisParser.doWork();
-
+	#endif
+	
 	// DHT22
 	// poll interval reached?
 	if (millis() - lastDHT22poll > DHT22_POLL_INTERVAL_MS) {
@@ -1053,5 +1064,3 @@ void loop()
 		resetReadings();
 	}
 }
-
-
