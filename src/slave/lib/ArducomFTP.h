@@ -16,15 +16,17 @@
 #define ARDUCOM_FTP_READ_ERROR			8
 #define ARDUCOM_FTP_FILE_NOT_OPEN		9
 #define ARDUCOM_FTP_POSITION_INVALID	10
+#define ARDUCOM_FTP_CANNOT_DELETE		11
 
 // Arducom FTP command codes
 #define ARDUCOM_FTP_COMMAND_INIT		0
 #define ARDUCOM_FTP_COMMAND_LISTFILES	1
-#define ARDUCOM_FTP_COMMAND_REWIND		2
+#define ARDUCOM_FTP_COMMAND_REWIND	2
 #define ARDUCOM_FTP_COMMAND_CHDIR		3
 #define ARDUCOM_FTP_COMMAND_OPENREAD	4
 #define ARDUCOM_FTP_COMMAND_READFILE	5
 #define ARDUCOM_FTP_COMMAND_CLOSEFILE	6
+#define ARDUCOM_FTP_COMMAND_DELETE	7
 
 #define ARDUCOM_FTP_DEFAULT_COMMANDBASE	60
 
@@ -104,6 +106,15 @@ public:
 class ArducomFTPCloseFile: public ArducomCommand {
 public:
 	ArducomFTPCloseFile(uint8_t commandCode);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+};
+
+/** This class implements a command to delete a file. Only 8.3 files and folders that do not have a long file name can be deleted.
+*/
+class ArducomFTPDeleteFile: public ArducomCommand {
+public:
+	ArducomFTPDeleteFile(uint8_t commandCode);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };

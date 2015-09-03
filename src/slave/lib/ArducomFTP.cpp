@@ -35,6 +35,10 @@ int8_t ArducomFTP::init(Arducom* arducom, SdFat* sdFat, uint8_t commandBase) {
 	if (result != ARDUCOM_OK)
 		return result;
 
+	result = arducom->addCommand(new ArducomFTPDeleteFile(ARDUCOM_FTP_COMMAND_DELETE + commandBase));
+	if (result != ARDUCOM_OK)
+		return result;
+
 	// store singleton instance
 	_arducomFTP = this;
 
@@ -44,7 +48,14 @@ int8_t ArducomFTP::init(Arducom* arducom, SdFat* sdFat, uint8_t commandBase) {
 
 ArducomFTPInit::ArducomFTPInit(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
-	
+
+const char string_0[] PROGMEM = "SD1 ";
+const char string_1[] PROGMEM = "SD2 ";
+const char string_2[] PROGMEM = "SDHC";
+const char string_3[] PROGMEM = "SDXC";
+
+const char* const cardTypes[] PROGMEM = { string_0, string_1, string_2, string_3 }; 
+
 int8_t ArducomFTPInit::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this command does not expect any data from the master
 	if (!_arducomFTP) {
@@ -58,19 +69,19 @@ int8_t ArducomFTPInit::handle(Arducom* arducom, volatile uint8_t* dataBuffer, in
 		return ARDUCOM_FUNCTION_ERROR;		
 	}
 	
-	char* cardType;
+	char cardType[5];
 	switch (_arducomFTP->sdFat->card()->type()) {
 	case SD_CARD_TYPE_SD1:
-		cardType = "SD1 ";
+		strcpy_P(cardType, cardTypes[0]);
 		break;
 	case SD_CARD_TYPE_SD2:
-		cardType = "SD2 ";
+		strcpy_P(cardType, cardTypes[1]);
 		break;
 	case SD_CARD_TYPE_SDHC:
 		if (cardSize < 70000000) {
-			cardType = "SDHC";
+			strcpy_P(cardType, cardTypes[2]);
 		} else {
-			cardType = "SDXC";
+			strcpy_P(cardType, cardTypes[3]);
 		}
 		break;
 	default:
@@ -329,3 +340,64 @@ int8_t ArducomFTPCloseFile::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 	
 	return ARDUCOM_OK;
 }
+
+ArducomFTPDeleteFile::ArducomFTPDeleteFile(uint8_t commandCode) : ArducomCommand(commandCode) {
+}
+	
+int8_t ArducomFTPDeleteFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	if (!_arducomFTP) {
+		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+
+	// this command expects the file name
+	char filename[13];
+	uint8_t pos = 0;
+	while (pos < *dataSize) {
+		filename[pos] = dataBuffer[pos];
+		pos++;
+	}
+	filename[pos] = '\0';
+	// parameter missing?
+	if (filename[0] == '\0') {
+		*errorInfo = ARDUCOM_FTP_MISSING_FILENAME;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+	
+	SdFile file;
+	if (!file.open(filename, O_WRITE)) {
+		*errorInfo = ARDUCOM_FTP_FILE_OPEN_ERROR;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+	
+	if (!file.isOpen()) {
+		*errorInfo = ARDUCOM_FTP_FILE_NOT_OPEN;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+	
+	// has long file name? cannot delete
+	if (file.isLFN()) {
+		file.close();
+		*errorInfo = ARDUCOM_FTP_CANNOT_DELETE;
+		return ARDUCOM_FUNCTION_ERROR;
+	}
+	
+	// directory?
+	if (file.isDir()) {
+		if (!file.rmdir()) {
+			file.close();
+			*errorInfo = ARDUCOM_FTP_CANNOT_DELETE;
+			return ARDUCOM_FUNCTION_ERROR;
+		}
+	} else {
+		// is file
+		if (!file.remove()) {
+			file.close();
+			*errorInfo = ARDUCOM_FTP_CANNOT_DELETE;
+			return ARDUCOM_FUNCTION_ERROR;
+		}
+	}
+	
+	return ARDUCOM_OK;
+}
+

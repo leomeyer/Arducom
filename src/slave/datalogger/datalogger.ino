@@ -89,12 +89,13 @@
 // to fix the /usr/share/arduino/Arduino.mk file by adding an upload target that won't perform a build first:
 
 // < insert below target raw_upload >
-//
-// upload_hex:     reset raw_upload_hex
-//
-// raw_upload_hex:
-//                $(AVRDUDE) $(AVRDUDE_COM_OPTS) $(AVRDUDE_ARD_OPTS) \
-//                        -U flash:w:$(TARGET_HEX):
+/*
+upload_hex:     reset raw_upload_hex
+
+raw_upload_hex:
+                $(AVRDUDE) $(AVRDUDE_COM_OPTS) $(AVRDUDE_ARD_OPTS) \
+                        -U flash:w:$(TARGET_HEX):
+*/
 // < end of insertion >
 
 // As usual with makefiles, take special care of the indentation and whitespace.
@@ -113,9 +114,13 @@
 
 // This example code is in the public domain.
 
+#include <avr/eeprom.h>
+
 #include <SPI.h>
 #include <SoftwareSerial.h>
 
+// DHTlib:
+// https://github.com/RobTillaart/Arduino
 #include <dht.h>
 
 // SdFat:
@@ -172,6 +177,11 @@
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
 #endif
+
+#define S0_A_PIN			4
+#define S0_B_PIN			5
+#define S0_C_PIN			6
+#define S0_D_PIN			7
 
 // DHT22 sensor definitions
 #define DHT22_A_PIN			8
@@ -232,6 +242,69 @@ public:
 		return ARDUCOM_OK;
 	}
 };
+
+/*******************************************************
+* Global helper routines
+*******************************************************/
+
+void print64(Print* print, int64_t n) {
+	// code copied from: http://www.hlevkin.com/C_progr/long64.c
+	  int i = 0;
+	  int m;
+	  int len;
+	  char c;
+	  char s = '+';
+	char str[21];
+	char *pStr = &str[0];
+
+	 // if(n == LONG_LONG_MIN) // _I64_MIN  for Windows Microsoft compiler
+	  if(n < -9223372036854775807)
+	  {
+		print->print(F("-9223372036854775808"));
+		return;
+	  }
+
+	  if( n < 0 )
+	  {
+		s = '-';
+		n = - n;
+		pStr[0]='-';
+		i++;
+	  }
+
+	  do
+	  {
+		m = n % (int64_t)10;
+		pStr[i] = '0'+ m;
+		n = n / (int64_t)10;
+		i++;
+	  }
+	  while(n != 0);
+
+	  if(s == '+')
+	  {
+		len = i;
+	  }
+	  else /* s=='-' */
+	  {
+		len = i-1;
+		pStr++;
+	  }
+
+	  for(i=0; i<len/2; i++)
+	  {
+		c = pStr[i];
+		pStr[i]       = pStr[len-1-i];
+		pStr[len-1-i] = c;
+	  }
+	  pStr[len] = 0;
+
+	  if(s == '-')
+	  {
+		pStr--;
+	  }
+	print->print(pStr);
+}
 
 /*******************************************************
 * OBIS parser for D0
@@ -312,65 +385,6 @@ public:
 		this->varHead = var;
 	}
 	
-	void print64(Print* print, int64_t n) {
-		// code copied from: http://www.hlevkin.com/C_progr/long64.c
-		  int i = 0;
-		  int m;
-		  int len;
-		  char c;
-		  char s = '+';
-		char str[21];
-		char *pStr = &str[0];
-
-		 // if(n == LONG_LONG_MIN) // _I64_MIN  for Windows Microsoft compiler
-		  if(n < -9223372036854775807)
-		  {
-		    print->print(F("-9223372036854775808"));
-		    return;
-		  }
-
-		  if( n < 0 )
-		  {
-		    s = '-';
-		    n = - n;
-		    pStr[0]='-';
-		    i++;
-		  }
-
-		  do
-		  {
-		    m = n % (int64_t)10;
-		    pStr[i] = '0'+ m;
-		    n = n / (int64_t)10;
-		    i++;
-		  }
-		  while(n != 0);
-
-		  if(s == '+')
-		  {
-		    len = i;
-		  }
-		  else /* s=='-' */
-		  {
-		    len = i-1;
-		    pStr++;
-		  }
-
-		  for(i=0; i<len/2; i++)
-		  {
-		    c = pStr[i];
-		    pStr[i]       = pStr[len-1-i];
-		    pStr[len-1-i] = c;
-		  }
-		  pStr[len] = 0;
-
-		  if(s == '-')
-		  {
-		    pStr--;
-		  }
-		print->print(pStr);
-	}
-	
 	void logData(Print* print, char separator) {
 		OBISVariable* var = this->varHead;
 		while (var != 0) {
@@ -389,7 +403,7 @@ public:
 				}
 				case VARTYPE_INT64: {
 					if (*(int64_t*)var->ptr >= 0)
-						this->print64(print, *(int64_t*)var->ptr);
+						print64(print, *(int64_t*)var->ptr);
 					break;
 				}
 			}
@@ -522,11 +536,11 @@ public:
 // to query values the master must know this memory layout table!
 
 // electric readings
-#define MOM_PHASE1		0		// 0x0000, length 4
-#define MOM_PHASE2		4		// 0x0004, length 4
-#define MOM_PHASE3		8		// 0x0008, length 4
-#define MOM_TOTAL		12		// 0x000C, length 4
-#define TOTAL_KWH		16		// 0x0010, length 8
+#define MOM_PHASE1			0		// 0x0000, length 4
+#define MOM_PHASE2			4		// 0x0004, length 4
+#define MOM_PHASE3			8		// 0x0008, length 4
+#define MOM_TOTAL			12		// 0x000C, length 4
+#define TOTAL_KWH			16		// 0x0010, length 8
 
 // DHT22 sensors
 #define DHT22_A_TEMP		24		// 0x0018, length 2
@@ -534,10 +548,20 @@ public:
 #define DHT22_B_TEMP		28		// 0x001C, length 2
 #define DHT22_B_HUMID		30		// 0x001E, length 2
 
-#define VAR_TOTAL_SIZE		32		// sum of the above
+// S0 values
+#define S0_A_VALUE			32		// 0x0020, length 8
+#define S0_B_VALUE			40		// 0x0028, length 8
+#define S0_C_VALUE			48		// 0x0030, length 8
+#define S0_D_VALUE			56		// 0x0038, length 8
+// S0 deltas
+#define S0_A_DELTA			64		// 0x0040, length 8
+#define S0_B_DELTA			72		// 0x0048, length 8
+#define S0_C_DELTA			80		// 0x0050, length 8
+#define S0_D_DELTA			88		// 0x0058, length 8
 
-// use new rather than static allocation to avoid warnings about strict aliasing
-// uint8_t* readings = new uint8_t[VAR_TOTAL_SIZE];
+#define VAR_TOTAL_SIZE		96		// sum of the above lengths
+
+// exposed variables as array
 uint8_t readings[VAR_TOTAL_SIZE];
 
 // for calculation of free RAM
@@ -570,6 +594,23 @@ uint32_t lastDHT22poll;
 
 OBISParser obisParser(&Serial);
 
+#ifdef S0_A_PIN
+volatile int8_t s0ACounter;
+volatile uint8_t s0AIncrement;
+#endif
+#ifdef S0_B_PIN
+volatile int8_t s0BCounter;
+volatile uint8_t s0BIncrement;
+#endif
+#ifdef S0_C_PIN
+volatile int8_t s0CCounter;
+volatile uint8_t s0CIncrement;
+#endif
+#ifdef S0_D_PIN
+volatile int8_t s0DCounter;
+volatile uint8_t s0DIncrement;
+#endif
+
 /*******************************************************
 * Routines
 *******************************************************/
@@ -593,19 +634,124 @@ ISR(TIMER2_OVF_vect) {
 	/* Reload the timer */
 	TCNT2 = tcnt2;
 	
-	// TODO query S0 lines
+	// query S0 lines (active low)
+	// Software debouncing works by counting up a counter variable
+	// each iteration while the pin is low (active). If the pin goes high (inactive)
+	// the counter is reset. 
+	// As per definition of the S0 interface an impulse is at least 30 ms
+	// long. We assume that we refer to the debounced impulse, i. e. the
+	// bounces before the impulse are not part of the impulse length.
+	// This means that at soon as a counter reaches 30 it means that the pin
+	// has been active for the specified time and the impulse should be counted.
+	// When an impulse should be counted its increment is increased. The main loop
+	// must add the increment to the actual value counters. This should be done
+	// by disabling interrupts, copying the increment, zeroing the increment,
+	// enabling interrupts, and then only adding the increment to the values
+	// in order to lose as little interrupt cycles as possible (disabling interrupts
+	// can cause lost impulses).
+	// The main loop should have a certain minimum speed to avoid overflow of the
+	// eight bit increments. Worst case assumptions are: impulse duration 30 ms, 
+	// impulse is off for 1 ms. This means that every 31 ms an impulse is counted.
+	// It takes 256 * 31 = 7936 ms to overflow the counter in this scenario which
+	// appears to be enough time for the main loop. In practice, impulses are expected
+	// to be much longer anyway.
+	
+	#ifdef S0_A_PIN
+	// get line state
+	if (digitalRead(S0_A_PIN)) {
+		// pin is inactive, reset counter
+		s0ACounter = 0;
+	} else {
+		// pin is active
+		// test most common case first (performance)
+		if (s0ACounter > 31) {
+			// counter is 32; impulse is counted; do nothing
+		} else
+		if (s0ACounter == 31) {
+			s0AIncrement++;
+			s0ACounter++;
+		} else {
+			s0ACounter++;
+		}
+	}
+	#endif
+	#ifdef S0_B_PIN
+	// get line state
+	if (digitalRead(S0_B_PIN)) {
+		// pin is inactive, reset counter
+		s0BCounter = 0;
+	} else {
+		// pin is active
+		// test most common case first (performance)
+		if (s0BCounter > 31) {
+			// counter is 32; impulse is counted; do nothing
+		} else
+		if (s0BCounter == 31) {
+			s0BIncrement++;
+			s0BCounter++;
+		} else {
+			s0BCounter++;
+		}
+	}
+	#endif
+	#ifdef S0_C_PIN
+	// get line state
+	if (digitalRead(S0_C_PIN)) {
+		// pin is inactive, reset counter
+		s0CCounter = 0;
+	} else {
+		// pin is active
+		// test most common case first (performance)
+		if (s0CCounter > 31) {
+			// counter is 32; impulse is counted; do nothing
+		} else
+		if (s0CCounter == 31) {
+			s0CIncrement++;
+			s0CCounter++;
+		} else {
+			s0CCounter++;
+		}
+	}
+	#endif
+	#ifdef S0_D_PIN
+	// get line state
+	if (digitalRead(S0_D_PIN)) {
+		// pin is inactive, reset counter
+		s0DCounter = 0;
+	} else {
+		// pin is active
+		// test most common case first (performance)
+		if (s0DCounter > 31) {
+			// counter is 32; impulse is counted; do nothing
+		} else
+		if (s0DCounter == 31) {
+			s0DIncrement++;
+			s0DCounter++;
+		} else {
+			s0DCounter++;
+		}
+	}
+	#endif
 }
 
 // Resets the readings to invalid values.
 void resetReadings() {
-	// invalidate reading buffer
-	memset(&readings[0], 0xFF, VAR_TOTAL_SIZE);
+	// invalidate reading buffer for OBIS data
+	memset(&readings[0], 0xFF, TOTAL_KWH + 8);
 	
 	// DHT22 readings have special invalid values (can't use 0xFFFF because -1 may be a valid temperature)
 	*(int16_t*)&readings[DHT22_A_TEMP] = DHT22_INVALID;
 	*(int16_t*)&readings[DHT22_A_HUMID] = DHT22_INVALID;
 	*(int16_t*)&readings[DHT22_B_TEMP] = DHT22_INVALID;
 	*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
+	
+	// do not reset S0 values; these are set from EEPROM at program start
+	
+	// reset S0 deltas
+	*(int64_t*)&readings[S0_A_DELTA] = 0;
+	*(int64_t*)&readings[S0_B_DELTA] = 0;
+	*(int64_t*)&readings[S0_C_DELTA] = 0;
+	*(int64_t*)&readings[S0_D_DELTA] = 0;
 }
 
 /*******************************************************
@@ -621,27 +767,55 @@ void setup()
 	Serial.begin(9600, SERIAL_7E1);
 	
 	// switch on OBIS power for serial IR circuitry
-#ifdef OBIS_IR_POWER_PIN
+	#ifdef OBIS_IR_POWER_PIN
 	pinMode(OBIS_IR_POWER_PIN, OUTPUT);
 	digitalWrite(OBIS_IR_POWER_PIN, HIGH);
-#endif
+	#endif
 
-#ifdef SERIAL_STREAM
+	#ifdef SERIAL_STREAM
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
-#endif
+	#endif
 	
-#ifdef DEBUG_OUTPUT
+	#ifdef DEBUG_OUTPUT
 	// DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
-#endif
+	#endif
+	
+	// initialize S0 lines
+	#ifdef S0_A_PIN
+	pinMode(S0_A_PIN, INPUT);
+	digitalWrite(S0_A_PIN, HIGH);	// enable pullup
+	#endif
+	#ifdef S0_B_PIN
+	pinMode(S0_B_PIN, INPUT);
+	digitalWrite(S0_B_PIN, HIGH);	// enable pullup
+	#endif
+	#ifdef S0_C_PIN
+	pinMode(S0_C_PIN, INPUT);
+	digitalWrite(S0_C_PIN, HIGH);	// enable pullup
+	#endif
+	#ifdef S0_D_PIN
+	pinMode(S0_D_PIN, INPUT);
+	digitalWrite(S0_D_PIN, HIGH);	// enable pullup
+	#endif
 	
 	resetReadings();
-	
+
+	// read S0 values from EEPROM
+	cli();
+	eeprom_read_block(&readings[S0_A_VALUE], (const uint8_t*)0, 8);
+	eeprom_read_block(&readings[S0_B_VALUE], (const uint8_t*)8, 8);
+	eeprom_read_block(&readings[S0_C_VALUE], (const uint8_t*)16, 8);
+	eeprom_read_block(&readings[S0_D_VALUE], (const uint8_t*)32, 8);
+	sei();
+
+
 	DEBUG(print(F("Free RAM: ")));
 	DEBUG(println(freeRam));
 
 	// initialize OBIS parser variables
 	// the parser will log this data in reverse order!
+	// Easymeter Q3D OBIS records
 	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &readings[TOTAL_KWH]);
 	obisParser.addVariable(1, 0, 1, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_TOTAL]);
 	obisParser.addVariable(1, 0, 61, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE3]);
@@ -684,7 +858,7 @@ void setup()
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
-
+	
 	// S0 polling interrupt setup
 
 	// configure interrupt (once per ms)
@@ -769,11 +943,61 @@ void loop()
 
 		lastDHT22poll = millis();
 	}
+	
+	// S0 impulse counters
+	#ifdef S0_A_PIN
+	{
+		cli();	// disable interrupts
+		uint8_t incr = s0AIncrement;
+		s0AIncrement = 0;
+		sei();	// enable interrupts
+		
+		// add increment to values
+		*(uint64_t*)&readings[S0_A_VALUE] += incr;
+		*(uint64_t*)&readings[S0_A_DELTA] += incr;
+	}
+	#endif	
+	#ifdef S0_B_PIN
+	{
+		cli();	// disable interrupts
+		uint8_t incr = s0BIncrement;
+		s0BIncrement = 0;
+		sei();	// enable interrupts
+		
+		// add increment to values
+		*(uint64_t*)&readings[S0_B_VALUE] += incr;
+		*(uint64_t*)&readings[S0_B_DELTA] += incr;
+	}
+	#endif	
+	#ifdef S0_C_PIN
+	{
+		cli();	// disable interrupts
+		uint8_t incr = s0CIncrement;
+		s0CIncrement = 0;
+		sei();	// enable interrupts
+		
+		// add increment to values
+		*(uint64_t*)&readings[S0_C_VALUE] += incr;
+		*(uint64_t*)&readings[S0_C_DELTA] += incr;
+	}
+	#endif	
+	#ifdef S0_D_PIN
+	{
+		cli();	// disable interrupts
+		uint8_t incr = s0DIncrement;
+		s0DIncrement = 0;
+		sei();	// enable interrupts
+		
+		// add increment to values
+		*(uint64_t*)&readings[S0_D_VALUE] += incr;
+		*(uint64_t*)&readings[S0_D_DELTA] += incr;
+	}
+	#endif	
 
 	// log interval reached?
 	if (millis() - lastWriteMs > LOG_INTERVAL_MS) {
 		// determine filename
-		// The log file should roll over every new day. So we create a file name that consists
+		// The log file should roll over at the start of every day. So we create a file name that consists
 		// of the current date. The file should always be created in the root directory (prefix /).
 		char filename[14];
 		DateTime now = RTC.now();
@@ -803,6 +1027,22 @@ void loop()
 			logFile.print(";");
 			#endif
 			obisParser.logData(&logFile, ';');
+			#ifdef S0_A_PIN
+			print64(&logFile, *(int64_t*)&readings[S0_A_VALUE]);
+			logFile.print(";");
+			#endif
+			#ifdef S0_B_PIN
+			print64(&logFile, *(int64_t*)&readings[S0_B_VALUE]);
+			logFile.print(";");
+			#endif
+			#ifdef S0_C_PIN
+			print64(&logFile, *(int64_t*)&readings[S0_C_VALUE]);
+			logFile.print(";");
+			#endif
+			#ifdef S0_D_PIN
+			print64(&logFile, *(int64_t*)&readings[S0_D_VALUE]);
+			logFile.print(";");
+			#endif
 			logFile.println();
 
 			logFile.close();
