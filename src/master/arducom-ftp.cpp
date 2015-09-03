@@ -37,6 +37,7 @@ uint8_t commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 bool continueFile = true;
 bool useChecksum = true;
 bool interactive = true;		// if false (piping input) errors cause immediate exit
+bool allowDelete = false;
 
 std::vector<std::string> pathComponents;
 
@@ -154,6 +155,7 @@ receive:
 			case ARDUCOM_FTP_READ_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": Read error").c_str());		
 			case ARDUCOM_FTP_FILE_NOT_OPEN: throw std::runtime_error((std::string("FTP error ") + numstr + ": File not open").c_str());		
 			case ARDUCOM_FTP_POSITION_INVALID: throw std::runtime_error((std::string("FTP error ") + numstr + ": File seek position invalid").c_str());		
+			case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + numstr + ": Cannot delete this file or folder (LFN?)").c_str());		
 			default: throw std::runtime_error((std::string("FTP error ") + numstr + ": Unknown error").c_str());		
 			}
 		}
@@ -235,6 +237,20 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 		parts.push_back("");	// push dummy
 	}
 	bool found = false;
+	if (parts.at(1) == "allowdelete" || printOnly) {
+		if (parts.size() > 2) {
+			if (parts.at(2) == "on")
+				allowDelete = true;
+			else
+			if (parts.at(2) == "off")
+				allowDelete = false;
+			else
+				throw std::invalid_argument("Expected 'on' or 'off'");
+		}
+		if (print)
+			std::cout << "set allowdelete " << (allowDelete ? "on" : "off") << std::endl;
+		found = true;
+	}
 	if (parts.at(1) == "interactive" || printOnly) {
 		if (parts.size() > 2) {
 			if (parts.at(2) == "on")
@@ -709,6 +725,24 @@ int main(int argc, char *argv[]) {
 
 							// close local file
 							close(fd);
+						}
+					}
+				} else
+				if ((parts.at(0) == "rm") || (parts.at(0) == "del")) {
+					if (parts.size() == 1) {
+						std::cout << "Error: rm and del expect a file name as argument" << std::endl;
+					} else if (parts.size() > 2) {
+						std::cout << "Error: rm and del expect only one argument" << std::endl;
+					} else {
+						if (!allowDelete) {
+							std::cout << "Warning: Deleting files is possibly buggy and can corrupt your SD card!" << std::endl;
+							std::cout << "'Type 'set allowdelete on' if you want to delete anyway." << std::endl;
+						} else {
+							params.clear();
+							// send command to delete the file
+							for (size_t i = 0; i < parts.at(1).length(); i++)
+								params.push_back(parts.at(1)[i]);
+							execute(master, ARDUCOM_FTP_COMMAND_DELETE, params, transport->getDefaultExpectedBytes(), result);
 						}
 					}
 				} else {

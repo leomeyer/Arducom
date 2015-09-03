@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) {
 			
 		if (params.size() > transport->getMaximumCommandSize()) {
 			char numstr[21];
-			sprintf(numstr, "%lu", transport->getMaximumCommandSize());
+			sprintf(numstr, "%zu", transport->getMaximumCommandSize());
 			throw std::invalid_argument((std::string("Command parameter length must not exceed the transport's maximum command size: ") 
 				+ numstr).c_str());
 		}
@@ -524,7 +524,7 @@ int main(int argc, char *argv[]) {
 					if (size % 2 != 0)
 						throw std::invalid_argument("Output size must fit into two byte blocks for output format Int16");
 					for (uint8_t i = 0; i < size; i += 2) {
-						std::cout << ((int)buffer[i] + (buffer[i + 1] << 8));
+						std::cout << ((int16_t)buffer[i] + (int16_t)(buffer[i + 1] << 8));
 						if ((i < size - 2) && (outputSeparator > '\0'))
 							std::cout << outputSeparator;
 					}
@@ -534,7 +534,7 @@ int main(int argc, char *argv[]) {
 					if (size % 4 != 0)
 						throw std::invalid_argument("Output size must fit into four byte blocks for output format Int32");
 					for (uint8_t i = 0; i < size; i += 4) {
-						std::cout << ((int)buffer[i] + (buffer[i + 1] << 8) + (buffer[i + 2] << 16) + (buffer[i + 3] << 24));
+						std::cout << ((int)buffer[i] + (int)(buffer[i + 1] << 8) + (int)(buffer[i + 2] << 16) + (int)(buffer[i + 3] << 24));
 						if ((i < size - 4) && (outputSeparator > '\0'))
 							std::cout << outputSeparator;
 					}
