@@ -47,18 +47,18 @@
 // to around 100 kB. Logging 100 bytes every minute causes a daily data volume of 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 such a file will take about 30 seconds
 // to download using an Arducom FTP transfer.
+// Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
 
 // The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
 // for querying (and operating on) current values as well as having an automated job download daily history
 // using arducom-ftp.
 
-
 // Pin map (for Uno; check whether this works with your board):
 
 // D0 - RX: D0 OBIS input (9600 7E1)
 // D1 - TX: used for programmer, do not use
-// D2: suggested Software Serial RX on Uno
-// D3: suggested Software Serial TX on Uno 
+// D2: suggested Software Serial RX on Uno (debug)
+// D3: suggested Software Serial TX on Uno (debug) 
 // D4 - D7: S0 inputs (attention: 4 is Chip Select for some data logger shields)
 // D8: suggested data pin for DHT22 A
 // D9: suggested data pin for DHT22 B
@@ -70,6 +70,12 @@
 // A4: I2C SDA
 // A5: I2C SCL
 
+// You can also use the HardwareSerial object Serial for OBIS input and debug output at the same time.
+// If you want to listen to the output on a Linux system you have to configure the serial port:
+// $ stty -F /dev/ttyACM0 cs7 parity -parodd
+// You can then listen to the serial output:
+// $ cu -s 9600 -e -l /dev/ttyACM0
+// Use this only for debugging because it slows down operation.
 
 // This example code is in the public domain.
 
@@ -113,9 +119,9 @@ SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 // You cannot use the same Print object for Arducom serial communication
 // (for example, Serial). Instead, use a SoftwareSerial port or another
 // HardwareSerial on Arduinos with more than one UART.
-// Note: This define is for the hello-world test sketch. To debug Arducom,
+// Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-#define DEBUG_OUTPUT		Serial
+// #define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -136,12 +142,16 @@ SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 // DHT22 sensor definitions
 
 #define DHT22_A_PIN			8
-// #define DHT22_B_PIN			9
-#define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
+#define DHT22_B_PIN			9
+#define DHT22_POLL_INTERVAL_MS	3000		// not below 2000 ms (sensor limit)
+// invalid value (set if sensor is not used or there is a sensor problem)
+#define DHT22_INVALID			-9999
 
+// This pin is switched High after program start. It is intended to provide power to a
+// serial data detection circuit (optical transistor or similar) that feeds its output into RX (pin 0).
+// During programming (via USB) the pin has high impedance, meaning that no data will arrive from the
+// external circuitry that could interfere with the flash data being uploaded.
 #define OBIS_IR_POWER_PIN		A2
-
-#define LOG_FILENAME		"/datalog.txt"
 
 #define LOG_INTERVAL_MS		60000
 
@@ -193,7 +203,9 @@ public:
 /*******************************************************
 * OBIS parser for D0
 *******************************************************/
-
+/* This class parses OBIS values from incoming stream data. According to the registered patterns A-F
+* the parsed values are placed in target variables. This class can also write data to a log file. 
+* May not yet work for all OBIS data. */
 class OBISParser {
 public:
 	enum { VARTYPE_BYTE = 0, VARTYPE_INT16, VARTYPE_INT32, VARTYPE_INT64 };
@@ -201,6 +213,7 @@ public:
 private:
 	enum { APOS = 0, BPOS, CPOS, DPOS, EPOS, FPOS, VALPOS };
 	
+	// internal structure for registered variables
 	struct OBISVariable {
 		uint8_t A;
 		uint8_t B;
@@ -218,7 +231,6 @@ private:
 	// current parser state
 	uint8_t parsePos;
 	uint64_t parseVal;
-	uint8_t inDigit;
 	uint8_t A;
 	uint8_t B;
 	uint8_t C;
@@ -227,14 +239,13 @@ private:
 	uint8_t F;
 	// linked list of variables to match
 	OBISVariable* varHead;
-	static const uint8_t FILEBUFFER_SIZE = 64;
+	static const uint8_t FILEBUFFER_SIZE = 2;
 	uint8_t fileBuffer[FILEBUFFER_SIZE];
 	uint8_t bufPos;
 	
 	void startValue() {
 		DEBUG(println(F("OBIS startValue")));
 		this->parseVal = 0;
-		this->inDigit = 0;
 	}
 	
 	void startRecord(void) {
@@ -268,7 +279,7 @@ public:
 		this->varHead = var;
 	}
 	
-	void print64(Print* stream, int64_t n) {
+	void print64(Print* print, int64_t n) {
 		// code copied from: http://www.hlevkin.com/C_progr/long64.c
 		  int i = 0;
 		  int m;
@@ -281,7 +292,7 @@ public:
 		 // if(n == LONG_LONG_MIN) // _I64_MIN  for Windows Microsoft compiler
 		  if(n < -9223372036854775807)
 		  {
-		    stream->print(F("-9223372036854775808"));
+		    print->print(F("-9223372036854775808"));
 		    return;
 		  }
 
@@ -324,145 +335,148 @@ public:
 		  {
 		    pStr--;
 		  }
-		stream->print(pStr);
+		print->print(pStr);
 	}
 	
-	void logData(Print* stream, char separator) {
+	void logData(Print* print, char separator) {
 		OBISVariable* var = this->varHead;
 		while (var != 0) {
 			switch (var->vartype) {
-				case VARTYPE_BYTE: stream->print((int)*(uint8_t*)var->ptr); break;
-				case VARTYPE_INT16: stream->print(*(int16_t*)var->ptr); break;
-				case VARTYPE_INT32: stream->print(*(int32_t*)var->ptr); break;
-				case VARTYPE_INT64: this->print64(stream, *(int64_t*)var->ptr); break;
+				// do not print invalid values (those < 0)
+				case VARTYPE_BYTE: print->print((int)*(uint8_t*)var->ptr); break;
+				case VARTYPE_INT16: {
+					if (*(int16_t*)var->ptr >= 0) 
+						print->print(*(int16_t*)var->ptr);
+					break;
+				}
+				case VARTYPE_INT32: {
+					if (*(int32_t*)var->ptr >= 0)
+						print->print(*(int32_t*)var->ptr);
+					break;
+				}
+				case VARTYPE_INT64: {
+					if (*(int64_t*)var->ptr >= 0)
+						this->print64(print, *(int64_t*)var->ptr);
+					break;
+				}
 			}
-			stream->print(separator);
+			print->print(separator);
 			var = var->next;
 		}
 	}
 
 	void doWork(void) {
-		if (!this->inputStream->available())
-			return;
-		
-		uint8_t c = this->inputStream->read();
-		DEBUG(print(F("c: ")));
-		DEBUG(println(c));
-		
-		this->fileBuffer[this->bufPos++] = c;
-		if (this->bufPos >= FILEBUFFER_SIZE) {
-			SdFile obisFile;
-			if (obisFile.open("/obisraw.txt", O_RDWR | O_CREAT | O_AT_END)) {
-				obisFile.write(this->fileBuffer, FILEBUFFER_SIZE);
-				obisFile.close();
-			}
-			this->bufPos = 0;
-		}
-		
-		if (parsePos == UNDEF) {
-			// ignore everything until line break
-			if (c == 10)
-				this->startRecord();
-		} else
-		if ((c >= '0') && (c <= '9')) {
-			parseVal = parseVal * 10 + (c - '0');
-		} else
-		if (this->parsePos != VALPOS) {
-			// manufacturer ID?
-			if (c == '/') {
-				// ignore until end
-				parsePos = UNDEF;
+		// process all available input
+		while (this->inputStream->available()) {
+			uint8_t c = this->inputStream->read();
+			DEBUG(print(F("c: ")));
+			DEBUG(println(c));
+			
+			if (parsePos == UNDEF) {
+				// ignore everything until line break
+				if (c == 10)
+					this->startRecord();
 			} else
-			// end of field A?
-			if (c == '-') {
-				if (this->parsePos != APOS) {
-					DEBUG(println(F("OBIS Err A")));
+			if ((c >= '0') && (c <= '9')) {
+				parseVal = parseVal * 10 + (c - '0');
+			} else
+			if (this->parsePos != VALPOS) {
+				// manufacturer ID?
+				if (c == '/') {
+					// ignore until end
 					parsePos = UNDEF;
-				} else {
-					this->A = parseVal;
-					this->startValue();
-					this->parsePos = BPOS;
-				}
-			} else
-			// end of field B?
-			if (c == ':') {
-				this->B = parseVal;
-				this->startValue();
-				this->parsePos = CPOS;
-			} else
-			// end of field D?
-			if ((this->parsePos == DPOS) && (c == '.')) {
-				this->D = parseVal;
-				this->startValue();
-				this->parsePos = EPOS;
-			} else
-			// end of field C?
-			if (c == '.') {
-				this->C = parseVal;
-				this->startValue();
-				this->parsePos = DPOS;
-			} else
-			if ((this->parsePos == EPOS) && ((c == '*') || (c == '&'))) {
-				this->E = parseVal;
-				this->startValue();
-				this->parsePos = FPOS;
-			} else
-			if (c == '(') {
-				this->startValue();
-				this->parsePos = VALPOS;
-			}
-		} else {
-			// parsing VALPOS
-			if (c == ')') {
-				// end of value
-				DEBUG(print(F("A: ")));
-				DEBUG(print((int)this->A));
-				DEBUG(print(F(" B: ")));
-				DEBUG(print((int)this->B));
-				DEBUG(print(F(" C: ")));
-				DEBUG(print((int)this->C));
-				DEBUG(print(F(" D: ")));
-				DEBUG(print((int)this->D));
-				DEBUG(print(F(" E: ")));
-				DEBUG(print((int)this->E));
-				DEBUG(print(F(" F: ")));
-				DEBUG(print((int)this->F));
-				DEBUG(print(F(" Value: H: ")));
-				DEBUG(print((uint32_t)(this->parseVal >> 32)));
-				DEBUG(print(F(" L: ")));
-				DEBUG(println((uint32_t)this->parseVal));
-				
-				// try to match variables
-				OBISVariable* var = this->varHead;
-				while (var != 0) {
-					if ((var->A == this->A)
-						&& (var->B == this->B)
-						&& (var->C == this->C)
-						&& (var->D == this->D)
-						&& (var->E == this->E)
-						&& (var->F == this->F)) {
-						// match found
-						switch (var->vartype) {
-							case VARTYPE_BYTE: *(uint8_t*)var->ptr= (uint8_t)this->parseVal; break;
-							case VARTYPE_INT16: *(int16_t*)var->ptr = (int16_t)this->parseVal; break;
-							case VARTYPE_INT32: *(int32_t*)var->ptr = (int32_t)this->parseVal; break;
-							case VARTYPE_INT64: *(int64_t*)var->ptr = (int64_t)this->parseVal; break;
-							default: DEBUG(println(F("vartype error")));
-						}
+				} else
+				// end of field A?
+				if (c == '-') {
+					if (this->parsePos != APOS) {
+						DEBUG(println(F("OBIS Err A")));
+						parsePos = UNDEF;
+					} else {
+						this->A = parseVal;
+						this->startValue();
+						this->parsePos = BPOS;
 					}
-					var = var->next;
+				} else
+				// end of field B?
+				if (c == ':') {
+					this->B = parseVal;
+					this->startValue();
+					this->parsePos = CPOS;
+				} else
+				// end of field D?
+				if ((this->parsePos == DPOS) && (c == '.')) {
+					this->D = parseVal;
+					this->startValue();
+					this->parsePos = EPOS;
+				} else
+				// end of field C?
+				if (c == '.') {
+					this->C = parseVal;
+					this->startValue();
+					this->parsePos = DPOS;
+				} else
+				if ((this->parsePos == EPOS) && ((c == '*') || (c == '&'))) {
+					this->E = parseVal;
+					this->startValue();
+					this->parsePos = FPOS;
+				} else
+				if (c == '(') {
+					this->startValue();
+					this->parsePos = VALPOS;
 				}
-				// parse up to line terminator
-				this->parsePos = UNDEF;
-			} else
-			// unexpected EOL?
-			if (c == 10) {
-				DEBUG(println(F("Unexpected EOL")));
-				this->startRecord();
 			} else {
-				// ignore all non-digits
-			}
-		}
+				// parsing VALPOS
+				if (c == ')') {
+					// end of value
+					DEBUG(print(F("A: ")));
+					DEBUG(print((int)this->A));
+					DEBUG(print(F(" B: ")));
+					DEBUG(print((int)this->B));
+					DEBUG(print(F(" C: ")));
+					DEBUG(print((int)this->C));
+					DEBUG(print(F(" D: ")));
+					DEBUG(print((int)this->D));
+					DEBUG(print(F(" E: ")));
+					DEBUG(print((int)this->E));
+					DEBUG(print(F(" F: ")));
+					DEBUG(print((int)this->F));
+					DEBUG(print(F(" Value: H: ")));
+					DEBUG(print((uint32_t)(this->parseVal >> 32)));
+					DEBUG(print(F(" L: ")));
+					DEBUG(println((uint32_t)this->parseVal));
+					
+					// try to match variables
+					OBISVariable* var = this->varHead;
+					while (var != 0) {
+						if ((var->A == this->A)
+							&& (var->B == this->B)
+							&& (var->C == this->C)
+							&& (var->D == this->D)
+							&& (var->E == this->E)
+							&& (var->F == this->F)) {
+							// match found
+							switch (var->vartype) {
+								case VARTYPE_BYTE: *(uint8_t*)var->ptr= (uint8_t)this->parseVal; break;
+								case VARTYPE_INT16: *(int16_t*)var->ptr = (int16_t)this->parseVal; break;
+								case VARTYPE_INT32: *(int32_t*)var->ptr = (int32_t)this->parseVal; break;
+								case VARTYPE_INT64: *(int64_t*)var->ptr = (int64_t)this->parseVal; break;
+								default: DEBUG(println(F("vartype error")));
+							}
+						}
+						var = var->next;
+					}
+					// parse up to line terminator
+					this->parsePos = UNDEF;
+				} else
+				// unexpected EOL?
+				if (c == 10) {
+					DEBUG(println(F("Unexpected EOL")));
+					this->startRecord();
+				} else {
+					// ignore all non-digits
+				}
+			}	// parsing VALPOS
+		}	// while (available)
 	}
 };
 
@@ -500,23 +514,25 @@ dht DHT;
 uint32_t lastDHT22poll;
 
 // RAM variables to expose via Arducom
-volatile int16_t interruptCalls;
+// expose them as a block to save Arducom commands which consume RAM
+// this means that the master must know this memory layout table!
 
-// electric meter readings
-int64_t totalKWh;
-int32_t momPhase1;
-int32_t momPhase2;
-int32_t momPhase3;
-int32_t momTotal;
+// electric readings
+#define MOM_PHASE1		0		// 0x0000, length 4
+#define MOM_PHASE2		4		// 0x0004, length 4
+#define MOM_PHASE3		8		// 0x0008, length 4
+#define MOM_TOTAL			12		// 0x000C, length 4
+#define TOTAL_KWH			16		// 0x0010, length 8
 
-#ifdef DHT22_A_PIN
-int16_t dht22_A_temp;
-int16_t dht22_A_humid;
-#endif
-#ifdef DHT22_B_PIN
-int16_t dht22_B_temp;
-int16_t dht22_B_humid;
-#endif
+// DHT22 sensors
+#define DHT22_A_TEMP		24		// 0x0018, length 2
+#define DHT22_A_HUMID		26		// 0x001A, length 2
+#define DHT22_B_TEMP		28		// 0x001C, length 2
+#define DHT22_B_HUMID		30		// 0x001E, length 2
+
+#define VAR_TOTAL_SIZE		32		// sum of the above
+
+uint8_t* readings = new uint8_t[VAR_TOTAL_SIZE];
 
 OBISParser obisParser(&Serial);
 
@@ -542,8 +558,18 @@ void dateTime(uint16_t* date, uint16_t* time) {
 ISR(TIMER2_OVF_vect) {
 	/* Reload the timer */
 	TCNT2 = tcnt2;
+}
+
+// Resets the readings to invalid values.
+void resetReadings() {
+	// invalidate reading buffer
+	memset(&readings[0], 0xFF, VAR_TOTAL_SIZE);
 	
-	interruptCalls++;
+	// DHT22 readings have special invalid values (can't use 0xFFFF because -1 may be a valid temperature)
+	*(int16_t*)&readings[DHT22_A_TEMP] = DHT22_INVALID;
+	*(int16_t*)&readings[DHT22_A_HUMID] = DHT22_INVALID;
+	*(int16_t*)&readings[DHT22_B_TEMP] = DHT22_INVALID;
+	*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
 }
 
 /*******************************************************
@@ -573,43 +599,33 @@ void setup()
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 #endif
 	
-	DEBUG(print(F("Free RAM: ")));
-	DEBUG(println(freeRam));	
+	resetReadings();
 	
+	DEBUG(print(F("Free RAM: ")));
+	DEBUG(println(freeRam));
+
 	// initialize OBIS parser variables
 	// the parser will log this data in reverse order!
-	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &totalKWh);
-	obisParser.addVariable(1, 0, 1, 7, 255, 255, OBISParser::VARTYPE_INT32, &momTotal);
-	obisParser.addVariable(1, 0, 61, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase3);
-	obisParser.addVariable(1, 0, 41, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase2);
-	obisParser.addVariable(1, 0, 21, 7, 255, 255, OBISParser::VARTYPE_INT32, &momPhase1);
+	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &readings[TOTAL_KWH]);
+	obisParser.addVariable(1, 0, 1, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_TOTAL]);
+	obisParser.addVariable(1, 0, 61, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE3]);
+	obisParser.addVariable(1, 0, 41, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE2]);
+	obisParser.addVariable(1, 0, 21, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE1]);
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand(freeRam, "DataLogger"));
-/*
+
 	// EEPROM access commands
-	arducom.addCommand(new ArducomReadEEPROMByte(1));
-	arducom.addCommand(new ArducomWriteEEPROMByte(2));
-	arducom.addCommand(new ArducomReadEEPROMInt16(3));
-	arducom.addCommand(new ArducomWriteEEPROMInt16(4));
-	arducom.addCommand(new ArducomReadEEPROMInt32(5));
-	arducom.addCommand(new ArducomWriteEEPROMInt32(6));
-	arducom.addCommand(new ArducomReadEEPROMInt64(7));
-	arducom.addCommand(new ArducomWriteEEPROMInt64(8));
+	// due to RAM constraints we have to expose the whole EEPROM as a block
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
-*/	
+
 	// expose variables
-//	arducom.addCommand(new ArducomReadInt16(11, (int16_t*)&interruptCalls));
-	
-	// meter readings
-	arducom.addCommand(new ArducomReadInt64(25, &totalKWh));
-	arducom.addCommand(new ArducomReadInt32(24, &momTotal));
-	arducom.addCommand(new ArducomReadInt32(23, &momPhase3));
-	arducom.addCommand(new ArducomReadInt32(22, &momPhase2));
-	arducom.addCommand(new ArducomReadInt32(21, &momPhase1));
-	
+	// due to RAM constraints we have to expose the whole variable RAM as a block
+	// RAM is read-only
+	arducom.addCommand(new ArducomReadBlock(20, &readings[0]));
+
 	// connect to RTC
 	Wire.begin();
 	if (!RTC.begin()) {
@@ -632,22 +648,6 @@ void setup()
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
-
-	#ifdef DHT22_A_PIN
-	dht22_A_temp = -9999;
-	dht22_A_humid = -9999;
-	// expose DHT sensor variables
-	arducom.addCommand(new ArducomReadInt16(12, &dht22_A_temp));
-	arducom.addCommand(new ArducomReadInt16(13, &dht22_A_humid));
-	#endif
-	
-	#ifdef DHT22_B_PIN
-	dht22_A_temp = -9999;
-	dht22_A_humid = -9999;
-	// expose DHT sensor variables
-	arducom.addCommand(new ArducomReadInt16(14, &dht22_B_temp));
-	arducom.addCommand(new ArducomReadInt16(15, &dht22_B_humid));
-	#endif
 
 	// S0 polling interrupt setup
 
@@ -699,6 +699,7 @@ void loop()
 		DEBUG(println(code));
 	}
 	
+	// let the OBIS parser handle incoming data from the electricity meter
 	obisParser.doWork();
 
 	// DHT22
@@ -709,8 +710,11 @@ void loop()
 		{
 			int chk = DHT.read22(DHT22_A_PIN);
 			if (chk == DHTLIB_OK) {
-				dht22_A_humid = DHT.humidity;
-				dht22_A_temp = DHT.temperature;
+				*(int16_t*)&readings[DHT22_A_HUMID] = DHT.humidity;
+				*(int16_t*)&readings[DHT22_A_TEMP] = DHT.temperature;
+			} else {
+				*(int16_t*)&readings[DHT22_A_HUMID] = DHT22_INVALID;
+				*(int16_t*)&readings[DHT22_A_TEMP] = DHT22_INVALID;
 			}
 		}
 		#endif
@@ -718,8 +722,11 @@ void loop()
 		{
 			int chk = DHT.read22(DHT22_B_PIN);
 			if (chk == DHTLIB_OK) {
-				dht22_B_humid = DHT.humidity;
-				dht22_B_temp = DHT.temperature;
+				*(uint16_t*)&readings[DHT22_B_HUMID] = DHT.humidity;
+				*(uint16_t*)&readings[DHT22_B_TEMP] = DHT.temperature;
+			} else {
+				*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
+				*(int16_t*)&readings[DHT22_B_TEMP] = DHT22_INVALID;
 			}
 		}
 		#endif
@@ -727,23 +734,36 @@ void loop()
 		lastDHT22poll = millis();
 	}
 
-	// write to a file every few seconds
+	// log interval reached?
 	if (millis() - lastWriteMs > LOG_INTERVAL_MS) {
-		if (logFile.open(LOG_FILENAME, O_RDWR | O_CREAT | O_AT_END)) {
+		// determine filename
+		// The log file should roll over every new day. So we create a file name that consists
+		// of the current date. The file should always be created in the root directory (prefix /).
+		char filename[14];
+		DateTime now = RTC.now();
+		sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
+		
+		if (logFile.open(filename, O_RDWR | O_CREAT | O_AT_END)) {
 			// write timestamp
 			DateTime now = RTC.now();
 			logFile.print(now.unixtime());
 			logFile.print(";");
+			
+			// print DHT22 values (invalid readings are left empty)
 			#ifdef DHT22_A_PIN
-			logFile.print(dht22_A_temp);
+			if (*(int16_t*)&readings[DHT22_A_TEMP] != DHT22_INVALID)
+				logFile.print(*(int16_t*)&readings[DHT22_A_TEMP]);
 			logFile.print(";");
-			logFile.print(dht22_A_humid);
+			if (*(int16_t*)&readings[DHT22_A_HUMID] != DHT22_INVALID)
+				logFile.print(*(int16_t*)&readings[DHT22_A_HUMID]);
 			logFile.print(";");
 			#endif
 			#ifdef DHT22_B_PIN
-			logFile.print(dht22_B_temp);
+			if (*(int16_t*)&readings[DHT22_B_TEMP] != DHT22_INVALID)
+				logFile.print(*(int16_t*)&readings[DHT22_B_TEMP]);
 			logFile.print(";");
-			logFile.print(dht22_B_humid);
+			if (*(int16_t*)&readings[DHT22_B_HUMID] != DHT22_INVALID)
+				logFile.print(*(int16_t*)&readings[DHT22_B_HUMID]);
 			logFile.print(";");
 			#endif
 			obisParser.logData(&logFile, ';');
@@ -751,8 +771,10 @@ void loop()
 
 			logFile.close();
 			lastWriteMs = millis();
-			interruptCalls = 0;
 		}
+
+		// Periodically reset readings. This allows to detect sensor or communication failures.
+		resetReadings();
 	}
 }
 
