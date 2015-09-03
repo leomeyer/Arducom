@@ -4,13 +4,15 @@
 // Example data logger using an SD card and a Real Time Clock DS1307
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
+// Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
 
-// The data logger is intended to be connected to a host (e. g. Raspberry Pi) via USB.
-// If the host is always on there is no need for a separate power supply.
-// If the host is powered on intermittently there must be a dedicated supply for the Arduino.
-// If the data logger does not use a serial input (D0) port, data (real time and stored)
-// can be read via the serial port. If the serial input is used for sensor data
-// communication can take place over I2C.
+// The data logger is intended to be connected to a host (e. g. Raspberry Pi) via serial port or I2C.
+// It can also be powered over USB.
+// The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
+// for querying current values as well as having an automated job download daily history using arducom-ftp.
+
+// If the data logger does not use a serial input (D0) port for OBIS input, data (real time and stored)
+// can be read via the serial port. If the serial input is used for sensor data communication can be made over I2C.
 
 // This data logger supports:
 // [PLANNED - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM]
@@ -29,7 +31,7 @@
 
 // The D0 input is a serial input used by electronic power meters. Data is transmitted via an IR LED.
 // As the Arduino should still be programmable via USB cable, D0 serial data must be disabled during
-// programming. It is easiest to switch on the receiving IR transistor's supply voltage on program start.
+// programming. The simplest solution is to switch on the receiving IR transistor's supply voltage on program start.
 // Also, the UART must be configured to support the serial protocol (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
 // The D0 port needs no persistent storage as the meter will always transmit total values.
 // The following circuit can be used to detect D0 data:
@@ -38,20 +40,24 @@
 
 // Parsed D0 records are matched against added variable definitions and stored in the respective variables.
 
-// Timestamped sensor readings are stored on the SD card in a configurable interval. It is recommended to
-// choose this interval wisely. Internal sensor data that is exposed to the host is also updated with
-// respect to this interval to avoid the need for keeping a time reference on the host.
-// Sensor data is provided as absolute values as well as deltas within the last completed interval.
+// To query and set the RTC use the following:
+// Assuming I2C, on Linux you can display the current date using the following command:
+//  date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
+// To set the current date and time, use:
+//  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
 
+// Timestamped sensor readings are stored on the SD card in a configurable interval.
 // SD card log files should be rolled over when they become large. Generally it is advisable to keep these files
 // to around 100 kB. Logging 100 bytes every minute causes a daily data volume of 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 such a file will take about 30 seconds
 // to download using an Arducom FTP transfer.
 // Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
 
-// The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
-// for querying (and operating on) current values as well as having an automated job download daily history
-// using arducom-ftp.
+// The sensor values are invalidated after the log interval. If you query after this point and the value has not been
+// set yet, you will read an invalid value. What exactly this invalid value is depends on the type of sensor.
+// For OBIS data, the invalid value is -1. For DHT22 data, the invalid value is -9999.
+// If you read an invalid value you should retry after a few seconds (depending on the sensor update interval).
+// If the value is still invalid you can assume a defective sensor or broken communication.
 
 // Pin map (for Uno; check whether this works with your board):
 
@@ -76,6 +82,34 @@
 // You can then listen to the serial output:
 // $ cu -s 9600 -e -l /dev/ttyACM0
 // Use this only for debugging because it slows down operation.
+
+// This sketch probably fails to build on a Raspberry Pi itself due to old Arduino library versions. 
+// It is recommended to build and upload it on an Ubuntu machine with the latest Arduino version. You can also
+// compile on Ubuntu, copy the hex file to a Raspberry and upload it from there; in this case you will have
+// to fix the /usr/share/arduino/Arduino.mk file by adding an upload target that won't perform a build first:
+
+// < insert below target raw_upload >
+//
+// upload_hex:     reset raw_upload_hex
+//
+// raw_upload_hex:
+//                $(AVRDUDE) $(AVRDUDE_COM_OPTS) $(AVRDUDE_ARD_OPTS) \
+//                        -U flash:w:$(TARGET_HEX):
+// < end of insertion >
+
+// As usual with makefiles, take special care of the indentation and whitespace.
+// A fixed Arduino.mk file is included with this sketch.
+
+// To query the sensor values you can use the arducom tool. Sensor data is exposed via command 20. To query
+// a sensor's data you have to know the sensor's memory address and the number of bytes. 
+// For details see section "Variables". Example:
+// #define TOTAL_KWH		16		// 0x0010, length 8
+// This define specifies that the total kilowatthours of the electric meter are an 8 byte value stored at offset 16.
+// To query this value, assuming I2C, use the following command:
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 20 -p 100008 -o Int64
+// This sends command 20 to the I2C device at address 5 on I2c bus 1 with a delay of 10 ms and 5 retries.
+// Command parameters are three bytes: a two byte offset (lower byte first), and a length byte.
+// The output will be formatted as a 64 bit integer. If you want to know what's going on under the hood, use -v.
 
 // This example code is in the public domain.
 
@@ -112,7 +146,7 @@
 // If you use software serial output for debugging, specify its pins here.
 #define SOFTWARESERIAL_RX		2
 #define SOFTWARESERIAL_TX		3
-SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
+// SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -140,7 +174,6 @@ SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 #endif
 
 // DHT22 sensor definitions
-
 #define DHT22_A_PIN			8
 #define DHT22_B_PIN			9
 #define DHT22_POLL_INTERVAL_MS	3000		// not below 2000 ms (sensor limit)
@@ -484,10 +517,32 @@ public:
 * Variables
 *******************************************************/
 
+// RAM variables to expose via Arducom
+// expose them as a block to save Arducom commands which consume RAM
+// to query values the master must know this memory layout table!
+
+// electric readings
+#define MOM_PHASE1		0		// 0x0000, length 4
+#define MOM_PHASE2		4		// 0x0004, length 4
+#define MOM_PHASE3		8		// 0x0008, length 4
+#define MOM_TOTAL		12		// 0x000C, length 4
+#define TOTAL_KWH		16		// 0x0010, length 8
+
+// DHT22 sensors
+#define DHT22_A_TEMP		24		// 0x0018, length 2
+#define DHT22_A_HUMID		26		// 0x001A, length 2
+#define DHT22_B_TEMP		28		// 0x001C, length 2
+#define DHT22_B_HUMID		30		// 0x001E, length 2
+
+#define VAR_TOTAL_SIZE		32		// sum of the above
+
+// use new rather than static allocation to avoid warnings about strict aliasing
+// uint8_t* readings = new uint8_t[VAR_TOTAL_SIZE];
+uint8_t readings[VAR_TOTAL_SIZE];
+
 // for calculation of free RAM
-extern char *__brkval;
-extern char __bss_end;
-	
+extern int __heap_start, *__brkval; 
+  
 /* Timer2 reload value, globally available */
 unsigned int tcnt2;
 
@@ -513,27 +568,6 @@ uint32_t lastWriteMs;
 dht DHT;
 uint32_t lastDHT22poll;
 
-// RAM variables to expose via Arducom
-// expose them as a block to save Arducom commands which consume RAM
-// this means that the master must know this memory layout table!
-
-// electric readings
-#define MOM_PHASE1		0		// 0x0000, length 4
-#define MOM_PHASE2		4		// 0x0004, length 4
-#define MOM_PHASE3		8		// 0x0008, length 4
-#define MOM_TOTAL			12		// 0x000C, length 4
-#define TOTAL_KWH			16		// 0x0010, length 8
-
-// DHT22 sensors
-#define DHT22_A_TEMP		24		// 0x0018, length 2
-#define DHT22_A_HUMID		26		// 0x001A, length 2
-#define DHT22_B_TEMP		28		// 0x001C, length 2
-#define DHT22_B_HUMID		30		// 0x001E, length 2
-
-#define VAR_TOTAL_SIZE		32		// sum of the above
-
-uint8_t* readings = new uint8_t[VAR_TOTAL_SIZE];
-
 OBISParser obisParser(&Serial);
 
 /*******************************************************
@@ -558,6 +592,8 @@ void dateTime(uint16_t* date, uint16_t* time) {
 ISR(TIMER2_OVF_vect) {
 	/* Reload the timer */
 	TCNT2 = tcnt2;
+	
+	// TODO query S0 lines
 }
 
 // Resets the readings to invalid values.
@@ -577,9 +613,9 @@ void resetReadings() {
 *******************************************************/
 
 void setup()
-{
-	char top;
-	uint16_t freeRam = __brkval ? &top - __brkval : &top - &__bss_end;
+{	
+	int v; 	
+	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 	
 	// initialize serial port for OBIS data
 	Serial.begin(9600, SERIAL_7E1);
@@ -614,7 +650,7 @@ void setup()
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
-	arducom.addCommand(new ArducomVersionCommand(freeRam, "DataLogger"));
+	arducom.addCommand(new ArducomVersionCommand(freeRam, "Logger"));
 
 	// EEPROM access commands
 	// due to RAM constraints we have to expose the whole EEPROM as a block
@@ -631,7 +667,7 @@ void setup()
 	if (!RTC.begin()) {
 		DEBUG(println(F("RTC not functional")));
 	} else {
-		// register example RTC commands
+		// register RTC commands
 		// Assuming I2C, on Linux you can display the current date using the following command:
 		//  date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
 		// To set the current date and time, use:

@@ -192,13 +192,14 @@ protected:
 class ArducomVersionCommand: public ArducomCommand {
 public:
 	/** Initialize the command with a null-terminated data string. */
-	ArducomVersionCommand(uint16_t freeRam, const char* data) : ArducomCommand(0) {
+	ArducomVersionCommand(int16_t freeRam, const char* data) : ArducomCommand(0) {
+		this->freeRam = freeRam;
 		this->data = data;
 	}
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
-	uint16_t freeRam;
+	int16_t freeRam;
 	const char *data;
 };
 
