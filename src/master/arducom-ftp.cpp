@@ -540,6 +540,30 @@ int main(int argc, char *argv[]) {
 						int hour = fatTime >> 11;
 						int minute = (fatTime >> 5) & 0X3F;
 						int second = 2*(fatTime & 0X1F);
+						std::string timezoneName = "UTC";
+						
+						// convert time to UTC timestamp
+						struct tm utc_tm;
+						utc_tm.tm_year = year;
+						utc_tm.tm_mon = month;
+						utc_tm.tm_mday = day;
+						utc_tm.tm_hour = hour;
+						utc_tm.tm_min = minute;
+						utc_tm.tm_sec = second;
+						utc_tm.tm_isdst = 0;
+						
+						time_t utc_time = mktime(&utc_tm);
+						if (utc_time >= 0) {
+							// convert to local time
+							struct tm local_tm = *gmtime(&utc_time);
+							year = local_tm.tm_year;
+							month = local_tm.tm_mon;
+							day = local_tm.tm_mday;
+							hour = local_tm.tm_hour;
+							minute = local_tm.tm_min;
+							second = local_tm.tm_sec;
+							timezoneName = "local";
+						}
 						
 						std::cout << "    " << std::setfill('0') << std::setw(4) << year;
 						std::cout <<    "-" << std::setfill('0') << std::setw(2) << month;
@@ -547,7 +571,7 @@ int main(int argc, char *argv[]) {
 						std::cout <<    " " << std::setfill('0') << std::setw(2) << hour;
 						std::cout <<    ":" << std::setfill('0') << std::setw(2) << minute;
 						std::cout <<    ":" << std::setfill('0') << std::setw(2) << second;
-						std::cout << std::endl;
+						std::cout << " " << timezoneName << std::endl;
 						
 						it++;
 					}
