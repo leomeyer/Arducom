@@ -1,65 +1,103 @@
 // Arducom based data logger
 // by Leo Meyer <leomeyer@gmx.de>
 
-// Example data logger using an SD card and a Real Time Clock DS1307
+// Data logger using an SD card and a Real Time Clock DS1307
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
 // Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
-
-// The data logger is intended to be connected to a host (e. g. Raspberry Pi) via serial port or I2C.
+//
+//
+// ********* Description **********
+//
+// This data logger can be used standalone or connected to a host (e. g. Raspberry Pi) via serial port or I2C.
 // It can also be powered over USB.
 // The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
-// for querying current values as well as having an automated job download daily history using arducom-ftp.
-
-// If the data logger does not use a serial input (D0) port for OBIS input, data (real time and stored)
-// can be read via the serial port. If the serial input is used for sensor data communication can be made over I2C.
-
+// for querying current values as well as having an automated job download history data.
+//
+// All readings are accessible via Arducom as a memory block (command 20). See "Variables" below for details.
+// The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
+// 
 // This data logger supports:
-// [PLANNED - up to four S0 lines (digital pins 4 - 7), counting 64 bit values stored in EEPROM]
-// - one D0 input (requires the RX pin and one digital output for the optical transistor supply voltage)
-// - up to two DHT22 temperature/humidity sensors (suggested data pins are 2 and 3)
+// - up to four S0 lines (digital pins 4 - 7), counting impulses as 64 bit values stored in EEPROM
+// - one D0 OBIS data input (requires the RX pin and one output for the optical transistor supply voltage)
+// - up to two DHT22 temperature/humidity sensors
 // [PLANNED - up to two analog values (analog pins A0 - A1)]
-
-// [ PLANNED
-// The S0 lines are queried once a ms using software debouncing.
+//
+// ********* S0 **********
+//
+// The S0 lines are queried once a millisecond using software debouncing using the timer 2.
 // The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
 // Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
-// Each detected S0 impulse increments its RAM variable by 1. 
-// The S0 EEPROM values can be adjusted ("primed") via arducom to set the current meter readings (make sure to 
+// S0 EEPROM range starts at 0 (eight bytes S0_A, eight bytes S0_B, eight bytes S0_C, eight bytes S0_D).
+// The S0 EEPROM values can be adjusted ("primed") via Arducom to set the current meter readings (make sure to 
 // take the impulse factor into consideration).
-// ]
-
-// The D0 input is a serial input used by electronic power meters. Data is transmitted via an IR LED.
-// As the Arduino should still be programmable via USB cable, D0 serial data must be disabled during
+// Each detected S0 impulse increments its RAM variable by 1. These variables are written to the log file.
+// There are also delta RAM variables that are reset after each log interval. These delta variables are of type uint16_t
+// which allows a log interval of 65535 imp / 32 imp/s = 2114 seconds maximum before overflow
+// at a presumed worst case impulse duration of 30 ms with 1 ms pause.
+// After each log interval the delta values are copied to the last values storage. These values represent the
+// accumulated impulses during the log interval and can be interpreted as the momentaneous value with respect to the
+// log interval.
+// EEPROM storage [TODO]
+// 
+// ********* D0 **********
+//
+// The D0 input is a serial input used by electronic power meters and other measurement devices.
+// As the Arduino should still be programmable via USB cable, D0 serial data input must be disabled during
 // programming. The simplest solution is to switch on the receiving IR transistor's supply voltage on program start.
 // Also, the UART must be configured to support the serial protocol (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
-// The D0 port needs no persistent storage as the meter will always transmit total values.
-// The following circuit can be used to detect D0 data:
+// The D0 input does not require persistent storage as the meter will always transmit total values.
+// The following circuit can be used to detect D0 data that is transmitted via an IR LED:
 
 // [...]
 
 // Parsed D0 records are matched against added variable definitions and stored in the respective variables.
-
+//
+// If the data logger does not use a serial input (D0) port for OBIS input, data (real time and stored)
+// can be read via Arducom over the serial port. If the serial input is used for D0 Arducom communication 
+// can be made over I2C.
+//
+// ********* RTC **********
+//
+// This program exposes a Real Time Clock DS1307 via Arducom. It is also used internally for log file names
+// and timestamping records.
 // To query and set the RTC use the following:
 // Assuming I2C, on Linux you can display the current date using the following command:
 //  date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
 // To set the current date and time, use:
 //  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
+//
+// The time interface uses UTC timestamps (for ease of use with the Linux tools).
+// Internally the RTC also runs on UTC time. To correcly determine date rollovers for log files
+// you need to specify a timezone offset value to convert between UTC and local time.
+// The timezone offset is stored in EEPROM as an int16_t at offset 32 (0x20). It needs to be changed if you want
+// to move the device to a different timezone, or if you want to compensate for daylight saving time changes.
+// You can read or adjust the timezone offset using the Arducom EEPROM read and write block commands.
+// The log files will contain UTC timestamps, however.
 
+// ********* Logging **********
+//
 // Timestamped sensor readings are stored on the SD card in a configurable interval.
 // SD card log files should be rolled over when they become large. Generally it is advisable to keep these files
 // to around 100 kB. Logging 100 bytes every minute causes a daily data volume of 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 such a file will take about 30 seconds
 // to download using an Arducom FTP transfer.
 // Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
+// To correctly determine the day the TIMEZONE_OFFSET_SECONDS is added to the RTC time (which is UTC).
+// Data that cannot be reliably timestamped (due to RTC or I2C problems) is appended to the file /fallback.log.
 
-// The sensor values are invalidated after the log interval. If you query after this point and the value has not been
-// set yet, you will read an invalid value. What exactly this invalid value is depends on the type of sensor.
-// For OBIS data, the invalid value is -1. For DHT22 data, the invalid value is -9999.
+// ********* Validation **********
+//
+// The sensor values, except S0 impulse counters, are invalidated after the log interval.
+// If you query after this point and the value has not been re-set yet, you will read an invalid value. 
+// What exactly this invalid value is depends on the type of sensor.
+// For OBIS (D0) data, the invalid value is -1. For DHT22 data, the invalid value is -9999.
 // If you read an invalid value you should retry after a few seconds (depending on the sensor update interval).
 // If the value is still invalid you can assume a defective sensor or broken communication.
 
-// Pin map (for Uno; check whether this works with your board):
+// ********* GPIO pin map **********
+//
+// Pin map for Uno; check whether this works with your board:
 
 // D0 - RX: D0 OBIS input (9600 7E1)
 // D1 - TX: used for programmer, do not use
@@ -76,6 +114,8 @@
 // A4: I2C SDA
 // A5: I2C SCL
 
+// ********* Debug output **********
+//
 // You can also use the HardwareSerial object Serial for OBIS input and debug output at the same time.
 // If you want to listen to the output on a Linux system you have to configure the serial port:
 // $ stty -F /dev/ttyACM0 cs7 parity -parodd
@@ -83,10 +123,13 @@
 // $ cu -s 9600 -e -l /dev/ttyACM0
 // Use this only for debugging because it slows down operation.
 
+// ********* Building **********
+//
 // This sketch probably fails to build on a Raspberry Pi itself due to old Arduino library versions. 
-// It is recommended to build and upload it on an Ubuntu machine with the latest Arduino version. You can also
-// compile on Ubuntu, copy the hex file to a Raspberry and upload it from there; in this case you will have
-// to fix the /usr/share/arduino/Arduino.mk file by adding an upload target that won't perform a build first:
+// It is recommended to build and upload it on an Ubuntu machine with the latest Arduino version
+// (1.6.5 at the time of writing). You can also compile on Ubuntu, copy the hex file to a Raspberry
+// and upload it from there; in this case you will have to fix the file
+//  /usr/share/arduino/Arduino.mk by adding an upload target that won't perform a build first:
 
 // < insert below target raw_upload >
 /*
@@ -101,6 +144,8 @@ raw_upload_hex:
 // As usual with makefiles, take special care of the indentation and whitespace.
 // A fixed Arduino.mk file is included with this sketch.
 
+// ********* Transferring data **********
+//
 // To query the sensor values you can use the arducom tool. Sensor data is exposed via command 20. To query
 // a sensor's data you have to know the sensor's memory address and the number of bytes. 
 // For details see section "Variables". Example:
@@ -111,13 +156,55 @@ raw_upload_hex:
 // This sends command 20 to the I2C device at address 5 on I2c bus 1 with a delay of 10 ms and 5 retries.
 // Command parameters are three bytes: a two byte offset (lower byte first), and a length byte.
 // The output will be formatted as a 64 bit integer. If you want to know what's going on under the hood, use -v.
-
-// This example code is in the public domain.
+//
+// ********* EEPROM layout *********
+// 
+// The EEPROM can be accessed using the Arducom commands 9 (read) and 10 (write).
+// To read eight bytes at offset 0x08, use the following command (assume I2C):
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 9 -p 080008 -o Int64
+// To set the timezone offset at position 0x20 to 7200 (two hours), use the following command (assume I2C):
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
+// 
+// EEPROM map:
+// 0 - 7   (0x00), length 8: S0_A counter
+// 8 - 15  (0x08), length 8: S0_B counter
+// 16 - 23 (0x10), length 8: S0_C counter
+// 23 - 31 (0x18), length 8: S0_D counter
+// 32 - 33 (0x20), length 2: local timezone offset in seconds
+// 
+// ********* Watchdog *********
+// 
+// Execution of this program can be monitored by the Atmega watchdog so that a reset is performed
+// when the program appears to hang (due to I2C problems, SD card reading failures etc.)
+// However, this can cause an endless reboot with older versions of the Arduino Optiboot boot loader.
+// Therefore the watchdog is disabled by default. To enable it define the ENABLE_WATCHDOG macro.
+// It is recommended to set the watchdog timer rather high, for example 4 or 8 seconds (you must use
+// the predefined timer constants WDTO_x for this). 
+// Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 4040
+// A software reset using the watchdog can be done by setting bit 7 of mask and flags of the Arducom version command 0: 
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 8080
+// As this is an Arducom function it will do the watchdog reset regardless of the ENABLE_WATCHDOG define.
+// 
+// This code is in the public domain.
 
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 
 #include <SPI.h>
 #include <SoftwareSerial.h>
+
+// use improved WSWire library to reduce I2C related freezes related to DS1307
+// https://github.com/steamfire/WSWireLib
+#include <WSWire.h>
+
+// use RTClib from Adafruit
+// https://github.com/adafruit/RTClib
+// Important! Change in RTClib/RTClib.cpp:
+//   #include <Wire.h>
+// to
+//   #include <WSWire.h>
+#include <RTClib.h>
 
 // DHTlib:
 // https://github.com/RobTillaart/Arduino
@@ -199,20 +286,17 @@ raw_upload_hex:
 
 #define LOG_INTERVAL_MS		60000
 
+#define ENABLE_WATCHDOG		1
+
 /*******************************************************
 * RTC access command implementation (for getting and
 * setting of RTC time)
 *******************************************************/
 
-// use RTClib from Adafruit
-// https://github.com/adafruit/RTClib
-#include <Wire.h>
-#include <RTClib.h>
-
 RTC_DS1307 RTC;  // define the Real Time Clock object
 
 // RTC time is externally represented as a UNIX timestamp
-// (32 bit integer). These two command classes implement
+// (32 bit integer, UTC). These two command classes implement
 // getting and setting of the RTC clock time.
 
 class ArducomGetTime: public ArducomCommand {
@@ -220,7 +304,7 @@ public:
 	ArducomGetTime(uint8_t commandCode) : ArducomCommand(commandCode, 0) {}		// this command expects zero parameters
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-		// read RTC time
+		// read RTC tim
 		DateTime now = RTC.now();
 		long unixTS = now.unixtime();
 		*((int32_t*)destBuffer) = unixTS;
@@ -258,7 +342,6 @@ void print64(Print* print, int64_t n) {
 	char str[21];
 	char *pStr = &str[0];
 
-	 // if(n == LONG_LONG_MIN) // _I64_MIN  for Windows Microsoft compiler
 	  if(n < -9223372036854775807)
 	  {
 		print->print(F("-9223372036854775808"));
@@ -346,9 +429,6 @@ private:
 	uint8_t F;
 	// linked list of variables to match
 	OBISVariable* varHead;
-	static const uint8_t FILEBUFFER_SIZE = 2;
-	uint8_t fileBuffer[FILEBUFFER_SIZE];
-	uint8_t bufPos;
 	
 	void startValue() {
 		DEBUG(println(F("OBIS startValue")));
@@ -368,7 +448,6 @@ public:
 		// start with unknown parse position
 		this->parsePos = UNDEF;
 		this->varHead = 0;
-		this->bufPos = 0;
 	}
 	
 	void addVariable(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E, uint8_t F, int vartype, void* ptr) {
@@ -554,13 +633,20 @@ public:
 #define S0_B_VALUE			40		// 0x0028, length 8
 #define S0_C_VALUE			48		// 0x0030, length 8
 #define S0_D_VALUE			56		// 0x0038, length 8
-// S0 deltas since last writing of log file
-#define S0_A_DELTA			64		// 0x0040, length 8
-#define S0_B_DELTA			72		// 0x0048, length 8
-#define S0_C_DELTA			80		// 0x0050, length 8
-#define S0_D_DELTA			88		// 0x0058, length 8
 
-#define VAR_TOTAL_SIZE		96		// sum of the above lengths
+// S0 deltas since last writing of log file
+#define S0_A_DELTA			64		// 0x0040, length 2
+#define S0_B_DELTA			66		// 0x0042, length 2
+#define S0_C_DELTA			68		// 0x0044, length 2
+#define S0_D_DELTA			70		// 0x0046, length 2
+
+// S0 deltas of the last interval
+#define S0_A_LAST			72		// 0x0048, length 2
+#define S0_B_LAST			74 		// 0x004A, length 2
+#define S0_C_LAST			76 		// 0x004C, length 2
+#define S0_D_LAST			78		// 0x004E, length 2
+
+#define VAR_TOTAL_SIZE		80		// sum of the above lengths
 
 // exposed variables as array
 uint8_t readings[VAR_TOTAL_SIZE];
@@ -587,7 +673,7 @@ Arducom arducom(&arducomTransport
 ArducomFTP arducomFTP;
 
 SdFat sdFat;
-SdFile logFile;
+uint8_t sdCardOK;
 uint32_t lastWriteMs;
 
 dht DHT;
@@ -616,15 +702,19 @@ volatile uint8_t s0DIncrement;
 * Routines
 *******************************************************/
 
-// call back for file timestamps
+// call back for file timestamps, used by the SdFat library
 void dateTime(uint16_t* date, uint16_t* time) {
-  DateTime now = RTC.now();
-
-  // return date using FAT_DATE macro to format fields
-  *date = FAT_DATE(now.year(), now.month(), now.day());
-
-  // return time using FAT_TIME macro to format fields
-  *time = FAT_TIME(now.hour(), now.minute(), now.second());
+	if (RTC.isrunning()) {
+		DateTime now = RTC.now();
+		// return date using FAT_DATE macro to format fields
+		*date = FAT_DATE(now.year(), now.month(), now.day());
+		// return time using FAT_TIME macro to format fields
+		*time = FAT_TIME(now.hour(), now.minute(), now.second());
+	} else {
+		// fallback
+		*date = FAT_DATE(2001, 1, 1);
+		*time = FAT_TIME(0, 0, 0);
+	}
 }
 
 /*
@@ -640,7 +730,7 @@ ISR(TIMER2_OVF_vect) {
 	// each iteration while the pin is low (active). If the pin goes high (inactive)
 	// the counter is reset. 
 	// As per definition of the S0 interface an impulse is at least 30 ms
-	// long. We assume that we refer to the debounced impulse, i. e. the
+	// long. We assume that this refers to the debounced impulse, i. e. the
 	// bounces before the impulse are not part of the impulse length.
 	// This means that at soon as a counter reaches 30 it means that the pin
 	// has been active for the specified time and the impulse should be counted.
@@ -653,7 +743,7 @@ ISR(TIMER2_OVF_vect) {
 	// The main loop should have a certain minimum speed to avoid overflow of the
 	// eight bit increments. Worst case assumptions are: impulse duration 30 ms, 
 	// impulse is off for 1 ms. This means that every 31 ms an impulse is counted.
-	// It takes 256 * 31 = 7936 ms to overflow the counter in this scenario which
+	// It takes 256 * 31 ms = 7936 ms to overflow the counter in this scenario which
 	// appears to be enough time for the main loop. In practice, impulses are expected
 	// to be much longer anyway.
 	
@@ -747,12 +837,23 @@ void resetReadings() {
 	*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
 	
 	// do not reset S0 values; these are set from EEPROM at program start
-	
+
 	// reset S0 deltas
-	*(int64_t*)&readings[S0_A_DELTA] = 0;
-	*(int64_t*)&readings[S0_B_DELTA] = 0;
-	*(int64_t*)&readings[S0_C_DELTA] = 0;
-	*(int64_t*)&readings[S0_D_DELTA] = 0;
+	*(uint16_t*)&readings[S0_A_DELTA] = 0;
+	*(uint16_t*)&readings[S0_B_DELTA] = 0;
+	*(uint16_t*)&readings[S0_C_DELTA] = 0;
+	*(uint16_t*)&readings[S0_D_DELTA] = 0;
+}
+
+DateTime utcToLocal(DateTime utc) {
+	// timezone offset is stored in EEPROM
+	int16_t offset = eeprom_read_word((const uint_t *)0x20);
+	// not initialized?
+	if (offset == -1)
+		return utc;
+	int32_t unixtime = utc.unixtime();
+	unixtime += offset;
+	return DateTime(unixtime);
 }
 
 /*******************************************************
@@ -825,6 +926,7 @@ void setup()
 	
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
+	// it can also test the watchdog and perform a software reset
 	arducom.addCommand(new ArducomVersionCommand(freeRam, "Logger"));
 
 	// EEPROM access commands
@@ -837,12 +939,14 @@ void setup()
 	// RAM is read-only
 	arducom.addCommand(new ArducomReadBlock(20, &readings[0]));
 
-	// connect to RTC (try three times because I2C may be busy sometimes)
+	// initialize I2C
 	Wire.begin();
+
+	// connect to RTC (try three times because I2C may be busy sometimes)
 	bool rtcOK = false;
 	int repeat = 3;
 	while (!rtcOK && (repeat > 0))  {
-		rtcOK = RTC.begin();
+		rtcOK = RTC.isrunning();
 		repeat--;
 		delay(100);
 	}
@@ -864,6 +968,7 @@ void setup()
 
 	// initialize SD system
 	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
+		sdCardOK = 1;
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
@@ -901,6 +1006,11 @@ void setup()
 	/* Finally load end enable the timer */
 	TCNT2 = tcnt2;
 	TIMSK2 |= (1<<TOIE2);
+	
+	// enable watchdog timer
+	#ifdef ENABLE_WATCHDOG
+	wdt_enable(WDTO_2S);
+	#endif
 }
 
 /*******************************************************
@@ -909,6 +1019,10 @@ void setup()
 
 void loop()
 {
+	// reset watchdog timer
+	wdt_reset();
+	
+	// handle Arducom commands
 	int code = arducom.doWork();
 	if (code == ARDUCOM_COMMAND_HANDLED) {
 		DEBUG(println(F("Arducom command handled")));
@@ -965,7 +1079,7 @@ void loop()
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_A_VALUE] += incr;
-		*(uint64_t*)&readings[S0_A_DELTA] += incr;
+		*(uint16_t*)&readings[S0_A_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_B_PIN
@@ -977,7 +1091,7 @@ void loop()
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_B_VALUE] += incr;
-		*(uint64_t*)&readings[S0_B_DELTA] += incr;
+		*(uint16_t*)&readings[S0_B_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_C_PIN
@@ -989,7 +1103,7 @@ void loop()
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_C_VALUE] += incr;
-		*(uint64_t*)&readings[S0_C_DELTA] += incr;
+		*(uint16_t*)&readings[S0_C_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_D_PIN
@@ -1001,65 +1115,162 @@ void loop()
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_D_VALUE] += incr;
-		*(uint64_t*)&readings[S0_D_DELTA] += incr;
+		*(uint16_t*)&readings[S0_D_DELTA] += incr;
 	}
 	#endif	
 
-	// log interval reached?
-	if (millis() - lastWriteMs > LOG_INTERVAL_MS) {
-		// determine filename
+	// SD card ok and log interval reached?
+	if (sdCardOK && (millis() - lastWriteMs > LOG_INTERVAL_MS)) {
+		// determine log file name
 		// The log file should roll over at the start of every day. So we create a file name that consists
-		// of the current date. The file should always be created in the root directory (prefix /).
-		char filename[14];
-		DateTime now = RTC.now();
-		sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
+		// of the current RTC date. The file should always be created in the root directory (prefix /).
 		
-		if (logFile.open(filename, O_RDWR | O_CREAT | O_AT_END)) {
-			// write timestamp
-			DateTime now = RTC.now();
-			logFile.print(now.unixtime());
-			logFile.print(";");
+		// The date from the RTC must be validated quite strictly.
+		// I2C communication is not always reliable. The RTC may be off or not set.
+		// Writing to a wrong file because of RTC errors can cause data loss.
+		// Common errors are year, month or day values being 0 or out of range.
+		// If we can't determine a current timestamp that looks valid after several attempts
+		// we log to a "fallback file" that is called "/fallback.log".
+		// Records ending up in this file do not have a valid timestamp, so data cannot be easily
+		// correlated; however, the presence of such a file (and its size) can indicate problems
+		// with the RTC which can then be further investigated.
+		
+		int getDateRetries = 5;
+		bool logOK = false;
+		DateTime now;
+		char filename[14];
+		SdFile logFile;
+
+		while (!logOK && (getDateRetries > 0)) {
+			// try to get the time
+			if (RTC.isrunning())
+				nowUTC = RTC.now();
+			// convert to local time
+			DateTime now = utcToLocal(nowUTC);
+			sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
 			
-			// print DHT22 values (invalid readings are left empty)
-			#ifdef DHT22_A_PIN
-			if (*(int16_t*)&readings[DHT22_A_TEMP] != DHT22_INVALID)
-				logFile.print(*(int16_t*)&readings[DHT22_A_TEMP]);
-			logFile.print(";");
-			if (*(int16_t*)&readings[DHT22_A_HUMID] != DHT22_INVALID)
-				logFile.print(*(int16_t*)&readings[DHT22_A_HUMID]);
-			logFile.print(";");
-			#endif
-			#ifdef DHT22_B_PIN
-			if (*(int16_t*)&readings[DHT22_B_TEMP] != DHT22_INVALID)
-				logFile.print(*(int16_t*)&readings[DHT22_B_TEMP]);
-			logFile.print(";");
-			if (*(int16_t*)&readings[DHT22_B_HUMID] != DHT22_INVALID)
-				logFile.print(*(int16_t*)&readings[DHT22_B_HUMID]);
-			logFile.print(";");
-			#endif
-			obisParser.logData(&logFile, ';');
-			#ifdef S0_A_PIN
-			print64(&logFile, *(int64_t*)&readings[S0_A_VALUE]);
-			logFile.print(";");
-			#endif
-			#ifdef S0_B_PIN
-			print64(&logFile, *(int64_t*)&readings[S0_B_VALUE]);
-			logFile.print(";");
-			#endif
-			#ifdef S0_C_PIN
-			print64(&logFile, *(int64_t*)&readings[S0_C_VALUE]);
-			logFile.print(";");
-			#endif
-			#ifdef S0_D_PIN
-			print64(&logFile, *(int64_t*)&readings[S0_D_VALUE]);
-			logFile.print(";");
-			#endif
-			logFile.println();
-
-			logFile.close();
-			lastWriteMs = millis();
+			// RTC year must not be lower than creation year of this program
+			// month and day values must be valid
+			if ((now.year() >= 2015) && (now.month() >= 1) && (now.month() <= 12) && (now.day() >= 1) && (now.day() <= 31)) {
+				// if provided, the compile time must be less than the RTC time
+				#ifdef COMPILE_TIME
+				if (COMPILE_TIME < nowUTC.unixtime()) {	// COMPILE_TIME is UTC
+				#endif
+					// now we have to determine the plausibility of a future date
+					
+					// does a file with this name already exist?
+					if (logFile.exists(filename)) {
+						// this strongly indicates that the date is ok; if we log once a minute
+						// we'll hit this case 1439 times out of 1440 if the date is ok
+						// and if the RTC is incorrect, it's at least consistently incorrect
+						logOK = true;
+					} else {
+						// first time we write this file
+						// Check the age of existing files. If one of them seems younger than a year, assume the date is ok.
+						// These operations may be slow - reset the watchdog timer in between.
+						uint16_t oldestDate = FAT_DATE(now.year() - 1, now.month(), now.day());
+						sdFat.vwd()->rewind();
+						wdt_reset();
+						// try to open the first file
+						if (!logFile.openNext(sdFat.vwd(), O_READ)) {
+							// perhaps an empty SD card?
+							// optimistically assume that the date is ok
+							logOK = true;
+						} else {
+							// go through all files
+							while (!logOK) {
+								wdt_reset();
+								// compare modification date
+								dir_t dir;
+								logFile.dirEntry(&dir);
+								if (dir.lastWriteDate > oldestDate) {
+									// found a more recent file
+									logOK = true;
+								}
+								logFile.close();
+								// end of file list
+								if (!logFile.openNext(sdFat.vwd(), O_READ))
+									break;
+							}
+						}
+					}
+				#ifdef COMPILE_TIME
+				}
+				#endif
+			}
+			getDateRetries--;
+			// wait for a short while
+			delay(5);
 		}
-
+		
+		if (!logOK) {
+			// log to the fallback file
+			filename = "/fallback.log";
+			logOK = true;
+			DEBUG(println(F("RTC date implausible")));
+		}
+		
+		if (logOK) {		
+			// reset watchdog timer (file operations may be slow)
+			wdt_reset();
+			if (logFile.open(filename, O_RDWR | O_CREAT | O_AT_END)) {
+				// write timestamp in UTC
+				logFile.print(nowUTC.unixtime());
+				logFile.print(";");
+				
+				// print DHT22 values (invalid readings are left empty)
+				#ifdef DHT22_A_PIN
+				if (*(int16_t*)&readings[DHT22_A_TEMP] != DHT22_INVALID)
+					logFile.print(*(int16_t*)&readings[DHT22_A_TEMP]);
+				logFile.print(";");
+				if (*(int16_t*)&readings[DHT22_A_HUMID] != DHT22_INVALID)
+					logFile.print(*(int16_t*)&readings[DHT22_A_HUMID]);
+				logFile.print(";");
+				#endif
+				#ifdef DHT22_B_PIN
+				if (*(int16_t*)&readings[DHT22_B_TEMP] != DHT22_INVALID)
+					logFile.print(*(int16_t*)&readings[DHT22_B_TEMP]);
+				logFile.print(";");
+				if (*(int16_t*)&readings[DHT22_B_HUMID] != DHT22_INVALID)
+					logFile.print(*(int16_t*)&readings[DHT22_B_HUMID]);
+				logFile.print(";");
+				#endif
+				
+				// log OBIS data
+				obisParser.logData(&logFile, ';');
+				
+				// log S0 counters
+				#ifdef S0_A_PIN
+				print64(&logFile, *(int64_t*)&readings[S0_A_VALUE]);
+				logFile.print(";");
+				#endif
+				#ifdef S0_B_PIN
+				print64(&logFile, *(int64_t*)&readings[S0_B_VALUE]);
+				logFile.print(";");
+				#endif
+				#ifdef S0_C_PIN
+				print64(&logFile, *(int64_t*)&readings[S0_C_VALUE]);
+				logFile.print(";");
+				#endif
+				#ifdef S0_D_PIN
+				print64(&logFile, *(int64_t*)&readings[S0_D_VALUE]);
+				logFile.print(";");
+				#endif
+				logFile.println();
+				
+				// reset watchdog timer (file operations may be slow)
+				wdt_reset();
+				logFile.close();
+				lastWriteMs = millis();
+			}
+		}	// if (dateOK)
+		
+		// transfer D0 delta values to last interval values
+		*(uint16_t*)&readings[S0_A_LAST] = *(uint16_t*)&readings[S0_A_DELTA];
+		*(uint16_t*)&readings[S0_B_LAST] = *(uint16_t*)&readings[S0_B_DELTA];
+		*(uint16_t*)&readings[S0_C_LAST] = *(uint16_t*)&readings[S0_C_DELTA];
+		*(uint16_t*)&readings[S0_D_LAST] = *(uint16_t*)&readings[S0_D_DELTA];
+	
 		// Periodically reset readings. This allows to detect sensor or communication failures.
 		resetReadings();
 	}

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 
 #include <Arducom.h>
 
@@ -197,16 +198,32 @@ uint8_t Arducom::doWork(void) {
 	return ARDUCOM_OK;
 }
 
-void Arducom::setFlags(uint8_t flags) {
-	if ((flags & ARDUCOM_FLAG_ENABLEDEBUG) == ARDUCOM_FLAG_ENABLEDEBUG) {
-		this->debug = this->origDebug;
-	} else {
-		this->debug = 0;
+void Arducom::setFlags(uint8_t mask, uint8_t flags) {
+	if ((mask & ARDUCOM_FLAG_ENABLEDEBUG) == ARDUCOM_FLAG_ENABLEDEBUG) {
+		if ((flags & ARDUCOM_FLAG_ENABLEDEBUG) == ARDUCOM_FLAG_ENABLEDEBUG) {
+			this->debug = this->origDebug;
+		} else {
+			this->debug = 0;
+		}
+	}
+	if ((mask & ARDUCOM_FLAG_INFINITELOOP) == ARDUCOM_FLAG_INFINITELOOP) {
+		if ((flags & ARDUCOM_FLAG_INFINITELOOP) == ARDUCOM_FLAG_INFINITELOOP) {
+			// go into an infinite loop (to test a watchdog)
+			while (true) ;
+		}
+	}
+	if ((mask & ARDUCOM_FLAG_SOFTRESET) == ARDUCOM_FLAG_SOFTRESET) {
+		if ((flags & ARDUCOM_FLAG_SOFTRESET) == ARDUCOM_FLAG_SOFTRESET) {
+			// perform a soft reset using the watchdog
+			wdt_enable(WDTO_15MS); 
+			while (true) ;
+		}
 	}
 }
 	
 uint8_t Arducom::getFlags(void) {
 	uint8_t result = 0;
+	// debug output currently active?
 	if (this->debug != 0)
 		result |= ARDUCOM_FLAG_ENABLEDEBUG;
 	
@@ -219,14 +236,14 @@ uint8_t Arducom::getFlags(void) {
 
 int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 
-	uint8_t pos = 0;
-	// this method expects one optional flag byte
-	// flag byte provided?
-	if (*dataSize > 0) {
-		uint8_t flags = *((uint8_t*)dataBuffer);
-		arducom->setFlags(flags);
+	// mask and flag byte provided?
+	if (*dataSize >= 2) {
+		uint8_t mask = dataBuffer[0];
+		uint8_t flags = dataBuffer[1];
+		arducom->setFlags(mask, flags);
 	}
 	
+	uint8_t pos = 0;
 	// assume that destBuffer is big enough
 	destBuffer[pos++] = arducom->VERSION;
 	// send uptime in milliseconds (four bytes)

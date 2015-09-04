@@ -36,7 +36,9 @@
 #endif
 
 // Configuration bit flag constants
-#define ARDUCOM_FLAG_ENABLEDEBUG		1
+#define ARDUCOM_FLAG_ENABLEDEBUG		0x01
+#define ARDUCOM_FLAG_INFINITELOOP		0x40
+#define ARDUCOM_FLAG_SOFTRESET			0x80
 
 #ifdef ARDUINO
 
@@ -138,6 +140,9 @@ class Arducom {
 public:
 	static const uint8_t VERSION = 1;
 	
+	/** The timezone offset maintained by this instance. It can be queried or set with the version command (0). */
+	int16_t timezoneOffsetSeconds;
+	
 	/** Debug Print instance as supplied in the constructor. If this value is != 0 it means that debugging
 	* is enabled for this Ardudom instance. */
 	Print* debug;
@@ -181,13 +186,19 @@ protected:
 * Arducom command definitions
 ******************************************************************************************/
 
-/** This class implements a test command with code 0 and one optional flag byte
-*   returning the following info:
+/** This class implements a test command with code 0. It accepts the following optional parameter bytes:
+*   Byte 0: flag mask
+*   Byte 1: flags to set (only those flags are set whose bit in flag mask is 1)
+*   Bit 0 of the flags enables/disables debug output (if an Arducom debugPrint has been specified).
+*   Bit 6 of the flags causes an infinite loop (to test a watchdog).
+*   Bit 7 of the flags causes a software restart (using the watchdog).
+*   These two bytes have to be specified together.
+*   It returns the following info:
 *	Byte 0: Arducom version number
 *   Bytes 1 - 4: result of the millis() function, LSB first; roughly speaking, the uptime of the slave
 *   Byte 5: flag byte
-*   Bit 0 of the flags enables/disables debug output (if an Arducom debugPrint has been specified).
-*   Bytes 5 - n: character data (for example, the slave name)
+*   Byte 6 - 7: amount of free RAM as specified when creating th command object
+*   Bytes 8 - n: character data (for example, the slave name)
 */
 class ArducomVersionCommand: public ArducomCommand {
 public:
