@@ -162,7 +162,7 @@ public:
 	* Returns ARDUCOM_OK if everything is ok, or an error code otherwise. */
 	virtual uint8_t doWork(void);
 	
-	virtual void setFlags(uint8_t flags);
+	virtual void setFlags(uint8_t mask, uint8_t flags);
 	
 	virtual uint8_t getFlags(void);
 	

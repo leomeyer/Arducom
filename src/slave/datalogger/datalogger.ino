@@ -194,16 +194,10 @@ raw_upload_hex:
 #include <SPI.h>
 #include <SoftwareSerial.h>
 
-// use improved WSWire library to reduce I2C related freezes related to DS1307
-// https://github.com/steamfire/WSWireLib
-#include <WSWire.h>
+#include <Wire.h>
 
 // use RTClib from Adafruit
 // https://github.com/adafruit/RTClib
-// Important! Change in RTClib/RTClib.cpp:
-//   #include <Wire.h>
-// to
-//   #include <WSWire.h>
 #include <RTClib.h>
 
 // DHTlib:
@@ -847,7 +841,7 @@ void resetReadings() {
 
 DateTime utcToLocal(DateTime utc) {
 	// timezone offset is stored in EEPROM
-	int16_t offset = eeprom_read_word((const uint_t *)0x20);
+	int16_t offset = eeprom_read_word((const uint16_t *)0x20);
 	// not initialized?
 	if (offset == -1)
 		return utc;
@@ -1137,7 +1131,7 @@ void loop()
 		
 		int getDateRetries = 5;
 		bool logOK = false;
-		DateTime now;
+		DateTime nowUTC;
 		char filename[14];
 		SdFile logFile;
 
@@ -1205,7 +1199,7 @@ void loop()
 		
 		if (!logOK) {
 			// log to the fallback file
-			filename = "/fallback.log";
+			strcpy(filename, "/fallback.log");
 			logOK = true;
 			DEBUG(println(F("RTC date implausible")));
 		}
