@@ -647,7 +647,7 @@ int main(int argc, char *argv[]) {
 								continue;	// next command
 							}
 							int fd;
-							int32_t position = 0;
+							int32_t position = -1;
 							bool fileExists = false;
 							// check whether the file already exists on the master
 							if (access(parts.at(1).c_str(), F_OK) != -1) {
@@ -673,7 +673,7 @@ int main(int argc, char *argv[]) {
 							}
 							
 							// overwrite or continue?
-							if (continueFile && (position > 0) && (position < totalSize)) {
+							if (continueFile && (position >= 0) && (position < totalSize)) {
 								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
