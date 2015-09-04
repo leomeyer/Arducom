@@ -6,6 +6,7 @@
 // https://learn.adafruit.com/adafruit-data-logger-shield 
 // Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
 //
+// This file is best viewed with a monospace font and tab width 4.
 //
 // ********* Description **********
 //
@@ -177,15 +178,21 @@ raw_upload_hex:
 // Execution of this program can be monitored by the Atmega watchdog so that a reset is performed
 // when the program appears to hang (due to I2C problems, SD card reading failures etc.)
 // However, this can cause an endless reboot with older versions of the Arduino Optiboot boot loader.
-// Therefore the watchdog is disabled by default. To enable it define the ENABLE_WATCHDOG macro.
+// You will have to test whether it works with your board. To enable it define the ENABLE_WATCHDOG macro.
 // It is recommended to set the watchdog timer rather high, for example 4 or 8 seconds (you must use
-// the predefined timer constants WDTO_x for this). 
+// the predefined timer constants WDTO_x for this), to allow for delays interfacing with the SD card.
+// The downside of long watchdog delays is the loss of data during the wait period if the program hangs.
+//
 // Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
 // ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 4040
 // A software reset using the watchdog can be done by setting bit 7 of mask and flags of the Arducom version command 0: 
 // ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 8080
 // As this is an Arducom function it will do the watchdog reset regardless of the ENABLE_WATCHDOG define.
-// 
+// You can test whether this worked using the Arducom version command (which will tell you the uptime):
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0
+//
+//
+//
 // This code is in the public domain.
 
 #include <avr/eeprom.h>
@@ -223,15 +230,15 @@ raw_upload_hex:
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-// #define SERIAL_STREAM		Serial
+// #define SERIAL_STREAM	Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
 
 // If you use software serial output for debugging, specify its pins here.
-#define SOFTWARESERIAL_RX		2
-#define SOFTWARESERIAL_TX		3
+#define SOFTWARESERIAL_RX	2
+#define SOFTWARESERIAL_TX	3
 // SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 
 // Specifies a Print object to use for the debug output.
@@ -265,22 +272,23 @@ raw_upload_hex:
 // #define S0_D_PIN			7
 
 // DHT22 sensor definitions
-#define DHT22_A_PIN			8
-#define DHT22_B_PIN			9
-#define DHT22_POLL_INTERVAL_MS	3000		// not below 2000 ms (sensor limit)
+#define DHT22_A_PIN					8
+#define DHT22_B_PIN					9
+#define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
 // invalid value (set if sensor is not used or there is a sensor problem)
-#define DHT22_INVALID			-9999
+#define DHT22_INVALID				-9999
 
 // This pin is switched High after program start. It is intended to provide power to a
 // serial data detection circuit (optical transistor or similar) that feeds its output into RX (pin 0).
 // During programming (via USB) the pin has high impedance, meaning that no data will arrive from the
 // external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS functionality.
-#define OBIS_IR_POWER_PIN		A2
+#define OBIS_IR_POWER_PIN	A2
 
 #define LOG_INTERVAL_MS		60000
 
 #define ENABLE_WATCHDOG		1
+#define WATCHDOG_TIMEOUT	WDTO_4S
 
 /*******************************************************
 * RTC access command implementation (for getting and
@@ -387,6 +395,7 @@ void print64(Print* print, int64_t n) {
 /*******************************************************
 * OBIS parser for D0
 *******************************************************/
+
 /* This class parses OBIS values from incoming stream data. According to the registered patterns A-F
 * the parsed values are placed in target variables. This class can also write data to a log file. 
 * May not yet work for all OBIS data. */
@@ -936,6 +945,10 @@ void setup()
 	// initialize I2C
 	Wire.begin();
 
+	// deactivate internal pullups for twi.
+	digitalWrite(SDA, 0);
+	digitalWrite(SCL, 0);
+	
 	// connect to RTC (try three times because I2C may be busy sometimes)
 	bool rtcOK = false;
 	int repeat = 3;
@@ -1003,7 +1016,7 @@ void setup()
 	
 	// enable watchdog timer
 	#ifdef ENABLE_WATCHDOG
-	wdt_enable(WDTO_2S);
+	wdt_enable(WATCHDOG_TIMEOUT);
 	#endif
 }
 
@@ -1135,6 +1148,17 @@ void loop()
 		char filename[14];
 		SdFile logFile;
 
+		// try to get the time
+		if (RTC.isrunning()) {
+			nowUTC = RTC.now();
+			// convert to local time
+			DateTime now = utcToLocal(nowUTC);
+			sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
+			logOK = true;
+		}
+
+/*			this code doesn't work as intended yet...
+		
 		while (!logOK && (getDateRetries > 0)) {
 			// try to get the time
 			if (RTC.isrunning())
@@ -1142,7 +1166,6 @@ void loop()
 			// convert to local time
 			DateTime now = utcToLocal(nowUTC);
 			sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
-			
 			// RTC year must not be lower than creation year of this program
 			// month and day values must be valid
 			if ((now.year() >= 2015) && (now.month() >= 1) && (now.month() <= 12) && (now.day() >= 1) && (now.day() <= 31)) {
@@ -1196,7 +1219,7 @@ void loop()
 			// wait for a short while
 			delay(5);
 		}
-		
+*/		
 		if (!logOK) {
 			// log to the fallback file
 			strcpy(filename, "/fallback.log");
