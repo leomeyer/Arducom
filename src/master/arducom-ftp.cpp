@@ -120,6 +120,11 @@ receive:
 				if (verbose) {
 					std::cout << "Received no data, " << m_retries << " retries left" << std::endl;
 				}
+				// resend after half the possible retries (message may have been lost)
+				if (m_retries == retries / 2) {
+					master.done();
+					continue;
+				}
 				goto receive;
 			}
 		}
@@ -767,7 +772,9 @@ int main(int argc, char *argv[]) {
 								// write data to local file
 								write(fd, result.data(), result.size());
 								
-								printProgress(totalSize, position, 50);
+								// show "progress bar" only in interactive mode
+								if (interactive)
+									printProgress(totalSize, position, 50);
 								
 								if (position >= totalSize)
 									break;
@@ -782,6 +789,7 @@ int main(int argc, char *argv[]) {
 
 							// close local file
 							close(fd);
+							std::cout << "Download complete." << std::endl;
 						}
 					}
 				} else

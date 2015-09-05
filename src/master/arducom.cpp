@@ -466,6 +466,7 @@ int main(int argc, char *argv[]) {
 					if (verbose) {
 						std::cout << "Received no data, " << retries << " retries left" << std::endl;
 					}
+					master->done();
 					continue;
 				}
 			}

@@ -15,6 +15,8 @@
 ArducomMasterTransportI2C::ArducomMasterTransportI2C(std::string filename, int slaveAddress) {
 	this->filename = filename;
 	this->slaveAddress = slaveAddress;
+
+	this->fileHandle = 0;
 	this->pos = -1;
 	// IPC key is the beginning of the SHA-1 hash of "ArducomI2C"
 	this->semkey = 0x681f4fbc;
@@ -29,6 +31,14 @@ void ArducomMasterTransportI2C::init(void) {
 }
 
 void ArducomMasterTransportI2C::unlock() {
+	// close the file if it's open
+	if (this->fileHandle > 0) {
+		close(this->fileHandle);
+		this->fileHandle = 0;
+	}
+
+	if (!this->hasLock)
+		return;
 	// decrease the semaphore
 	struct sembuf semops;
 	semops.sem_num = 0;
@@ -39,6 +49,7 @@ void ArducomMasterTransportI2C::unlock() {
 		perror("Error decreasing I2C semaphore");
 		throw std::runtime_error("Error decreasing I2C semaphore");
 	}
+	this->hasLock = false;
 }
 
 void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries) {
@@ -67,44 +78,49 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 		perror("unable to sem_getvalue on semaphore");
 	}
 */
+	// avoid increasing the semaphore more than once
+	if (!this->hasLock) {
 
-	// semaphore has been created or opened, wait until it becomes available
-	// allow a wait time of one second (I2C operations are generally fast, so this should be enough)
-	semops.sem_num = 0;
-	semops.sem_op = 0;		// wait until the semaphore becomes zero
-	semops.sem_flg = IPC_NOWAIT;
-	int counter = 1000;
-	while (counter > 0) {
-		// try to acquire resource
-		if (semop(this->semid, &semops, 1) < 0) {
-			// still locked?
-			if (errno == EAGAIN) {
-				counter--;
-				if (counter <= 0)
-					throw std::runtime_error("Timeout waiting for I2C semaphore");
-				// wait for a ms
-				usleep(1000000);
-				continue;
-			} else {
-				// other error acquiring semaphore
-				perror("Error acquiring I2C semaphore");
-				throw std::runtime_error("Error acquiring I2C semaphore");
+		// semaphore has been created or opened, wait until it becomes available
+		// allow a wait time of one second (I2C operations are generally fast, so this should be enough)
+		semops.sem_num = 0;
+		semops.sem_op = 0;		// wait until the semaphore becomes zero
+		semops.sem_flg = IPC_NOWAIT;
+		int counter = 1000;
+		while (counter > 0) {
+			// try to acquire resource
+			if (semop(this->semid, &semops, 1) < 0) {
+				// still locked?
+				if (errno == EAGAIN) {
+					counter--;
+					if (counter <= 0)
+						throw std::runtime_error("Timeout waiting for I2C semaphore");
+					// wait for a ms
+					usleep(1000000);
+					continue;
+				} else {
+					// other error acquiring semaphore
+					perror("Error acquiring I2C semaphore");
+					throw std::runtime_error("Error acquiring I2C semaphore");
+				}
 			}
+			// ok
+			break;
 		}
-		// ok
-		break;
-	}
 
-	// increase the semaphore (allocate the resource)
-	semops.sem_num = 0;
-	semops.sem_op = 1;
-	semops.sem_flg = SEM_UNDO;
-	if (semop(this->semid, &semops, 1) < 0) {
-		// error increasing semaphore
-		perror("Error increasing I2C semaphore");
-		throw std::runtime_error("Error increasing I2C semaphore");
-	}
+		// increase the semaphore (allocate the resource)
+		semops.sem_num = 0;
+		semops.sem_op = 1;
+		semops.sem_flg = SEM_UNDO;
+		if (semop(this->semid, &semops, 1) < 0) {
+			// error increasing semaphore
+			perror("Error increasing I2C semaphore");
+			throw std::runtime_error("Error increasing I2C semaphore");
+		}
 
+		this->hasLock = true;
+	}
+	
 	// initialize the I2C bus
 	if ((this->fileHandle = open(this->filename.c_str(), O_RDWR)) < 0) {
 		this->unlock();
@@ -113,8 +129,6 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 	}
 	
 	if (ioctl(this->fileHandle, I2C_SLAVE, this->slaveAddress) < 0) {
-		// close file
-		close(this->fileHandle);
 		// release semaphore
 		this->unlock();
 		perror("Unable to get bus access to talk to slave");
@@ -141,9 +155,11 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 
 void ArducomMasterTransportI2C::request(uint8_t expectedBytes) {
 	if (expectedBytes > I2C_BLOCKSIZE_LIMIT) {
+		this->unlock();
 		throw std::runtime_error("Error: number of bytes to receive exceeds I2C block size limit");
 	}
 	if (read(this->fileHandle, this->buffer, expectedBytes) != expectedBytes) {
+		this->unlock();
 		perror("Unable to read from I2C slave");
 		throw std::runtime_error("Unable to read from I2C slave");
 	}
@@ -159,8 +175,6 @@ uint8_t ArducomMasterTransportI2C::readByte(void) {
 }
 
 void ArducomMasterTransportI2C::done(void) {
-	// close the file
-	close(this->fileHandle);
 	// release semaphore
 	this->unlock();
 }

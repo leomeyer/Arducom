@@ -6,6 +6,8 @@
 
 #define I2C_BLOCKSIZE_LIMIT	32
 
+/** Implements an I2C transport mechanism. This class is not thread-safe!
+*/
 class ArducomMasterTransportI2C: public ArducomMasterTransport {
 public:
 
@@ -42,6 +44,7 @@ protected:
 	uint8_t buffer[I2C_BLOCKSIZE_LIMIT];
 	int8_t pos;
 	
+	bool hasLock;
 	// release the semaphore
 	void unlock();
 };
