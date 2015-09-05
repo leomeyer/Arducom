@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
 		initSlaveFAT(master, transport);
 
 		// command loop
-		while (true) {
+		while (std::cin.good()) {
 			
 			prompt();
 			
