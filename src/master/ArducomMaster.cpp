@@ -201,6 +201,10 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 	}
 	return ARDUCOM_OK;
 }
+
+void ArducomMaster::done() {
+	this->transport->done();
+}
 	
 void ArducomMaster::invalidResponse(uint8_t commandByte) {
 	uint8_t expectedReply = this->lastCommand | 0x80;

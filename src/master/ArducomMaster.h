@@ -21,6 +21,9 @@ public:
 	/** Requests up to expectedBytes from the transport. Throws an exception in case of errors. */
 	virtual void request(uint8_t expectedBytes) = 0;
 	
+	/** Is called when the transaction is complete. */
+	virtual void done(void) = 0;
+	
 	/** Reads a byte from the transport. Throws an exception in case of errors. */
 	virtual uint8_t readByte(void) = 0;
 
@@ -61,6 +64,9 @@ public:
 	* In these cases, errorInfo contains the info byte as transferred from
 	* the slave, if available. May throw exceptions. */
 	virtual uint8_t receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo);
+	
+	/** Must be called when the transaction is complete. */
+	virtual void done(void);
 	
 protected:
 	ArducomMasterTransport *transport;

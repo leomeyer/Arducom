@@ -37,7 +37,6 @@ int8_t ArducomTransportI2C::send(uint8_t* buffer, uint8_t count) {
 
 void ArducomTransportI2C::receiveEvent(int count) {
 	instance->size = 0;
-	// loop through all but the last
 	while (Wire.available()) {
 		// read byte
 		instance->data[instance->size] = Wire.read(); 

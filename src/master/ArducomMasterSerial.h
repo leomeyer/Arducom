@@ -17,6 +17,8 @@ public:
 
 	virtual uint8_t readByte(void);
 	
+	virtual void done(void);
+	
 	virtual size_t getMaximumCommandSize(void);
 
 	virtual size_t getDefaultExpectedBytes(void);
