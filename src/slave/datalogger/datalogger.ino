@@ -5,6 +5,8 @@
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
 // Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
+// Caution: Remove I2C pullup resistors on 5 V data shields if connecting to a Raspberry Pi
+// or another 3.3 V-operated module!
 //
 // This file is best viewed with a monospace font and tab width 4.
 
@@ -14,15 +16,15 @@
 // It can also be powered over USB.
 // The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
 // for querying current values as well as having an automated job download history data.
-//
-// All readings are accessible via Arducom as a memory block (command 20). See "Variables" below for details.
-// The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
 // 
 // This data logger supports:
-// - up to four S0 lines (digital pins 4 - 7), counting impulses as 64 bit values stored in EEPROM
+// - up to four S0 lines, counting impulses as 64 bit values stored in EEPROM
 // - one D0 OBIS data input (requires the RX pin and one output for the optical transistor supply voltage)
 // - up to two DHT22 temperature/humidity sensors
 // [PLANNED - up to two analog values (analog pins A0 - A1)]
+//
+// All readings are accessible via Arducom via memory block read (command 20). See "RAM layout" below for details.
+// The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
 
 // ********* S0 **********
 //
@@ -39,7 +41,13 @@
 // After each log interval the delta values are copied to the last values storage. These values represent the
 // accumulated impulses during the log interval and can be interpreted as the momentaneous value with respect to the
 // log interval.
-// EEPROM storage [TODO]
+// EEPROM storage:
+// S0 values are stored in EEPROM in a configurable interval. The interval is a compromise between EEPROM cell life
+// and the amount of data loss in case of a catastrophic failure.
+// If the values are written once per hour, with an expected EEPROM cell life of 100k writes the EEPROM can be expected
+// to last for more than 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
+// EEPROM writes are distributed on a byte-per-byte basis in order to minimize effects on interrupts (I2C/S0 counters)
+// as interrupts 
 
 // ********* D0 **********
 //
@@ -70,7 +78,7 @@
 //
 // Important! You must set the time using this command before data is logged into timestamped files!
 // Otherwise data will be logged to the file "/fallback.log."
-// It is also advisable to set the time once a month.
+// It is also advisable to set the time once a month to allow the logger to validate the RTC date.
 //
 // The time interface uses UTC timestamps (for ease of use with the Linux tools).
 // Internally the RTC also runs on UTC time. To correcly determine date rollovers for log files
@@ -85,7 +93,7 @@
 // ********* Logging **********
 //
 // Timestamped sensor readings are stored on the SD card in a configurable interval.
-// SD card log files should be rolled over when they become large. Generally it is advisable to keep these files
+// SD card log files should be rolled over when they become larger. Generally it is advisable to keep these files
 // to around 100 kB. Logging 100 bytes every minute causes a daily data volume of 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 such a file will take about 30 seconds
 // to download using an Arducom FTP transfer.
@@ -152,11 +160,16 @@ raw_upload_hex:
 // As usual with makefiles, take special care of the indentation and whitespace.
 // A fixed Arduino.mk file is included with this sketch.
 
-// ********* Transferring data **********
+// ********* Transferring data to a host **********
 //
-// To query the sensor values you can use the arducom tool. Sensor data is exposed via command 20. To query
-// a sensor's data you have to know the sensor's memory variable address and length in bytes. 
-// For details see section "RAM layout" below. Example:
+// To query the sensor values you can use the "arducom" tool on Linux. If you are not using the RX pin for
+// OBIS data you can use the serial interface for the Arducom system. If you use OBIS data or the RX pin is
+// otherwise in use, you can use I2C to connect your host (e. g. a Raspberry Pi).
+// You can download history data or the current log file using the "arducom-ftp" tool.
+//
+// Sensor data is exposed via command 20. To query a sensor's data you have to know the sensor's memory 
+// variable address and length in bytes. For details see section "RAM layout" below. Example:
+//
 // #define TOTAL_KWH		16		// 0x0010, length 8
 // This means that the total kilowatthours of the electric meter are an 8 byte value stored at offset 16.
 // To query this value, assuming I2C, use the following command:
@@ -166,9 +179,8 @@ raw_upload_hex:
 // The output will be formatted as a 64 bit integer. If you want to know what's going on under the hood, use -v.
 
 // ********* RAM layout *********
-//
 
-// electric readings
+// OBIS electric readings
 #define MOM_PHASE1			0		// 0x0000, length 4, momentary power consumption phase 1
 #define MOM_PHASE2			4		// 0x0004, length 4, momentary power consumption phase 2
 #define MOM_PHASE3			8		// 0x0008, length 4, momentary power consumption phase 3
@@ -219,7 +231,7 @@ raw_upload_hex:
 // 23 - 31 (0x18), length 8: S0_D counter
 #define EEPROM_S0COUNTER_D		0x18
 #define EEPROM_S0COUNTER_LEN	0x08
-// 32 - 33 (0x20), length 2: local timezone offset in seconds
+// 32 - 33 (0x20), length 2: local timezone offset in seconds (positive or negative)
 #define EEPROM_TIMEZONE			0x20
 // 34 - 37 (0x22), length 4: last RTC date as set by the user
 #define EEPROM_RTCDATETIME		0x22
@@ -239,6 +251,7 @@ raw_upload_hex:
 //
 // Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
 // ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 4040
+// Be careful! If the watchdog is not enabled this will hang the device!
 // A software reset using the watchdog can be done by setting bit 7 of mask and flags of the Arducom version command 0: 
 // ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 8080
 // As this is an Arducom function it will do the watchdog reset regardless of the ENABLE_WATCHDOG define.
@@ -887,7 +900,11 @@ DateTime utcToLocal(DateTime utc) {
 *******************************************************/
 
 void setup()
-{	
+{
+	// disable watchdog in case it's still on
+	MCUSR = 0;
+	wdt_disable();
+	
 	#ifdef OBIS_IR_POWER_PIN
 	// initialize serial port for OBIS data
 	Serial.begin(9600, SERIAL_7E1);
@@ -985,7 +1002,7 @@ void setup()
 		arducom.addCommand(new ArducomGetTime(21));
 		arducom.addCommand(new ArducomSetTime(22));
 		
-		// set date time callback function (sets file creation date)
+		// set date time callback function (for file modification date)
 		SdFile::dateTimeCallback(dateTime);
 	}
 
