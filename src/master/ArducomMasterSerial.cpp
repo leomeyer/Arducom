@@ -233,6 +233,10 @@ uint8_t ArducomMasterTransportSerial::readByte(void) {
 	return this->buffer[this->pos++];
 }
 
+void ArducomMasterTransportSerial::done() {
+	// nothing to do (file remains open)
+}
+
 size_t ArducomMasterTransportSerial::getMaximumCommandSize(void) {
 	return SERIAL_BLOCKSIZE_LIMIT;
 }

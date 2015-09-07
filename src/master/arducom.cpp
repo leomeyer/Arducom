@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 	int retries = 0;
 	bool tryInterpret = true;
 	bool useChecksum = true;
-	ArducomMaster* master;
+	ArducomMaster* master = NULL;
 	
 	std::vector<std::string> args;
 	args.reserve(argc);
@@ -451,9 +451,29 @@ int main(int argc, char *argv[]) {
 			uint8_t result = master->receive(expectedBytes, buffer, &size, &errorInfo);
 
 			// no error?
-			if (result == ARDUCOM_OK)
+			if (result == ARDUCOM_OK) {
+				// let the master cleanup after the transaction
+				master->done();
+				
 				break;
-		
+			}
+
+			// special case: if NO_DATA has been received, give the slave more time to react
+			// without resending the message
+			if (result == ARDUCOM_NO_DATA) {
+				retries--;
+				if (retries > 0) {
+					if (verbose) {
+						std::cout << "Received no data, " << retries << " retries left" << std::endl;
+					}
+					master->done();
+					continue;
+				}
+			}
+			
+			// let the master cleanup after the transaction
+			master->done();
+			
 			// convert error code to string
 			char errstr[21];
 			sprintf(errstr, "%d", result);
@@ -475,8 +495,16 @@ int main(int argc, char *argv[]) {
 				throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
 			case ARDUCOM_TOO_MUCH_DATA:
 				throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
-			case ARDUCOM_PARAMETER_MISMATCH:
-				throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+			case ARDUCOM_PARAMETER_MISMATCH: {
+				// sporadic I2C dropouts cause this error (receiver problems?)
+				// seem to be unrelated to baud rate...
+				retries--;
+				if (retries < 0)
+					throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+				else
+					// try again
+					continue;
+			}
 			case ARDUCOM_BUFFER_OVERRUN:
 				throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
 			case ARDUCOM_CHECKSUM_ERROR:

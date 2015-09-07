@@ -105,9 +105,33 @@ receive:
 		uint8_t result = master.receive(expectedBytes, buffer, &size, &errorInfo);
 
 		// no error?
-		if (result == ARDUCOM_OK)
+		if (result == ARDUCOM_OK) {
+			// let the master cleanup after the transaction
+			master.done();
+			
 			break;
-	
+		}
+		
+		// special case: if NO_DATA has been received, give the slave more time to react
+		// without resending the message
+		if (result == ARDUCOM_NO_DATA) {
+			m_retries--;
+			if (m_retries > 0) {
+				if (verbose) {
+					std::cout << "Received no data, " << m_retries << " retries left" << std::endl;
+				}
+				// resend after half the possible retries (message may have been lost)
+				if (m_retries == retries / 2) {
+					master.done();
+					continue;
+				}
+				goto receive;
+			}
+		}
+
+		// let the master cleanup after the transaction
+		master.done();
+		
 		// convert error code to string
 		char errstr[21];
 		sprintf(errstr, "%d", result);
@@ -116,20 +140,6 @@ receive:
 		char numstr[21];
 		sprintf(numstr, "%d", errorInfo);
 		
-		// special case: if NO_DATA has been received, give the slave more time to react
-		// without resending the message
-		if (result == ARDUCOM_NO_DATA) {
-			m_retries--;
-			if (m_retries > 0) {
-				if (verbose) {
-					std::cout << "Error " << errstr << " (" << numstr << "), " << m_retries << " retries left" << std::endl;
-				}
-				// increase delay with each occurrence of this error
-				delay *= 2;
-				goto receive;
-			}
-		}		
-		
 		switch (result) {
 		case ARDUCOM_NO_DATA:
 				throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
@@ -137,8 +147,16 @@ receive:
 			throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
 		case ARDUCOM_TOO_MUCH_DATA:
 			throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
-		case ARDUCOM_PARAMETER_MISMATCH:
-			throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+		case ARDUCOM_PARAMETER_MISMATCH: {
+			// sporadic I2C dropouts cause this error (receiver problems?)
+			// seem to be unrelated to baud rate...
+			m_retries--;
+			if (m_retries < 0)
+				throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+			else
+				// try again
+				continue;
+		}
 		case ARDUCOM_BUFFER_OVERRUN:
 			throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
 		case ARDUCOM_CHECKSUM_ERROR:
@@ -450,7 +468,7 @@ int main(int argc, char *argv[]) {
 		initSlaveFAT(master, transport);
 
 		// command loop
-		while (true) {
+		while (std::cin.good()) {
 			
 			prompt();
 			
@@ -754,7 +772,9 @@ int main(int argc, char *argv[]) {
 								// write data to local file
 								write(fd, result.data(), result.size());
 								
-								printProgress(totalSize, position, 50);
+								// show "progress bar" only in interactive mode
+								if (interactive)
+									printProgress(totalSize, position, 50);
 								
 								if (position >= totalSize)
 									break;
@@ -769,6 +789,7 @@ int main(int argc, char *argv[]) {
 
 							// close local file
 							close(fd);
+							std::cout << "Download complete." << std::endl;
 						}
 					}
 				} else
