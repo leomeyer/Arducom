@@ -654,9 +654,6 @@ public:
 // exposed variables as array
 uint8_t readings[VAR_TOTAL_SIZE];
 
-// for calculation of free RAM
-extern int __heap_start, *__brkval; 
-  
 /* Timer2 reload value, globally available */
 unsigned int tcnt2;
 
@@ -865,9 +862,6 @@ DateTime utcToLocal(DateTime utc) {
 
 void setup()
 {	
-	int v; 	
-	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-	
 	#ifdef OBIS_IR_POWER_PIN
 	// initialize serial port for OBIS data
 	Serial.begin(9600, SERIAL_7E1);
@@ -885,8 +879,7 @@ void setup()
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	#endif
 	
-	DEBUG(print(F("Free RAM: ")));
-	DEBUG(println(freeRam));
+	DEBUG(println(F("DataLogger starting...")));
 
 	// initialize S0 lines
 	#ifdef S0_A_PIN
@@ -930,7 +923,7 @@ void setup()
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	// it can also test the watchdog and perform a software reset
-	arducom.addCommand(new ArducomVersionCommand(freeRam, "Logger"));
+	arducom.addCommand(new ArducomVersionCommand("Logger"));
 
 	// EEPROM access commands
 	// due to RAM constraints we have to expose the whole EEPROM as a block

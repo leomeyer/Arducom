@@ -197,20 +197,18 @@ protected:
 *	Byte 0: Arducom version number
 *   Bytes 1 - 4: result of the millis() function, LSB first; roughly speaking, the uptime of the slave
 *   Byte 5: flag byte
-*   Byte 6 - 7: amount of free RAM as specified when creating th command object
+*   Byte 6 - 7: current amount of free RAM
 *   Bytes 8 - n: character data (for example, the slave name)
 */
 class ArducomVersionCommand: public ArducomCommand {
 public:
 	/** Initialize the command with a null-terminated data string. */
-	ArducomVersionCommand(int16_t freeRam, const char* data) : ArducomCommand(0) {
-		this->freeRam = freeRam;
+	ArducomVersionCommand(const char* data) : ArducomCommand(0) {
 		this->data = data;
 	}
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
-	int16_t freeRam;
 	const char *data;
 };
 

@@ -145,10 +145,6 @@ public:
 * Variables
 *******************************************************/
 
-// for calculation of free RAM
-extern char *__brkval;
-extern char __bss_end;
-	
 #ifdef SERIAL_STREAM
 ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
@@ -201,9 +197,6 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 void setup()
 {
-	char top;
-	uint16_t freeRam = __brkval ? &top - __brkval : &top - &__bss_end;
-
 #ifdef LED
 	pinMode(LED, OUTPUT); 
 #endif
@@ -216,13 +209,12 @@ void setup()
 	DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	
-	DEBUG(print(F("Free RAM: ")));
-	DEBUG(println(freeRam));	
 #endif
+	DEBUG(print(F("HelloWorld starting...")));
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
-	arducom.addCommand(new ArducomVersionCommand(freeRam, "HelloWorld"));
+	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
 
 	// EEPROM access commands
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
@@ -251,8 +243,8 @@ void setup()
 	#if USE_DS1307
 	// connect to RTC
 	Wire.begin();
-	if (!RTC.begin()) {
-		DEBUG(println(F("RTC not functional")));
+	if (!RTC.isrunning()) {
+		DEBUG(println(F("RTC setup failure!")));
 	} else {
 		// register example RTC commands
 		// Assuming I2C, on Linux you can display the current date using the following command:
@@ -266,6 +258,7 @@ void setup()
 		// set date time callback function (sets file creation date)
 		SdFile::dateTimeCallback(dateTime);
 #endif
+		DEBUG(println(F("RTC setup ok.")));
 	}
 #endif  // USE_DS1307
 
@@ -274,7 +267,10 @@ void setup()
 	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
-	}
+		DEBUG(println(F("SD card setup ok.")));
+	} else {
+		DEBUG(println(F("SD card setup failure!")));
+	}		
 #endif
 
 #ifdef LED
@@ -286,6 +282,7 @@ void setup()
 		delay(200);
 	}
 #endif
+	DEBUG(println(F("HelloWorld setup done.")));
 }
 
 /*******************************************************
@@ -294,7 +291,11 @@ void setup()
 
 void loop()
 {
+	// handle Arducom commands
 	int code = arducom.doWork();
+	if (code == ARDUCOM_COMMAND_HANDLED) {
+		DEBUG(println(F("Arducom command handled")));
+	} else
 	if (code != ARDUCOM_OK) {
 		DEBUG(print(F("Arducom error: ")));
 		DEBUG(println(code));
