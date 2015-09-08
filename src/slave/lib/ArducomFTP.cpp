@@ -11,6 +11,7 @@ int8_t ArducomFTP::init(Arducom* arducom, SdFat* sdFat, uint8_t commandBase) {
 	int8_t result = arducom->addCommand(new ArducomFTPInit(ARDUCOM_FTP_COMMAND_INIT + commandBase));
 	if (result != ARDUCOM_OK)
 		return result;
+
 	result = arducom->addCommand(new ArducomFTPListFiles(ARDUCOM_FTP_COMMAND_LISTFILES + commandBase));
 	if (result != ARDUCOM_OK)
 		return result;
@@ -204,11 +205,16 @@ int8_t ArducomFTPChangeDir::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 	}
 	
 	// this command expects the new directory name
-	char dirname[13];
+	#define MAXBUFFERSIZE	13
+	char dirname[MAXBUFFERSIZE];
 	uint8_t pos = 0;
 	while (pos < *dataSize) {
 		dirname[pos] = dataBuffer[pos];
 		pos++;
+		if (pos >= MAXBUFFERSIZE) {
+			*errorInfo = MAXBUFFERSIZE;
+			return ARDUCOM_BUFFER_OVERRUN;
+		}
 	}
 	dirname[pos] = '\0';
 	// parameter missing?
@@ -249,11 +255,16 @@ int8_t ArducomFTPOpenRead::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	}
 	
 	// this command expects the file name
-	char filename[13];
+	#define MAXBUFFERSIZE	13
+	char filename[MAXBUFFERSIZE];
 	uint8_t pos = 0;
 	while (pos < *dataSize) {
 		filename[pos] = dataBuffer[pos];
 		pos++;
+		if (pos >= MAXBUFFERSIZE) {
+			*errorInfo = MAXBUFFERSIZE;
+			return ARDUCOM_BUFFER_OVERRUN;
+		}
 	}
 	filename[pos] = '\0';
 	// parameter missing?
@@ -351,11 +362,16 @@ int8_t ArducomFTPDeleteFile::handle(Arducom* arducom, volatile uint8_t* dataBuff
 	}
 
 	// this command expects the file name
-	char filename[13];
+	#define MAXBUFFERSIZE	13
+	char filename[MAXBUFFERSIZE];
 	uint8_t pos = 0;
 	while (pos < *dataSize) {
 		filename[pos] = dataBuffer[pos];
 		pos++;
+		if (pos >= MAXBUFFERSIZE) {
+			*errorInfo = MAXBUFFERSIZE;
+			return ARDUCOM_BUFFER_OVERRUN;
+		}
 	}
 	filename[pos] = '\0';
 	// parameter missing?
