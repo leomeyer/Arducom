@@ -45,9 +45,7 @@
 // S0 values are stored in EEPROM in a configurable interval. The interval is a compromise between EEPROM cell life
 // and the amount of data loss in case of a catastrophic failure.
 // If the values are written once per hour, with an expected EEPROM cell life of 100k writes the EEPROM can be expected
-// to last for more than 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
-// EEPROM writes are distributed on a byte-per-byte basis in order to minimize effects on interrupts (I2C/S0 counters)
-// as interrupts 
+// to last at least about 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
 
 // ********* D0 **********
 //
@@ -1075,7 +1073,7 @@ void loop()
 	}
 	
 	#ifdef OBIS_IR_POWER_PIN
-	// let the OBIS parser handle incoming data from the electricity meter
+	// let the OBIS parser handle incoming data
 	obisParser.doWork();
 	#endif
 	
@@ -1189,11 +1187,11 @@ void loop()
 			// might interfere with the RTC request, can be calculated like: baud rate / byte size * max length.
 			// With baud rate assumed to be 100 kHz, byte size = 10 bits and 
 			// max length = 32 we get a worst case transfer length of 3.2 ms. 
-			int getDateRetries = 10;
+			int8_t getDateRetries = 10;
 			DateTime nowUTC;
 			uint32_t nowUnixtime;
 			uint32_t lastUnixtime = 0;
-			int goodCounter = 0;
+			int8_t goodCounter = 0;
 			
 			while (!dateOK && (getDateRetries > 0)) {
 				// try to get the time
@@ -1230,10 +1228,10 @@ void loop()
 								// last time set?
 								if (lastUnixtime > 0) {
 									// may not be more than five seconds off (in practice it will be much less)
-									if (lastUnixtime - lastUnixtime < 5) {
+									if (nowUnixtime - lastUnixtime < 5) {
 										goodCounter++;
 									} else {
-										// time is way off what we read before; assume the RTC or I2C is flaky
+										// time is way off from what we read before; assume the RTC or I2C is flaky
 										goodCounter = 0;
 									}
 									if (goodCounter > 5) {
@@ -1243,6 +1241,7 @@ void loop()
 										break;
 									}
 								}
+								lastUnixtime = lastUnixtime;
 							}
 						}
 
@@ -1250,7 +1249,6 @@ void loop()
 						// maybe the user has never set the RTC
 						// assume that the date is not valid
 
-						lastUnixtime = lastUnixtime;
 					}
 				}
 				getDateRetries--;
