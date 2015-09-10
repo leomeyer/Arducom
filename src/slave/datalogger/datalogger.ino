@@ -41,11 +41,13 @@
 // After each log interval the delta values are copied to the last values storage. These values represent the
 // accumulated impulses during the log interval and can be interpreted as the momentaneous value with respect to the
 // log interval.
-// EEPROM storage:
 // S0 values are stored in EEPROM in a configurable interval. The interval is a compromise between EEPROM cell life
 // and the amount of data loss in case of a catastrophic failure.
 // If the values are written once per hour, with an expected EEPROM cell life of 100k writes the EEPROM can be expected
 // to last at least about 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
+// The program attempts to detect whether the last start was due to a watchdog reset. If yes, the S0 values in memory
+// are not initialized from EEPROM to minimize data loss.
+// This may require an updated bootloader version that makes the reset flags available to user programs.
 
 // ********* D0 **********
 //
@@ -243,7 +245,13 @@ raw_upload_hex:
 // It is recommended to set the watchdog timer rather high, for example 4 or 8 seconds (you must use
 // the predefined timer constants WDTO_x for this), to allow for delays interfacing with the SD card.
 // The downside of long watchdog delays is the loss of data during the wait period if the program hangs.
-//
+// The program will attempt to detect whether a reset was caused by the watchdog. This mechanism works
+// by checking the respective bit in the MCUSR register. However, this method is not reliable as the
+// register may have been modified by a bootloader. Therefore the program installs a handler for the
+// WDT_vect interrupt handler and sets the WDIE bit in the watchdog controller register WDTCSR. If a
+// watchdog timeout occurs the WDT_vect routine is first called which sets a memory token variable to
+// a special value. The MCU will then perform a second watchdog timeout which causes the actual reset.
+// This means that the effective watchdog timeout (time until reset) is twice the value specified here.
 #define ENABLE_WATCHDOG		1
 #define WATCHDOG_TIMEOUT	WDTO_4S
 //
@@ -344,12 +352,16 @@ raw_upload_hex:
 
 // This pin is switched High after program start. It is intended to provide power to a
 // serial data detection circuit (optical transistor or similar) that feeds its output into RX (pin 0).
-// During programming (via USB) the pin has high impedance, meaning that no data will arrive from the
-// external circuitry that could interfere with the flash data being uploaded.
+// After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
+// arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS functionality.
 #define OBIS_IR_POWER_PIN	A2
 
+// file log interval (milliseconds)
 #define LOG_INTERVAL_MS		60000
+
+// interval for S0 EEPROM transfer (seconds)
+#define EEPROM_INTERVAL_S	3600
 
 /*******************************************************
 * Global helper routines
@@ -682,7 +694,10 @@ public:
 // to query values the master must know the memory layout table (see above)
 
 // exposed variables as array
-uint8_t readings[VAR_TOTAL_SIZE];
+// Do not automatically initialize these values at program start.
+// That way, sensor readings can be kept after a watchdog reset.
+// The setup code detects this condition and initializes the RAM accordingly.
+uint8_t readings[VAR_TOTAL_SIZE] __attribute__ ((section (".noinit")));
 
 /* Timer2 reload value, globally available */
 // for S0 impulse detection
@@ -710,6 +725,8 @@ uint8_t sdCardOK;
 uint32_t lastWriteMs;
 uint32_t lastOKDateFromRTC;
 
+bool rtcOK;
+
 // DHT sensor 
 dht DHT;
 uint32_t lastDHT22poll;
@@ -719,26 +736,44 @@ OBISParser obisParser(&Serial);
 
 // S0 counters
 #ifdef S0_A_PIN
-volatile int8_t s0ACounter;
-volatile uint8_t s0AIncrement;
+volatile int8_t s0ACounter __attribute__ ((section(".noinit")));
+volatile uint8_t s0AIncrement __attribute__ ((section(".noinit")));
 #endif
 #ifdef S0_B_PIN
-volatile int8_t s0BCounter;
-volatile uint8_t s0BIncrement;
+volatile int8_t s0BCounter __attribute__ ((section(".noinit")));
+volatile uint8_t s0BIncrement __attribute__ ((section(".noinit")));
 #endif
 #ifdef S0_C_PIN
-volatile int8_t s0CCounter;
-volatile uint8_t s0CIncrement;
+volatile int8_t s0CCounter __attribute__ ((section(".noinit")));
+volatile uint8_t s0CIncrement __attribute__ ((section(".noinit")));
 #endif
 #ifdef S0_D_PIN
-volatile int8_t s0DCounter;
-volatile uint8_t s0DIncrement;
+volatile int8_t s0DCounter __attribute__ ((section(".noinit")));
+volatile uint8_t s0DIncrement __attribute__ ((section(".noinit")));
 #endif
+
+uint32_t lastEEPROMWrite;
+
+// store the reset flags to be able to detect watchdog resets
+uint8_t resetFlags __attribute__ ((section(".noinit")));
+// fallback if the reset flags are not preserved
+// this token is set to 0x1234 in the watchdog interrupt
+// and cleared after program start
+volatile uint16_t wdt_token __attribute__ ((section(".noinit")));
 
 /*******************************************************
 * Routines
 *******************************************************/
 
+// taken from: https://code.google.com/p/arduino/issues/attachmentText?id=794&aid=7940002001&name=resetFlags_appCode.cpp
+void resetFlagsInit(void) __attribute__ ((naked)) __attribute__ ((section (".init0")));
+void resetFlagsInit(void)
+{
+	// save the reset flags passed from the bootloader
+	__asm__ __volatile__ ("mov %0, r2\n" : "=r" (resetFlags) :);
+}
+
+// taken from SdFat examples
 // call back for file timestamps, used by the SdFat library
 void dateTime(uint16_t* date, uint16_t* time) {
 	if (RTC.isrunning()) {
@@ -862,6 +897,13 @@ ISR(TIMER2_OVF_vect) {
 	#endif
 }
 
+// this routine is called the first time the watchdog timeout occurs
+ISR(WDT_vect) {
+	wdt_token = 0x1234;
+	// go into infinite loop, let the watchdog do the reset
+	while (true) ;
+}
+
 // Resets the readings to invalid values.
 void resetReadings() {
 	// invalidate reading buffer for OBIS data
@@ -893,6 +935,46 @@ DateTime utcToLocal(DateTime utc) {
 	return DateTime(unixtime);
 }
 
+// log the message to a file
+void log(const __FlashStringHelper* message) {
+	DEBUG(println(message));
+	if (sdCardOK) {
+		SdFile f;
+		if (f.open("/datalogr.log", O_RDWR | O_CREAT | O_AT_END)) {
+			if (rtcOK) {
+				// write timestamp to file
+				DateTime now = utcToLocal(RTC.now());
+				f.print(now.year());
+				f.print(F("-"));
+				if (now.month() < 10)
+					f.print(F("0"));
+				f.print(now.month());
+				f.print(F("-"));
+				if (now.day() < 10)
+					f.print(F("0"));
+				f.print(now.day());
+				f.print(F(" "));
+				if (now.hour() < 10)
+					f.print(F("0"));
+				f.print(now.hour());
+				f.print(F(":"));
+				if (now.minute() < 10)
+					f.print(F("0"));
+				f.print(now.minute());
+				f.print(F(":"));
+				if (now.second() < 10)
+					f.print(F("0"));
+				f.print(now.second());
+				f.print(F(" "));
+			} else {
+				f.print(F("<time unknown>      "));
+			}
+			f.println(message);
+			f.close();
+		}
+	}	
+}
+
 /*******************************************************
 * Setup
 *******************************************************/
@@ -900,29 +982,87 @@ DateTime utcToLocal(DateTime utc) {
 void setup()
 {	
 	// disable watchdog in case it's still on
-	MCUSR = 0;
 	wdt_disable();
 
-	#ifdef OBIS_IR_POWER_PIN
-	// initialize serial port for OBIS data
-	Serial.begin(9600, SERIAL_7E1);
-	// switch on OBIS power for serial IR circuitry
-	pinMode(OBIS_IR_POWER_PIN, OUTPUT);
-	digitalWrite(OBIS_IR_POWER_PIN, HIGH);
-	#endif
-
-	#ifdef SERIAL_STREAM
-	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
-	#endif
-	
 	#ifdef DEBUG_OUTPUT
 	// DEBUG_OUTPUT.begin(9600);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	#endif
 	
-	DEBUG(println(F("DataLogger starting...")));
+	// **** Initialize hardware components ****
 
-	// initialize S0 lines
+	// initialize I2C
+	Wire.begin();
+
+	// deactivate internal pullups for twi
+	digitalWrite(SDA, 0);
+	digitalWrite(SCL, 0);
+	
+	// initialize SD system
+	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
+		sdCardOK = 1;
+	}
+
+	// connect to RTC (try three times because I2C may be busy sometimes)
+	int repeat = 3;
+	while (!rtcOK && (repeat > 0))  {
+		rtcOK = RTC.isrunning();
+		repeat--;
+		delay(10);
+	}
+
+	if (rtcOK && sdCardOK)
+		// set date time callback function (for file modification date)
+		SdFile::dateTimeCallback(dateTime);
+
+	log(F("DataLogger starting..."));
+	if (!rtcOK)
+		log(F("RTC not functional"));
+	
+	// **** Initialize memory for readings ****
+
+	// reset by watchdog?
+	if ((resetFlags & _BV(WDRF)) || (wdt_token == 0x1234)) {
+		log(F("Watchdog reset detected"));
+		
+		// do not initialize the S0 values and counters in order not to lose data after watchdog reset
+		
+	} else {
+		// startup after power failure or manual reset
+		log(F("Normal startup detected"));
+		
+		// read S0 values from EEPROM
+		eeprom_read_block(&readings[S0_A_VALUE], (const uint8_t*)EEPROM_S0COUNTER_A, EEPROM_S0COUNTER_LEN);
+		eeprom_read_block(&readings[S0_B_VALUE], (const uint8_t*)EEPROM_S0COUNTER_B, EEPROM_S0COUNTER_LEN);
+		eeprom_read_block(&readings[S0_C_VALUE], (const uint8_t*)EEPROM_S0COUNTER_C, EEPROM_S0COUNTER_LEN);
+		eeprom_read_block(&readings[S0_D_VALUE], (const uint8_t*)EEPROM_S0COUNTER_D, EEPROM_S0COUNTER_LEN);
+		
+		// clear S0 counters
+		#ifdef S0_A_PIN
+		s0ACounter = 0;
+		s0AIncrement = 0;
+		#endif
+		#ifdef S0_B_PIN
+		s0BCounter = 0;
+		s0BIncrement = 0;
+		#endif
+		#ifdef S0_C_PIN
+		s0CCounter = 0;
+		s0CIncrement = 0;
+		#endif
+		#ifdef S0_D_PIN
+		s0DCounter = 0;
+		s0DIncrement = 0;
+		#endif		
+	}
+	
+	resetReadings();
+	
+	// reset watchdog reset detector token
+	wdt_token = 0;
+
+	// **** Initialize S0 lines ****
+
 	#ifdef S0_A_PIN
 	pinMode(S0_A_PIN, INPUT);
 	digitalWrite(S0_A_PIN, HIGH);	// enable pullup
@@ -939,26 +1079,30 @@ void setup()
 	pinMode(S0_D_PIN, INPUT);
 	digitalWrite(S0_D_PIN, HIGH);	// enable pullup
 	#endif
-	
-	resetReadings();
 
-	// read S0 values from EEPROM
-	cli();
-	eeprom_read_block(&readings[S0_A_VALUE], (const uint8_t*)EEPROM_S0COUNTER_A, EEPROM_S0COUNTER_LEN);
-	eeprom_read_block(&readings[S0_B_VALUE], (const uint8_t*)EEPROM_S0COUNTER_B, EEPROM_S0COUNTER_LEN);
-	eeprom_read_block(&readings[S0_C_VALUE], (const uint8_t*)EEPROM_S0COUNTER_C, EEPROM_S0COUNTER_LEN);
-	eeprom_read_block(&readings[S0_D_VALUE], (const uint8_t*)EEPROM_S0COUNTER_D, EEPROM_S0COUNTER_LEN);
-	sei();
+	// **** Initialize OBIS parsing ****
+	
+	#ifdef OBIS_IR_POWER_PIN
+	// initialize serial port for OBIS data
+	Serial.begin(9600, SERIAL_7E1);
+	// switch on OBIS power for serial IR circuitry
+	pinMode(OBIS_IR_POWER_PIN, OUTPUT);
+	digitalWrite(OBIS_IR_POWER_PIN, HIGH);
 
 	// initialize OBIS parser variables
 	// the parser will log this data in reverse order!
 	// Easymeter Q3D OBIS records
-	#ifdef OBIS_IR_POWER_PIN
 	obisParser.addVariable(1, 0, 1, 8, 0, 255, OBISParser::VARTYPE_INT64, &readings[TOTAL_KWH]);
 	obisParser.addVariable(1, 0, 1, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_TOTAL]);
 	obisParser.addVariable(1, 0, 61, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE3]);
 	obisParser.addVariable(1, 0, 41, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE2]);
 	obisParser.addVariable(1, 0, 21, 7, 0, 255, OBISParser::VARTYPE_INT32, &readings[MOM_PHASE1]);
+	#endif
+
+	// **** Initialize Arducom ****
+	
+	#ifdef SERIAL_STREAM
+	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 	#endif
 	
 	// reserved version command (it's recommended to leave this in
@@ -975,25 +1119,7 @@ void setup()
 	// due to RAM constraints we have to expose the whole variable RAM as one read-only block
 	arducom.addCommand(new ArducomReadBlock(20, &readings[0]));
 
-	// initialize I2C
-	Wire.begin();
-
-	// deactivate internal pullups for twi
-	digitalWrite(SDA, 0);
-	digitalWrite(SCL, 0);
-	
-	// connect to RTC (try three times because I2C may be busy sometimes)
-	bool rtcOK = false;
-	int repeat = 3;
-	while (!rtcOK && (repeat > 0))  {
-		rtcOK = RTC.isrunning();
-		repeat--;
-		delay(10);
-	}
-
-	if (!rtcOK) {
-		DEBUG(println(F("RTC not functional")));
-	} else {
+	if (rtcOK) {
 		// register RTC commands
 		// Assuming I2C, on Linux you can display the current date using the following command:
 		//  date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
@@ -1001,19 +1127,15 @@ void setup()
 		//  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
 		arducom.addCommand(new ArducomGetTime(21));
 		arducom.addCommand(new ArducomSetTime(22));
-		
-		// set date time callback function (for file modification date)
-		SdFile::dateTimeCallback(dateTime);
 	}
-
-	// initialize SD system
-	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
-		sdCardOK = 1;
+	
+	if (sdCardOK) {
+		log(F("Adding FTP commands"));
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
 	
-	// S0 polling interrupt setup
+	// **** S0 polling interrupt setup ****
 
 	// configure interrupt (once per ms)
 	/* First disable the timer overflow interrupt while we're configuring */
@@ -1046,11 +1168,15 @@ void setup()
 	/* Finally load end enable the timer */
 	TCNT2 = tcnt2;
 	TIMSK2 |= (1<<TOIE2);
+
+	// **** Watchdog setup ****
 	
-	// enable watchdog timer
 	#ifdef ENABLE_WATCHDOG
 	wdt_enable(WATCHDOG_TIMEOUT);
+	WDTCSR |= (1 << WDIE);
 	#endif
+
+	log(F("DataLogger started."));
 }
 
 /*******************************************************
@@ -1248,7 +1374,6 @@ void loop()
 						// there is no valid EEPROM date
 						// maybe the user has never set the RTC
 						// assume that the date is not valid
-
 					}
 				}
 				getDateRetries--;
@@ -1337,5 +1462,21 @@ void loop()
 	
 		// Periodically reset readings. This allows to detect sensor or communication failures.
 		resetReadings();
+	}
+	
+	wdt_reset();
+
+	// EEPROM transfer interval reached?
+	if (millis() / 1000 - lastEEPROMWrite > EEPROM_INTERVAL_S) {
+		
+		// write S0 values to EEPROM
+		eeprom_update_block((const void*)&readings[S0_A_VALUE], (void*)EEPROM_S0COUNTER_A, EEPROM_S0COUNTER_LEN);
+		eeprom_update_block((const void*)&readings[S0_B_VALUE], (void*)EEPROM_S0COUNTER_B, EEPROM_S0COUNTER_LEN);
+		eeprom_update_block((const void*)&readings[S0_C_VALUE], (void*)EEPROM_S0COUNTER_C, EEPROM_S0COUNTER_LEN);
+		eeprom_update_block((const void*)&readings[S0_D_VALUE], (void*)EEPROM_S0COUNTER_D, EEPROM_S0COUNTER_LEN);
+		
+		lastEEPROMWrite = millis() / 1000;
+		
+		log(F("S0 values stored"));
 	}
 }
