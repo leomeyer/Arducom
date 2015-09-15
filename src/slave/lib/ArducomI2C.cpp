@@ -1,5 +1,5 @@
 
-#include <Wire.h>
+#include <WSWire.h>
 
 #include <ArducomI2C.h>
 

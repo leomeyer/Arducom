@@ -252,7 +252,7 @@ raw_upload_hex:
 // watchdog timeout occurs the WDT_vect routine is first called which sets a memory token variable to
 // a special value. The MCU will then perform a second watchdog timeout which causes the actual reset.
 // This means that the effective watchdog timeout (time until reset) is twice the value specified here.
-#define ENABLE_WATCHDOG		1
+//#define ENABLE_WATCHDOG		1
 #define WATCHDOG_TIMEOUT	WDTO_4S
 //
 // Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
@@ -273,7 +273,7 @@ raw_upload_hex:
 
 #include <SPI.h>
 #include <SoftwareSerial.h>
-#include <Wire.h>
+#include <WSWire.h>
 
 // use RTClib from Adafruit
 // https://github.com/adafruit/RTClib
@@ -302,11 +302,11 @@ raw_upload_hex:
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-// #define SERIAL_STREAM	Serial
-#define SERIAL_BAUDRATE		57600
+#define SERIAL_STREAM	Serial
+#define SERIAL_BAUDRATE		9600
 
 // If you want to use I2C communications, define a slave address.
-#define I2C_SLAVE_ADDRESS	5
+//#define I2C_SLAVE_ADDRESS	5
 
 // If you use software serial output for debugging, specify its pins here.
 #define SOFTWARESERIAL_RX	2
@@ -320,7 +320,7 @@ raw_upload_hex:
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-// #define DEBUG_OUTPUT		Serial
+#define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -355,7 +355,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS functionality.
-#define OBIS_IR_POWER_PIN	A2
+//#define OBIS_IR_POWER_PIN	A2
 
 // file log interval (milliseconds)
 #define LOG_INTERVAL_MS		60000
@@ -731,8 +731,10 @@ bool rtcOK;
 dht DHT;
 uint32_t lastDHT22poll;
 
+#ifdef OBIS_IR_POWER_PIN
 // OBIS functionality
 OBISParser obisParser(&Serial);
+#endif
 
 // S0 counters
 #ifdef S0_A_PIN
@@ -936,40 +938,45 @@ DateTime utcToLocal(DateTime utc) {
 }
 
 // log the message to a file
-void log(const __FlashStringHelper* message) {
+void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = true) {
 	DEBUG(println(message));
 	if (sdCardOK) {
 		SdFile f;
 		if (f.open("/datalogr.log", O_RDWR | O_CREAT | O_AT_END)) {
-			if (rtcOK) {
-				// write timestamp to file
-				DateTime now = utcToLocal(RTC.now());
-				f.print(now.year());
-				f.print(F("-"));
-				if (now.month() < 10)
-					f.print(F("0"));
-				f.print(now.month());
-				f.print(F("-"));
-				if (now.day() < 10)
-					f.print(F("0"));
-				f.print(now.day());
-				f.print(F(" "));
-				if (now.hour() < 10)
-					f.print(F("0"));
-				f.print(now.hour());
-				f.print(F(":"));
-				if (now.minute() < 10)
-					f.print(F("0"));
-				f.print(now.minute());
-				f.print(F(":"));
-				if (now.second() < 10)
-					f.print(F("0"));
-				f.print(now.second());
-				f.print(F(" "));
-			} else {
-				f.print(F("<time unknown>      "));
+			if (timestamp) {
+				if (rtcOK) {
+					// write timestamp to file
+					DateTime now = utcToLocal(RTC.now());
+					f.print(now.year());
+					f.print(F("-"));
+					if (now.month() < 10)
+						f.print(F("0"));
+					f.print(now.month());
+					f.print(F("-"));
+					if (now.day() < 10)
+						f.print(F("0"));
+					f.print(now.day());
+					f.print(F(" "));
+					if (now.hour() < 10)
+						f.print(F("0"));
+					f.print(now.hour());
+					f.print(F(":"));
+					if (now.minute() < 10)
+						f.print(F("0"));
+					f.print(now.minute());
+					f.print(F(":"));
+					if (now.second() < 10)
+						f.print(F("0"));
+					f.print(now.second());
+					f.print(F(" "));
+				} else {
+					f.print(F("<time unknown>      "));
+				}
 			}
-			f.println(message);
+			if (ln)
+				f.println(message);
+			else
+				f.print(message);
 			f.close();
 		}
 	}	
@@ -1016,6 +1023,11 @@ void setup()
 		SdFile::dateTimeCallback(dateTime);
 
 	log(F("DataLogger starting..."));
+	log(F("Build: "), false);
+	log(F(__DATE__), false, false);
+	log(F(" "), false, false);
+	log(F(__TIME__), true, false);
+	
 	if (!rtcOK)
 		log(F("RTC not functional"));
 	
@@ -1424,9 +1436,11 @@ void loop()
 					logFile.print(*(int16_t*)&readings[DHT22_B_HUMID]);
 				logFile.print(";");
 				#endif
-				
+		
+				#ifdef OBIS_IR_POWER_PIN
 				// log OBIS data
 				obisParser.logData(&logFile, ';');
+				#endif
 				
 				// log S0 counters
 				#ifdef S0_A_PIN

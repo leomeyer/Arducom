@@ -1,5 +1,4 @@
-
-#include <Wire.h>
+#include <Stream.h>
 
 #include <ArducomStream.h>
 
