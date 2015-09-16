@@ -9,5 +9,4 @@ build-uno/minimal_arducom.o: minimal_arducom.ino \
  /usr/share/arduino/hardware/arduino/cores/arduino/Printable.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/new.h \
  /usr/share/arduino/hardware/arduino/variants/standard/pins_arduino.h \
- /usr/share/arduino/libraries/Arducom/Arducom.h \
- /usr/share/arduino/libraries/Arducom/ArducomStream.h
+ ../lib/Arducom/Arducom.h ../lib/Arducom/ArducomStream.h

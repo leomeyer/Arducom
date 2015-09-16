@@ -1,7 +1,6 @@
-build-uno/libs/Arducom/ArducomFTP.o: \
- /usr/share/arduino/libraries/Arducom/ArducomFTP.cpp \
- /usr/share/arduino/libraries/Arducom/ArducomFTP.h \
- ../lib/SdFat/SdFat/SdFat.h ../lib/SdFat/SdFat/SdSpiCard.h \
+build-uno/libs/Arducom/ArducomFTP.o: ../lib/Arducom/ArducomFTP.cpp \
+ ../lib/Arducom/ArducomFTP.h ../lib/SdFat/SdFat/SdFat.h \
+ ../lib/SdFat/SdFat/SdSpiCard.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/binary.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/WCharacter.h \
@@ -29,5 +28,4 @@ build-uno/libs/Arducom/ArducomFTP.o: \
  ../lib/SdFat/SdFat/utility/ostream.h \
  ../lib/SdFat/SdFat/utility/FatFileSystem.h \
  ../lib/SdFat/SdFat/utility/StdioStream.h \
- ../lib/SdFat/SdFat/utility/fstream.h \
- /usr/share/arduino/libraries/Arducom/Arducom.h
+ ../lib/SdFat/SdFat/utility/fstream.h ../lib/Arducom/Arducom.h

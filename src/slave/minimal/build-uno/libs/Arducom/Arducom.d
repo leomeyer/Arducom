@@ -1,5 +1,4 @@
-build-uno/libs/Arducom/Arducom.o: \
- /usr/share/arduino/libraries/Arducom/Arducom.cpp \
+build-uno/libs/Arducom/Arducom.o: ../lib/Arducom/Arducom.cpp \
  /usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/binary.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/WCharacter.h \
@@ -10,4 +9,4 @@ build-uno/libs/Arducom/Arducom.o: \
  /usr/share/arduino/hardware/arduino/cores/arduino/Printable.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/new.h \
  /usr/share/arduino/hardware/arduino/variants/standard/pins_arduino.h \
- /usr/share/arduino/libraries/Arducom/Arducom.h
+ ../lib/Arducom/Arducom.h

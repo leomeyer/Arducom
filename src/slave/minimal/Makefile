@@ -5,5 +5,5 @@ ARDUINO_DIR = /usr/share/arduino
 BOARD_TAG    = uno
 ARDUINO_PORT = /dev/ttyUSB*
 USER_LIB_PATH = ../lib
-ARDUINO_LIBS = WSWire SdFat/SdFat Arducom
+ARDUINO_LIBS = WSWireLib/Library/WSWire SdFat/SdFat Arducom
 include /usr/share/arduino/Arduino.mk
