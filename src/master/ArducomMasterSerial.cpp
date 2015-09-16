@@ -70,11 +70,17 @@ void ArducomMasterTransportSerial::init(void) {
 	// initialize the serial device
 	struct termios tty;
 
+		std::cout << "Opening device: ";
+		std::cout << this->filename;
+		std::cout << std::endl;
+
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		perror("Failed to open serial device");
 		throw std::runtime_error("Failed to open serial device: " + this->filename);
 	}
+
+	std::cout << "Setting device attributes..." << std::endl;
 
 	memset (&tty, 0, sizeof tty);
 	if (tcgetattr(fd, &tty) != 0) {
@@ -145,6 +151,10 @@ void ArducomMasterTransportSerial::init(void) {
 	}
 
 	this->fileHandle = fd;
+
+		std::cout << "Opened device.";
+		std::cout << std::endl;
+
 }
 
 void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retries) {
@@ -157,6 +167,10 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 	for (uint8_t i = 0; i < size; i++) {
 		int my_retries = retries;
 repeat:
+		std::cout << "Sending byte: ";
+		ArducomMaster::printBuffer(&buffer[i], 1);
+		std::cout << std::endl;
+		
 		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
 				perror("Error sending data to serial device");

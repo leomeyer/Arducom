@@ -302,11 +302,11 @@ raw_upload_hex:
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM	Serial
+// #define SERIAL_STREAM	Serial
 #define SERIAL_BAUDRATE		9600
 
 // If you want to use I2C communications, define a slave address.
-//#define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
 
 // If you use software serial output for debugging, specify its pins here.
 #define SOFTWARESERIAL_RX	2
@@ -320,7 +320,7 @@ raw_upload_hex:
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-#define DEBUG_OUTPUT		Serial
+// #define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -355,7 +355,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS functionality.
-//#define OBIS_IR_POWER_PIN	A2
+#define OBIS_IR_POWER_PIN	A2
 
 // file log interval (milliseconds)
 #define LOG_INTERVAL_MS		60000
@@ -1138,7 +1138,9 @@ void setup()
 		// To set the current date and time, use:
 		//  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
 		arducom.addCommand(new ArducomGetTime(21));
-		arducom.addCommand(new ArducomSetTime(22));
+		// EXPERIMENTALLY DISABLED
+		// to check whether RTC corruption occurs due to runaway code or I2C bus glitches
+		// arducom.addCommand(new ArducomSetTime(22));
 	}
 	
 	if (sdCardOK) {
