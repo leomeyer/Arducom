@@ -1,6 +1,11 @@
 // Minimal Arducom slave example
 // by Leo Meyer <leomeyer@gmx.de>
 
+// Receives Arducom commands via serial stream.
+// Understands the Arducom version command (code 0).
+
+// This code is in the public domain.
+
 #include <Arducom.h>
 #include <ArducomStream.h>
 
@@ -18,10 +23,10 @@ Arducom arducom(&arducomTransport);
 
 void setup()
 {	
-	// Initialize hardware components
+	// initialize hardware
 	Serial.begin(9600);
 
-	// Setup Arducom system
+	// setup Arducom system
 	arducom.addCommand(new ArducomVersionCommand("MinimalExample"));
 }
 
@@ -32,9 +37,5 @@ void setup()
 void loop()
 {
 	// handle Arducom commands
-	int code = arducom.doWork();
-	if (code == ARDUCOM_COMMAND_HANDLED) {
-	} else
-	if (code != ARDUCOM_OK) {
-	}
+	arducom.doWork();
 }
