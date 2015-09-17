@@ -1138,9 +1138,7 @@ void setup()
 		// To set the current date and time, use:
 		//  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
 		arducom.addCommand(new ArducomGetTime(21));
-		// EXPERIMENTALLY DISABLED
-		// to check whether RTC corruption occurs due to runaway code or I2C bus glitches
-		// arducom.addCommand(new ArducomSetTime(22));
+		arducom.addCommand(new ArducomSetTime(22));
 	}
 	
 	if (sdCardOK) {
