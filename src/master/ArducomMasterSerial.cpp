@@ -74,7 +74,7 @@ void ArducomMasterTransportSerial::init(void) {
 		std::cout << this->filename;
 		std::cout << std::endl;
 
-	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
+	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		perror("Failed to open serial device");
 		throw std::runtime_error("Failed to open serial device: " + this->filename);
