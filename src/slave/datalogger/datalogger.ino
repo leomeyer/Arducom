@@ -68,7 +68,7 @@
 
 // ********* RTC **********
 //
-// This program exposes a Real Time Clock DS1307 via Arducom. It is also used internally for log file names
+// This program exposes a Real Time Clock DS1307 via Arducom. The RTC is also used internally for log file names
 // and timestamping records.
 // To query and set the RTC use the following:
 // Assuming I2C, on Linux you can display the current date using the following command:
@@ -78,7 +78,9 @@
 //
 // Important! You must set the time using this command before data is logged into timestamped files!
 // Otherwise data will be logged to the file "/fallback.log."
-// It is also advisable to set the time once a month to allow the logger to validate the RTC date.
+// It is also advisable to set the RTC time regularly from a known good time source (such as NTP)
+// because the RTC might not be very accurate. It also allows the logger to validate the RTC date.
+// Setting the RTC too often should be avoided however because the value is stored in EEPROM causing wear.
 //
 // The time interface uses UTC timestamps (for ease of use with the Linux tools).
 // Internally the RTC also runs on UTC time. To correcly determine date rollovers for log files
@@ -89,6 +91,8 @@
 // to move the device to a different timezone, or if you want to compensate for daylight saving time changes.
 // You can read or adjust the timezone offset using the Arducom EEPROM read and write block commands.
 // The log files will contain UTC timestamps, however.
+// To set the timezone offset to 7200 (two hours), use the following command (assume I2C):
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
 
 // ********* Logging **********
 //
