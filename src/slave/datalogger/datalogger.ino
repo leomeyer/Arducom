@@ -441,6 +441,8 @@ public:
 	ArducomGetTime(uint8_t commandCode) : ArducomCommand(commandCode, 0) {}		// this command expects zero parameters
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+		// assume that RTC access is safe (I2C is currently not busy - master is waiting for a response)
+		
 		// read RTC time
 		DateTime now = RTC.now();
 		uint32_t unixTS = now.unixtime();
@@ -455,6 +457,8 @@ public:
 	ArducomSetTime(uint8_t commandCode) : ArducomCommand(commandCode, 4) {}		// this command expects four bytes as parameters
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+		// assume that RTC access is safe (I2C is currently not busy - master is waiting for a response)
+		
 		// get parameter
 		uint32_t unixTS = *((uint32_t*)dataBuffer);
 		// construct and set RTC time
@@ -904,6 +908,11 @@ ISR(WDT_vect) {
 	wdt_token = 0x1234;
 	// go into infinite loop, let the watchdog do the reset
 	while (true) ;
+}
+
+// Encapsulates RTC access
+DateTime getTimeUTC() {
+	// TODO
 }
 
 // Resets the readings to invalid values.
