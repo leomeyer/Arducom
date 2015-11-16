@@ -1,8 +1,9 @@
 // Arducom hello world example
 // by Leo Meyer <leomeyer@gmx.de>
 
-// Demonstrates use of the Arducom library.
-// Supports serial or I2C transport methods.
+// Demonstrates the use of the Arducom library.
+// Supports serial or I2C transport methods, with I2C
+// being implemented in either hardware or software.
 // Supports the Arducom status inquiry command.
 // Implements basic EEPROM access commands.
 // Implements basic RAM access commands (to expose variables).
@@ -45,8 +46,8 @@
 // Define this macro if you are using an SD card.
 // The chipselect pin depends on the type of SD card shield.
 // Requires the SdFat library:
-// https://github.com/greiman/SdFat<a
-#define SDCARD_CHIPSELECT	10	
+// https://github.com/greiman/SdFat
+#define SDCARD_CHIPSELECT	10
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -64,7 +65,7 @@
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
 // #define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		57600
+#define SERIAL_BAUDRATE		9600
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
@@ -72,7 +73,8 @@
 // To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
 #define SOFTWARE_I2C		1
 
-// If using software I2C specify the configuration here (see SoftwareI2CSlave.h).
+// If using software I2C specify the configuration here
+// (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
 #ifdef SOFTWARE_I2C
 
 	// The buffer size in bytes for the send and receive buffer
@@ -122,7 +124,9 @@
 	// For PINC, use PCMSK1
 	// For PIND, use PCMSK2
 	#define I2C_SLAVE_PINMASKREG	PCMSK1
-   
+
+	#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
+	
 #endif	// SOFTWARE_I2C
 
 // Specifies a Print object to use for the debug output.
@@ -130,7 +134,7 @@
 // You cannot use the same Print object for Arducom serial communication
 // (for example, Serial). Instead, use a SoftwareSerial port or another
 // HardwareSerial on Arduinos with more than one UART.
-// Note: This define is for the hello-world test sketch. To debug Arducom,
+// Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // #define DEBUG_OUTPUT		Serial
 
@@ -150,67 +154,6 @@
 #error You cannot use serial and I2C communication at the same time.
 #endif
 
-#ifdef SOFTWARE_I2C
-/*******************************************************
-* Software I2C transport encapsulation
-*******************************************************/
-
-#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
-
-class ArducomSoftwareI2C;
-static ArducomSoftwareI2C* softwareI2C;
-
-/** This class defines the transport mechanism for Arducom commands over Software I2C.
-*/
-class ArducomSoftwareI2C: public ArducomTransport {
-
-public:
-	// interrupt notification routine
-	static void I2CReceive(uint8_t length) {
-		softwareI2C->size = 0;
-		if (length >= ARDUCOM_BUFFERSIZE) {
-			softwareI2C->status = TOO_MUCH_DATA;
-			return;
-		}
-		while (softwareI2C->size < length) {
-			// read byte
-			softwareI2C->data[softwareI2C->size] = i2c_slave_buffer[softwareI2C->size];
-			softwareI2C->size++;
-		}
-		softwareI2C->status = HAS_DATA;
-	}
-
-	ArducomSoftwareI2C() {
-		softwareI2C = this;
-		// setup I2C pins
-		pinMode(I2C_SLAVE_SCL_PIN, INPUT);
-		pinMode(I2C_SLAVE_SDA_PIN, INPUT);
-
-		i2c_slave_init(&I2CReceive);		
-	};
-	
-	virtual int8_t doWork(void) {
-		return ARDUCOM_OK;
-	};
-	
-	virtual int8_t send(uint8_t* buffer, uint8_t count)(uint8_t* buffer, uint8_t count) {
-		this->status = READY_TO_SEND;
-		if (count > ARDUCOM_BUFFERSIZE) {
-			this->data[0] = ARDUCOM_ERROR_CODE;
-			this->data[1] = ARDUCOM_TOO_MUCH_DATA;
-			this->data[2] = count;
-			this->size = 3;
-			i2c_slave_send(this->data, this->size);
-			return ARDUCOM_OVERFLOW;
-		} else {
-			this->size = count;
-			i2c_slave_send(buffer, count);
-		}
-		return ARDUCOM_OK;
-	};
-};
-
-#endif	// SOFTWARE_I2C
 
 /*******************************************************
 * RTC access command implementation (for getting and
@@ -266,10 +209,11 @@ public:
 #ifdef SERIAL_STREAM
 ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
+	// I2C may be either software or hardware
 	#ifdef SOFTWARE_I2C
-	ArducomSoftwareI2C arducomTransport();
+	ArducomSoftwareI2C arducomTransport(&i2c_slave_init, &i2c_slave_send, &i2c_slave_buffer[0]);
 	#else
-	ArducomTransportI2C arducomTransport(I2C_SLAVE_ADDRESS);
+	ArducomHardwareI2C arducomTransport(I2C_SLAVE_ADDRESS);
 	#endif
 #else
 #error You have to define a transport method (SERIAL_STREAM or I2C_SLAVE_ADDRESS).
@@ -280,9 +224,11 @@ Arducom arducom(&arducomTransport
 , &DEBUG_OUTPUT
 #endif
 );
-ArducomFTP arducomFTP;
 
 #ifdef SDCARD_CHIPSELECT
+// FTP works only if there is an SD card
+ArducomFTP arducomFTP;
+
 SdFat sdFat;
 SdFile logFile;
 long lastWriteMs;
@@ -332,7 +278,7 @@ void setup()
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 	
 #endif
-	DEBUG(print(F("HelloWorld starting...")));
+	DEBUG(println(F("HelloWorld starting...")));
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)

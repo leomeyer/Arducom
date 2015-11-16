@@ -8,6 +8,9 @@
 // Caution: Remove I2C pullup resistors on 5 V data shields if connecting to a Raspberry Pi
 // or another 3.3 V-operated module!
 //
+// For interoperation with a Raspberry Pi it is recommended to use the software I2C slave
+// implementation instead of a multi-master setup (if using other peripherals like an RTC).
+// 
 // This file is best viewed with a monospace font and tab width 4.
 
 // ********* Description **********
@@ -21,40 +24,46 @@
 // - up to four S0 lines, counting impulses as 64 bit values stored in EEPROM
 // - one D0 OBIS data input (requires the RX pin and one output for the optical transistor supply voltage)
 // - up to two DHT22 temperature/humidity sensors
-// [PLANNED - up to two analog values (analog pins A0 - A1)]
 //
 // All readings are accessible via Arducom via memory block read (command 20). See "RAM layout" below for details.
 // The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
 
 // ********* S0 **********
 //
-// The S0 lines are queried once a millisecond using software debouncing using the timer 2.
+// The S0 lines are queried about once a millisecond using software debouncing using the timer 2.
 // The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
 // Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
 // S0 EEPROM range starts at 0 (eight bytes S0_A, eight bytes S0_B, eight bytes S0_C, eight bytes S0_D).
 // The S0 EEPROM values can be adjusted ("primed") via Arducom to set the current meter readings (make sure to 
-// take the impulse factor into consideration).
+// take the impulse factor of the respective device into consideration).
 // Each detected S0 impulse increments its RAM variable by 1. These variables are written to the log file.
 // There are also delta RAM variables that are reset after each log interval. These delta variables are of type uint16_t
 // which allows a log interval of 65535 imp / 32 imp/s = 2114 seconds maximum before overflow
 // at a presumed worst case impulse duration of 30 ms with 1 ms pause.
 // After each log interval the delta values are copied to the last values storage. These values represent the
 // accumulated impulses during the log interval and can be interpreted as the momentaneous value with respect to the
-// log interval.
+// log interval (integrated over the log interval).
 // S0 values are stored in EEPROM in a configurable interval. The interval is a compromise between EEPROM cell life
 // and the amount of data loss in case of a catastrophic failure.
 // If the values are written once per hour, with an expected EEPROM cell life of 100k writes the EEPROM can be expected
 // to last at least about 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
 // The program attempts to detect whether the last start was due to a watchdog reset. If yes, the S0 values in memory
-// are not initialized from EEPROM to minimize data loss.
-// This may require an updated bootloader version that makes the reset flags available to user programs.
+// are not overwritten from EEPROM to minimize data loss.
+// 
+// Transmitting large data blocks via software I2C may cause S0 timing to become inaccurate. This may affect devices 
+// that send impulses very fast, approaching the 30 ms per impulse limit. This is unlikely to occur in practice.
 
 // ********* D0 **********
 //
-// The D0 input is a serial input used by electronic power meters and other measurement devices.
+// The D0 interface is a serial interface used by electronic power meters and other measurement devices.
+// Data transmitted over this interface conforms to the OBIS specification ("Object Identification System").
+// This implementation is for the Easymeter Q3D. It can be easily extended to support other devices.
+// This datalogger uses the hardware serial port to read the serial data (on Uno). This may conflict with the bootloader
+// during programming because the bootloader also uses the serial port.
 // As the Arduino should still be programmable via USB cable, D0 serial data input must be disabled during
-// programming. The simplest solution is to switch on the receiving IR transistor's supply voltage on program start.
-// Also, the UART must be configured to support the serial protocol (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
+// programming. The simplest solution is to switch on the receiving IR transistor's supply voltage on program start only.
+// Consequently the reset before programming disables the power, preventing conflicting serial data from arriving.
+// The UART must be configured to support the serial protocol after start (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
 // The D0 input does not require persistent storage as the meter will always transmit total values.
 // The following circuit can be used to detect D0 data that is transmitted via an IR LED:
 
@@ -64,7 +73,7 @@
 //
 // If the data logger does not use a serial input (D0) port for OBIS input, data (real time and stored)
 // can be read via Arducom over the serial port. If the serial input is used for D0 Arducom communication 
-// can be made over I2C.
+// can take place over I2C.
 
 // ********* RTC **********
 //
@@ -81,9 +90,10 @@
 // It is also advisable to set the RTC time regularly from a known good time source (such as NTP)
 // because the RTC might not be very accurate. It also allows the logger to validate the RTC date.
 // Setting the RTC too often should be avoided however because the value is stored in EEPROM causing wear.
+// Once per hour should probably be ok.
 //
 // The time interface uses UTC timestamps (for ease of use with the Linux tools).
-// Internally the RTC also runs on UTC time. To correcly determine date rollovers for log files
+// Internally the RTC also runs on UTC time. To correctly determine date rollovers for log files
 // you need to specify a timezone offset value to convert between UTC and local time.
 // If you don't do this the logger won't be able to determine the beginning of a new day correctly
 // and the timestamps in the file probably won't match the file date.
@@ -93,12 +103,14 @@
 // The log files will contain UTC timestamps, however.
 // To set the timezone offset to 7200 (two hours), use the following command (assume I2C):
 // ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
+//
+// It is advised to automate daylight saving changes and RTC corrections (e. g. setting them once per hour).
 
 // ********* Logging **********
 //
 // Timestamped sensor readings are stored on the SD card in a configurable interval.
 // SD card log files should be rolled over when they become larger. Generally it is advisable to keep these files
-// to around 100 kB. Logging 100 bytes every minute causes a daily data volume of 140 kB;
+// to around 100 kB. Logging 100 bytes every minute causes a daily data volume of about 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 such a file will take about 30 seconds
 // to download using an Arducom FTP transfer.
 // Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
@@ -116,7 +128,7 @@
 
 // ********* GPIO pin map **********
 //
-// Pin map for Uno; check whether this works with your board:
+// Pin map for Uno; check whether this works if using a different board:
 //
 // D0 - RX: D0 OBIS input (9600 7E1)
 // D1 - TX: used for programmer, do not use
@@ -127,7 +139,8 @@
 // D9: suggested data pin for DHT22 B
 // D10: Chip Select for SD card on Keyes Data Logger Shield
 // D11 - D13: MOSI, MISO, CLK for SD card on Keyes Data Logger Shield
-// A0 - A1: analog input
+// A0: Software I2C SDA
+// A1: Software I2C SCL
 // A2: suggested power supply for OBIS serial input circuit
 // A3: Reserved
 // A4: I2C SDA
@@ -145,7 +158,8 @@
 
 // ********* Building **********
 //
-// This sketch probably fails to build on a Raspberry Pi itself due to old Arduino library versions. 
+// Building this sketch on a Raspberry Pi requires recent Arduino library versions. 
+// If you get the following error it won't work: ‘SERIAL_7E1’ was not declared in this scope
 // It is recommended to build and upload it on an Ubuntu machine with the latest Arduino version
 // (1.6.5 at the time of writing). You can also compile on Ubuntu, copy the hex file to a Raspberry
 // and upload it from there; in this case you will have to install arduino-core and arduino-mk and
@@ -168,7 +182,7 @@ raw_upload_hex:
 //
 // To query the sensor values you can use the "arducom" tool on Linux. If you are not using the RX pin for
 // OBIS data you can use the serial interface for the Arducom system. If you use OBIS data or the RX pin is
-// otherwise in use, you can use I2C to connect your host (e. g. a Raspberry Pi).
+// otherwise in use you can use I2C to connect your host (e. g. a Raspberry Pi).
 // You can download history data or the current log file using the "arducom-ftp" tool.
 //
 // Sensor data is exposed via command 20. To query a sensor's data you have to know the sensor's memory 
@@ -249,9 +263,7 @@ raw_upload_hex:
 // It is recommended to set the watchdog timer rather high, for example 4 or 8 seconds (you must use
 // the predefined timer constants WDTO_x for this), to allow for delays interfacing with the SD card.
 // The downside of long watchdog delays is the loss of data during the wait period if the program hangs.
-// The program will attempt to detect whether a reset was caused by the watchdog. This mechanism works
-// by checking the respective bit in the MCUSR register. However, this method is not reliable as the
-// register may have been modified by a bootloader. Therefore the program installs a handler for the
+// The program will attempt to detect whether a reset was caused by the watchdog.It installs a handler for the
 // WDT_vect interrupt handler and sets the WDIE bit in the watchdog controller register WDTCSR. If a
 // watchdog timeout occurs the WDT_vect routine is first called which sets a memory token variable to
 // a special value. The MCU will then perform a second watchdog timeout which causes the actual reset.
@@ -311,6 +323,65 @@ raw_upload_hex:
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
+
+// To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
+#define SOFTWARE_I2C		1
+
+// If using software I2C specify the configuration here
+// (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
+#ifdef SOFTWARE_I2C
+
+	// The buffer size in bytes for the send and receive buffer
+	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
+
+	// The numbers of the Arduino pins to use (in this example, A0 and A1)
+	// Pins 0 - 7 are on PIND
+	// Pins 8 - 13 are on PINB
+	// Pins 14 - 19 are on PINC
+	#define I2C_SLAVE_SCL_PIN		14
+	#define I2C_SLAVE_SDA_PIN		15
+
+	// The pin read command (input port register)
+	// Subsequent definitions mainly depend on this setting.
+	#define I2C_SLAVE_READ_PINS		PINC
+
+	// The pin data direction register
+	// For PINB, use DDRB
+	// For PINC, use DDRC
+	// For PIND, use DDRD
+	#define I2C_SLAVE_DDR_PINS		DDRC
+
+	// The corresponding bits of the pins on the input and data direction registers
+	#define I2C_SLAVE_SCL_BIT		0
+	#define I2C_SLAVE_SDA_BIT		1
+
+	// The pin change interrupt vector corresponding to the input port.
+	// For PINB, use PCINT0_vect
+	// For PINC, use PCINT1_vect
+	// For PIND, use PCINT2_vect
+	#define I2C_SLAVE_INTVECTOR		PCINT1_vect
+
+	// The interrupt enable flag for the pin change interrupt
+	// For PINB, use PCIE0
+	// For PINC, use PCIE1
+	// For PIND, use PCIE2
+	#define I2C_SLAVE_INTFLAG		PCIE1
+
+	// The clear flag for the pin change interrupt
+	// For PINB, use PCIF0
+	// For PINC, use PCIF1
+	// For PIND, use PCIF2
+	#define I2C_SLAVE_CLEARFLAG		PCIF1
+
+	// The pin mask register for the pin change interrupt
+	// For PINB, use PCMSK0
+	// For PINC, use PCMSK1
+	// For PIND, use PCMSK2
+	#define I2C_SLAVE_PINMASKREG	PCMSK1
+
+	#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
+	
+#endif	// SOFTWARE_I2C
 
 // If you use software serial output for debugging, specify its pins here.
 #define SOFTWARESERIAL_RX	2
@@ -715,7 +786,12 @@ unsigned int tcnt2;
 #ifdef SERIAL_STREAM
 ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
-ArducomTransportI2C arducomTransport(I2C_SLAVE_ADDRESS);
+	// I2C may be either software or hardware
+	#ifdef SOFTWARE_I2C
+	ArducomSoftwareI2C arducomTransport(&i2c_slave_init, &i2c_slave_send, &i2c_slave_buffer[0]);
+	#else
+	ArducomHardwareI2C arducomTransport(I2C_SLAVE_ADDRESS);
+	#endif
 #else
 #error You have to define a transport method (SERIAL_STREAM or I2C_SLAVE_ADDRESS).
 #endif
@@ -774,14 +850,6 @@ volatile uint16_t wdt_token __attribute__ ((section(".noinit")));
 /*******************************************************
 * Routines
 *******************************************************/
-
-// taken from: https://code.google.com/p/arduino/issues/attachmentText?id=794&aid=7940002001&name=resetFlags_appCode.cpp
-void resetFlagsInit(void) __attribute__ ((naked)) __attribute__ ((section (".init0")));
-void resetFlagsInit(void)
-{
-	// save the reset flags passed from the bootloader
-	__asm__ __volatile__ ("mov %0, r2\n" : "=r" (resetFlags) :);
-}
 
 // taken from SdFat examples
 // call back for file timestamps, used by the SdFat library
@@ -914,11 +982,6 @@ ISR(WDT_vect) {
 	while (true) ;
 }
 
-// Encapsulates RTC access
-DateTime getTimeUTC() {
-	// TODO
-}
-
 // Resets the readings to invalid values.
 void resetReadings() {
 	// invalidate reading buffer for OBIS data
@@ -1023,7 +1086,7 @@ void setup()
 		sdCardOK = 1;
 	}
 
-	// connect to RTC (try three times because I2C may be busy sometimes)
+	// connect to RTC (try three times)
 	int repeat = 3;
 	while (!rtcOK && (repeat > 0))  {
 		rtcOK = RTC.isrunning();
@@ -1047,7 +1110,7 @@ void setup()
 	// **** Initialize memory for readings ****
 
 	// reset by watchdog?
-	if ((resetFlags & _BV(WDRF)) || (wdt_token == 0x1234)) {
+	if (wdt_token == 0x1234) {
 		log(F("Watchdog reset detected"));
 		
 		// do not initialize the S0 values and counters in order not to lose data after watchdog reset
@@ -1083,7 +1146,7 @@ void setup()
 	
 	resetReadings();
 	
-	// reset watchdog reset detector token
+	// clear watchdog reset detector token
 	wdt_token = 0;
 
 	// **** Initialize S0 lines ****
@@ -1322,11 +1385,9 @@ void loop()
 			// I2C communication is not always reliable. The RTC may be off or not set.
 			// Writing to a wrong file because of RTC errors can cause data loss.
 			// Common errors are year, month or day values being 0 or out of range.
-			// Another common error is a date too far in the future. This probably results from I2C problems
-			// when querying values at the same time as the RTC is being read. The Wire and RTClib libraries
-			// do not contain any mechanism to detect or avoid such problems, i. e. when an external master
-			// speaks to the Arduino slave, and the Arduino simultaneously tries to access the RTC as 
-			// a master itself.
+			// Another common error is a date too far in the future. This can results from I2C contention
+			// in multi-master setups. It is strongly recommended not to use multi-master I2C except if
+			// it is guaranteed that all devices gracefully handle bus arbitration.
 			// If we can't determine a current timestamp that looks valid after several attempts
 			// we log to a "fallback file" that is called "/fallback.log".
 			// Records ending up in this file probably do not have a valid timestamp, so data cannot be easily
