@@ -331,7 +331,7 @@ raw_upload_hex:
 #define I2C_SLAVE_ADDRESS	5
 
 // To use software I2C for Arducom, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
-#define SOFTWARE_I2C		1
+// #define SOFTWARE_I2C		1
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
@@ -446,6 +446,8 @@ raw_upload_hex:
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
 #define OBIS_IR_POWER_PIN	A2
+
+// #define OBIS_DEBUG			1
 
 // file log interval (milliseconds)
 #define LOG_INTERVAL_MS		60000
@@ -599,12 +601,16 @@ private:
 	OBISVariable* varHead;
 	
 	void startValue() {
+		#ifdef OBIS_DEBUG
 		DEBUG(println(F("OBIS startValue")));
+		#endif
 		this->parseVal = 0;
 	}
 	
 	void startRecord(void) {
+		#ifdef OBIS_DEBUG
 		DEBUG(println(F("OBIS startRecord")));
+		#endif
 		this->A = this->B = this->C = this->D = this->E = this->F = UNDEF;
 		this->parsePos = APOS;
 		this->startValue();
@@ -664,8 +670,10 @@ public:
 		// process all available input
 		while (this->inputStream->available()) {
 			uint8_t c = this->inputStream->read();
+			#ifdef OBIS_DEBUG
 			DEBUG(print(F("c: ")));
 			DEBUG(println(c));
+			#endif
 			
 			if (parsePos == UNDEF) {
 				// ignore everything until line break
@@ -684,7 +692,9 @@ public:
 				// end of field A?
 				if (c == '-') {
 					if (this->parsePos != APOS) {
+						#ifdef OBIS_DEBUG
 						DEBUG(println(F("OBIS Err A")));
+						#endif
 						parsePos = UNDEF;
 					} else {
 						this->A = parseVal;
@@ -723,6 +733,7 @@ public:
 				// parsing VALPOS
 				if (c == ')') {
 					// end of value
+					#ifdef OBIS_DEBUG
 					DEBUG(print(F("A: ")));
 					DEBUG(print((int)this->A));
 					DEBUG(print(F(" B: ")));
@@ -739,6 +750,7 @@ public:
 					DEBUG(print((uint32_t)(this->parseVal >> 32)));
 					DEBUG(print(F(" L: ")));
 					DEBUG(println((uint32_t)this->parseVal));
+					#endif
 					
 					// try to match variables
 					OBISVariable* var = this->varHead;
@@ -765,7 +777,9 @@ public:
 				} else
 				// unexpected EOL?
 				if (c == 10) {
+					#ifdef OBIS_DEBUG
 					DEBUG(println(F("Unexpected EOL")));
+					#endif
 					this->startRecord();
 				} else {
 					// ignore all non-digits
