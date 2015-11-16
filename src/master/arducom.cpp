@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <cstring>
 
-#include "../slave/lib/Arducom.h"
+#include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"

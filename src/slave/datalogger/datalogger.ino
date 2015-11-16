@@ -68,7 +68,7 @@
 
 // ********* RTC **********
 //
-// This program exposes a Real Time Clock DS1307 via Arducom. It is also used internally for log file names
+// This program exposes a Real Time Clock DS1307 via Arducom. The RTC is also used internally for log file names
 // and timestamping records.
 // To query and set the RTC use the following:
 // Assuming I2C, on Linux you can display the current date using the following command:
@@ -78,7 +78,9 @@
 //
 // Important! You must set the time using this command before data is logged into timestamped files!
 // Otherwise data will be logged to the file "/fallback.log."
-// It is also advisable to set the time once a month to allow the logger to validate the RTC date.
+// It is also advisable to set the RTC time regularly from a known good time source (such as NTP)
+// because the RTC might not be very accurate. It also allows the logger to validate the RTC date.
+// Setting the RTC too often should be avoided however because the value is stored in EEPROM causing wear.
 //
 // The time interface uses UTC timestamps (for ease of use with the Linux tools).
 // Internally the RTC also runs on UTC time. To correcly determine date rollovers for log files
@@ -89,6 +91,8 @@
 // to move the device to a different timezone, or if you want to compensate for daylight saving time changes.
 // You can read or adjust the timezone offset using the Arducom EEPROM read and write block commands.
 // The log files will contain UTC timestamps, however.
+// To set the timezone offset to 7200 (two hours), use the following command (assume I2C):
+// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
 
 // ********* Logging **********
 //
@@ -252,7 +256,7 @@ raw_upload_hex:
 // watchdog timeout occurs the WDT_vect routine is first called which sets a memory token variable to
 // a special value. The MCU will then perform a second watchdog timeout which causes the actual reset.
 // This means that the effective watchdog timeout (time until reset) is twice the value specified here.
-#define ENABLE_WATCHDOG		1
+//#define ENABLE_WATCHDOG		1
 #define WATCHDOG_TIMEOUT	WDTO_4S
 //
 // Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
@@ -273,7 +277,7 @@ raw_upload_hex:
 
 #include <SPI.h>
 #include <SoftwareSerial.h>
-#include <Wire.h>
+#include <WSWire.h>
 
 // use RTClib from Adafruit
 // https://github.com/adafruit/RTClib
@@ -303,7 +307,7 @@ raw_upload_hex:
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
 // #define SERIAL_STREAM	Serial
-#define SERIAL_BAUDRATE		57600
+#define SERIAL_BAUDRATE		9600
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
@@ -441,6 +445,8 @@ public:
 	ArducomGetTime(uint8_t commandCode) : ArducomCommand(commandCode, 0) {}		// this command expects zero parameters
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+		// assume that RTC access is safe (I2C is currently not busy - master is waiting for a response)
+		
 		// read RTC time
 		DateTime now = RTC.now();
 		uint32_t unixTS = now.unixtime();
@@ -455,6 +461,8 @@ public:
 	ArducomSetTime(uint8_t commandCode) : ArducomCommand(commandCode, 4) {}		// this command expects four bytes as parameters
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+		// assume that RTC access is safe (I2C is currently not busy - master is waiting for a response)
+		
 		// get parameter
 		uint32_t unixTS = *((uint32_t*)dataBuffer);
 		// construct and set RTC time
@@ -731,8 +739,10 @@ bool rtcOK;
 dht DHT;
 uint32_t lastDHT22poll;
 
+#ifdef OBIS_IR_POWER_PIN
 // OBIS functionality
 OBISParser obisParser(&Serial);
+#endif
 
 // S0 counters
 #ifdef S0_A_PIN
@@ -904,6 +914,11 @@ ISR(WDT_vect) {
 	while (true) ;
 }
 
+// Encapsulates RTC access
+DateTime getTimeUTC() {
+	// TODO
+}
+
 // Resets the readings to invalid values.
 void resetReadings() {
 	// invalidate reading buffer for OBIS data
@@ -936,40 +951,45 @@ DateTime utcToLocal(DateTime utc) {
 }
 
 // log the message to a file
-void log(const __FlashStringHelper* message) {
+void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = true) {
 	DEBUG(println(message));
 	if (sdCardOK) {
 		SdFile f;
 		if (f.open("/datalogr.log", O_RDWR | O_CREAT | O_AT_END)) {
-			if (rtcOK) {
-				// write timestamp to file
-				DateTime now = utcToLocal(RTC.now());
-				f.print(now.year());
-				f.print(F("-"));
-				if (now.month() < 10)
-					f.print(F("0"));
-				f.print(now.month());
-				f.print(F("-"));
-				if (now.day() < 10)
-					f.print(F("0"));
-				f.print(now.day());
-				f.print(F(" "));
-				if (now.hour() < 10)
-					f.print(F("0"));
-				f.print(now.hour());
-				f.print(F(":"));
-				if (now.minute() < 10)
-					f.print(F("0"));
-				f.print(now.minute());
-				f.print(F(":"));
-				if (now.second() < 10)
-					f.print(F("0"));
-				f.print(now.second());
-				f.print(F(" "));
-			} else {
-				f.print(F("<time unknown>      "));
+			if (timestamp) {
+				if (rtcOK) {
+					// write timestamp to file
+					DateTime now = utcToLocal(RTC.now());
+					f.print(now.year());
+					f.print(F("-"));
+					if (now.month() < 10)
+						f.print(F("0"));
+					f.print(now.month());
+					f.print(F("-"));
+					if (now.day() < 10)
+						f.print(F("0"));
+					f.print(now.day());
+					f.print(F(" "));
+					if (now.hour() < 10)
+						f.print(F("0"));
+					f.print(now.hour());
+					f.print(F(":"));
+					if (now.minute() < 10)
+						f.print(F("0"));
+					f.print(now.minute());
+					f.print(F(":"));
+					if (now.second() < 10)
+						f.print(F("0"));
+					f.print(now.second());
+					f.print(F(" "));
+				} else {
+					f.print(F("<time unknown>      "));
+				}
 			}
-			f.println(message);
+			if (ln)
+				f.println(message);
+			else
+				f.print(message);
 			f.close();
 		}
 	}	
@@ -1016,6 +1036,11 @@ void setup()
 		SdFile::dateTimeCallback(dateTime);
 
 	log(F("DataLogger starting..."));
+	log(F("Build: "), false);
+	log(F(__DATE__), false, false);
+	log(F(" "), false, false);
+	log(F(__TIME__), true, false);
+	
 	if (!rtcOK)
 		log(F("RTC not functional"));
 	
@@ -1424,9 +1449,11 @@ void loop()
 					logFile.print(*(int16_t*)&readings[DHT22_B_HUMID]);
 				logFile.print(";");
 				#endif
-				
+		
+				#ifdef OBIS_IR_POWER_PIN
 				// log OBIS data
 				obisParser.logData(&logFile, ';');
+				#endif
 				
 				// log S0 counters
 				#ifdef S0_A_PIN

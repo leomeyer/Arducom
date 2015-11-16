@@ -20,8 +20,8 @@
 #include <fcntl.h>
 #include <time.h>
 
-#include "../slave/lib/Arducom.h"
-#include "../slave/lib/ArducomFTP.h"
+#include "../slave/lib/Arducom/Arducom.h"
+#include "../slave/lib/Arducom/ArducomFTP.h"
 #include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"

@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#include "../slave/lib/Arducom.h"
+#include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
 
 static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* data, uint8_t dataSize) {
