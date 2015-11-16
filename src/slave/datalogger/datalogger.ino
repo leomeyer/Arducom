@@ -331,7 +331,7 @@ raw_upload_hex:
 #define I2C_SLAVE_ADDRESS	5
 
 // To use software I2C for Arducom, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
-// #define SOFTWARE_I2C		1
+#define SOFTWARE_I2C		1
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
