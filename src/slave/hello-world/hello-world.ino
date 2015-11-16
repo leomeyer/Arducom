@@ -63,11 +63,67 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM		Serial
+// #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
+
+// To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
+#define SOFTWARE_I2C		1
+
+// If using software I2C specify the configuration here (see SoftwareI2CSlave.h).
+#ifdef SOFTWARE_I2C
+
+	// The buffer size in bytes for the send and receive buffer
+	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
+
+	// The numbers of the Arduino pins to use (in this example, A0 and A1)
+	// Pins 0 - 7 are on PIND
+	// Pins 8 - 13 are on PINB
+	// Pins 14 - 19 are on PINC
+	#define I2C_SLAVE_SCL_PIN		14
+	#define I2C_SLAVE_SDA_PIN		15
+
+	// The pin read command (input port register)
+	// Subsequent definitions mainly depend on this setting.
+	#define I2C_SLAVE_READ_PINS		PINC
+
+	// The pin data direction register
+	// For PINB, use DDRB
+	// For PINC, use DDRC
+	// For PIND, use DDRD
+	#define I2C_SLAVE_DDR_PINS		DDRC
+
+	// The corresponding bits of the pins on the input and data direction registers
+	#define I2C_SLAVE_SCL_BIT		0
+	#define I2C_SLAVE_SDA_BIT		1
+
+	// The pin change interrupt vector corresponding to the input port.
+	// For PINB, use PCINT0_vect
+	// For PINC, use PCINT1_vect
+	// For PIND, use PCINT2_vect
+	#define I2C_SLAVE_INTVECTOR		PCINT1_vect
+
+	// The interrupt enable flag for the pin change interrupt
+	// For PINB, use PCIE0
+	// For PINC, use PCIE1
+	// For PIND, use PCIE2
+	#define I2C_SLAVE_INTFLAG		PCIE1
+
+	// The clear flag for the pin change interrupt
+	// For PINB, use PCIF0
+	// For PINC, use PCIF1
+	// For PIND, use PCIF2
+	#define I2C_SLAVE_CLEARFLAG		PCIF1
+
+	// The pin mask register for the pin change interrupt
+	// For PINB, use PCMSK0
+	// For PINC, use PCMSK1
+	// For PIND, use PCMSK2
+	#define I2C_SLAVE_PINMASKREG	PCMSK1
+   
+#endif	// SOFTWARE_I2C
 
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
@@ -93,6 +149,68 @@
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
 #endif
+
+#ifdef SOFTWARE_I2C
+/*******************************************************
+* Software I2C transport encapsulation
+*******************************************************/
+
+#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
+
+class ArducomSoftwareI2C;
+static ArducomSoftwareI2C* softwareI2C;
+
+/** This class defines the transport mechanism for Arducom commands over Software I2C.
+*/
+class ArducomSoftwareI2C: public ArducomTransport {
+
+public:
+	// interrupt notification routine
+	static void I2CReceive(uint8_t length) {
+		softwareI2C->size = 0;
+		if (length >= ARDUCOM_BUFFERSIZE) {
+			softwareI2C->status = TOO_MUCH_DATA;
+			return;
+		}
+		while (softwareI2C->size < length) {
+			// read byte
+			softwareI2C->data[softwareI2C->size] = i2c_slave_buffer[softwareI2C->size];
+			softwareI2C->size++;
+		}
+		softwareI2C->status = HAS_DATA;
+	}
+
+	ArducomSoftwareI2C() {
+		softwareI2C = this;
+		// setup I2C pins
+		pinMode(I2C_SLAVE_SCL_PIN, INPUT);
+		pinMode(I2C_SLAVE_SDA_PIN, INPUT);
+
+		i2c_slave_init(&I2CReceive);		
+	};
+	
+	virtual int8_t doWork(void) {
+		return ARDUCOM_OK;
+	};
+	
+	virtual int8_t send(uint8_t* buffer, uint8_t count)(uint8_t* buffer, uint8_t count) {
+		this->status = READY_TO_SEND;
+		if (count > ARDUCOM_BUFFERSIZE) {
+			this->data[0] = ARDUCOM_ERROR_CODE;
+			this->data[1] = ARDUCOM_TOO_MUCH_DATA;
+			this->data[2] = count;
+			this->size = 3;
+			i2c_slave_send(this->data, this->size);
+			return ARDUCOM_OVERFLOW;
+		} else {
+			this->size = count;
+			i2c_slave_send(buffer, count);
+		}
+		return ARDUCOM_OK;
+	};
+};
+
+#endif	// SOFTWARE_I2C
 
 /*******************************************************
 * RTC access command implementation (for getting and
@@ -148,7 +266,11 @@ public:
 #ifdef SERIAL_STREAM
 ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
-ArducomTransportI2C arducomTransport(I2C_SLAVE_ADDRESS);
+	#ifdef SOFTWARE_I2C
+	ArducomSoftwareI2C arducomTransport();
+	#else
+	ArducomTransportI2C arducomTransport(I2C_SLAVE_ADDRESS);
+	#endif
 #else
 #error You have to define a transport method (SERIAL_STREAM or I2C_SLAVE_ADDRESS).
 #endif
