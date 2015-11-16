@@ -177,6 +177,7 @@ raw_upload_hex:
 
 // As usual with makefiles, take special care of the indentation and whitespace.
 // A fixed Arduino.mk file is included with this sketch.
+// To upload the hex file, use "make upload_hex".
 
 // ********* Transferring data to a host **********
 //
