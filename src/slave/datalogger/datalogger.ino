@@ -1120,9 +1120,10 @@ void setup()
 	// initialize I2C
 	Wire.begin();
 
-	// deactivate internal pullups for twi
-	digitalWrite(SDA, 0);
-	digitalWrite(SCL, 0);
+	// activate internal pullups for I2C
+	// this is not necessary if the peripherals have pullup resistors themselves
+	digitalWrite(SDA, 1);
+	digitalWrite(SCL, 1);
 
 	// initialize OBIS port to get the correct log output (if DEBUG_OUTPUT is used)
 	#ifdef OBIS_IR_POWER_PIN
