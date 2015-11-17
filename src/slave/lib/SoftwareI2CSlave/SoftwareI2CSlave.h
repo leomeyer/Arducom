@@ -67,6 +67,8 @@
 //   In situations where accurate timing is required it is better to send only
 //   small amounts of data at a time.
 //   Reading data is done faster, and does not cause such problems.
+// - Disabling interrupts using cli() or similar also disables the I2C slave. If
+//   the master sends data while interrupts are disabled errors may occur.
 // - Known bug: Writing data from a Raspberry Pi for the first time after startup
 //   fails due to unknown reasons. Subsequent writes work ok.
 //
