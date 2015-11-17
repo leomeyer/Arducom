@@ -19,7 +19,8 @@ impractical due to timing constraints.
 Arducom allows you to communicate with the Arduino under these circumstances and
 can even transfer files from the Arduino's SD card.
 
-Arducom currently supports I2C and serial communication. 
+Arducom currently supports I2C and serial communication. It also contains a software
+implementation of an I2C slave.
 
 Quick start
 -----------
