@@ -682,7 +682,7 @@ int main(int argc, char *argv[]) {
 							} fileSize;
 							memcpy(&fileSize, result.data(), sizeof(fileSize));
 							int32_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
-							std::cout << "File size: " << totalSize << std::endl;
+							std::cout << "File size: " << totalSize << " bytes" << std::endl;
 							if (totalSize < 0)  {
 								std::cout << "File size is negative, cannot download" << std::endl;
 								continue;	// next command
