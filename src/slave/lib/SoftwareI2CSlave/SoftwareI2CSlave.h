@@ -59,14 +59,6 @@
 // - Single buffer for sending and receiving data. Data that is to be sent may
 //   be overwritten if the master sends data instead of requesting data. Also,
 //   there is no way of knowing whether data has actually been sent.
-// - Delays by interrupt servicing routines when sending large amounts of data:
-//   At a bus speed of 50 kHz each transferred byte takes about 9 / 40000 = 0.225 ms
-//   time. This means that sending five bytes of data will delay other program parts
-//   or interrupts by more than a millisecond. This will delay timers causing
-//   values returned by e. g. millis() to tend to become slightly off over time.
-//   In situations where accurate timing is required it is better to send only
-//   small amounts of data at a time.
-//   Reading data is done faster, and does not cause such problems.
 // - Disabling interrupts using cli() or similar also disables the I2C slave. If
 //   the master sends data while interrupts are disabled errors may occur.
 // - Known bug: Writing data from a Raspberry Pi for the first time after startup
@@ -205,7 +197,7 @@ void i2c_slave_send(uint8_t *data, uint8_t length) {
 	}
 	i2c_slave_index = 0;
 	i2c_slave_length = i;
-	i2c_slave_state = I2CSTATE_SEND;
+	i2c_slave_state = length > 0 ? I2CSTATE_SEND : I2CSTATE_INIT;
 }
 
 // pin change interrupt routine for SCL and SDA
@@ -259,42 +251,73 @@ int16_t waitcounter;
 		WAIT_SCL_LOW();
 		// has this slave been addressed?
 		if (adr == I2C_SLAVE_ADDRESS) {
-			SEND_ACK();
 			// master read?
 			if (r_w) {
 				if (i2c_slave_state == I2CSTATE_SEND) {
-					// once a read has been initiated the state is reset
-					// what is not read during this read is discarded
-					i2c_slave_state = I2CSTATE_INIT;
-					while (i2c_slave_index < i2c_slave_length) {
-						uint8_t data = i2c_slave_buffer[i2c_slave_index];
-						// send data (MSB first)
-						for (int i = 0; i < 8; i++) {
-							if (!(data & 0x80))
-								// pull SDA low
-								I2C_SLAVE_DDR_PINS |= bit(I2C_SLAVE_SDA_BIT);
-							WAIT_SCL_HIGH();
-							WAIT_SCL_LOW();
-							if (!(data & 0x80))
-								// reset SDA to input
-								I2C_SLAVE_DDR_PINS &= ~bit(I2C_SLAVE_SDA_BIT);
-							data <<= 1;
-						}
-						// expect ACK or NACK
+					SEND_ACK();
+					i2c_slave_index = 0;
+					i2c_slave_data = i2c_slave_buffer[i2c_slave_index];
+					// send data (MSB first), byte per byte (to not block in the ISR too long)
+					for (int i = 0; i < 8; i++) {
+						if (!(i2c_slave_data & 0x80))
+							// pull SDA low
+							I2C_SLAVE_DDR_PINS |= bit(I2C_SLAVE_SDA_BIT);
 						WAIT_SCL_HIGH();
-						// NACK?
-						if ((I2C_SLAVE_READ_PINS >> I2C_SLAVE_SDA_BIT) & 1)
-							break;
 						WAIT_SCL_LOW();
+						if (!(i2c_slave_data & 0x80))
+							// reset SDA to input
+							I2C_SLAVE_DDR_PINS &= ~bit(I2C_SLAVE_SDA_BIT);
+						i2c_slave_data <<= 1;
+					}
+					// expect ACK or NACK
+					WAIT_SCL_HIGH();
+					// NACK?
+					if ((I2C_SLAVE_READ_PINS >> I2C_SLAVE_SDA_BIT) & 1) {
+						// master does not request any more data
+						i2c_slave_state = I2CSTATE_INIT;
+					} else {
 						i2c_slave_index++;
 					}
+				} else {
+					// read requested but not ready to send - NACK
+					WAIT_SCL_HIGH();
+					WAIT_SCL_LOW();					
 				}
 			} else {
 				// master writes
+				SEND_ACK();
 				// receive data
 				i2c_slave_state = I2CSTATE_RECV;
 				i2c_slave_data = 0;
 				i2c_slave_index = 0;
+			}
+		}
+	} else
+	// falling edge of clock?
+	if (!(pins & bit(I2C_SLAVE_SCL_BIT)) && (i2c_slave_pins & bit(I2C_SLAVE_SCL_BIT))) {
+		// sending data?
+		if (i2c_slave_state & I2CSTATE_SEND) {
+			i2c_slave_data = i2c_slave_index >= i2c_slave_length ? 0xff : i2c_slave_buffer[i2c_slave_index];
+			// send data (MSB first), byte per byte (to not block in the ISR too long)
+			for (int i = 0; i < 8; i++) {
+				if (!(i2c_slave_data & 0x80))
+					// pull SDA low
+					I2C_SLAVE_DDR_PINS |= bit(I2C_SLAVE_SDA_BIT);
+				WAIT_SCL_HIGH();
+				WAIT_SCL_LOW();
+				if (!(i2c_slave_data & 0x80))
+					// reset SDA to input
+					I2C_SLAVE_DDR_PINS &= ~bit(I2C_SLAVE_SDA_BIT);
+				i2c_slave_data <<= 1;
+			}
+			// expect ACK or NACK
+			WAIT_SCL_HIGH();
+			// NACK?
+			if ((I2C_SLAVE_READ_PINS >> I2C_SLAVE_SDA_BIT) & 1) {
+				// master does not request any more data
+				i2c_slave_state = I2CSTATE_INIT;
+			} else {
+				i2c_slave_index++;
 			}
 		}
 	} else
