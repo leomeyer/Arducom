@@ -97,21 +97,21 @@ void execute(ArducomMaster &master, uint8_t command, std::vector<uint8_t> &param
 			sent = true;
 		}
 
-receive:		
+receive:
 		// wait for the specified delay
 		usleep(delay * 1000);
 		size = 0;
-		
+
 		uint8_t result = master.receive(expectedBytes, buffer, &size, &errorInfo);
 
 		// no error?
 		if (result == ARDUCOM_OK) {
 			// let the master cleanup after the transaction
 			master.done();
-			
+
 			break;
 		}
-		
+
 		// special case: if NO_DATA has been received, give the slave more time to react
 		// without resending the message
 		if (result == ARDUCOM_NO_DATA) {
@@ -131,15 +131,15 @@ receive:
 
 		// let the master cleanup after the transaction
 		master.done();
-		
+
 		// convert error code to string
 		char errstr[21];
 		sprintf(errstr, "%d", result);
-		
+
 		// convert info code to string
 		char numstr[21];
 		sprintf(numstr, "%d", errorInfo);
-		
+
 		switch (result) {
 		case ARDUCOM_NO_DATA:
 				throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
@@ -178,7 +178,7 @@ receive:
 			}
 		}
 	}
-	
+
 	result.clear();
 
 	for (size_t i = 0; i < size; i++) 
@@ -207,7 +207,7 @@ void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
 
 	// send INIT message
 	execute(master, ARDUCOM_FTP_COMMAND_INIT, params, transport->getDefaultExpectedBytes(), result);
-	
+
 	struct __attribute__((packed)) CardInfo {
 		char cardType[4];
 		uint8_t fatType;
@@ -218,15 +218,15 @@ void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
 	} cardInfo;
 
 	memcpy(&cardInfo, result.data(), sizeof(cardInfo));
-	
+
 	// show card information
 	char cardType[5];
 	memcpy(&cardType, &cardInfo.cardType, 4);
 	cardType[4] = '\0';
 	uint32_t cardSize = (cardInfo.size1 + (cardInfo.size2 << 8) + (cardInfo.size3 << 16) + (cardInfo.size4 << 24));
-	
+
 	std::cout << "Connected. SD card type: " << cardType << " FAT" << (int)cardInfo.fatType << " Size: " << cardSize << " MB" << std::endl;
-	
+
 	// root path component
 	pathComponents.clear();
 	pathComponents.push_back("/");
@@ -327,15 +327,15 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 			std::cout << "set delay " << delayMs << std::endl;
 		found = true;
 	}
-	
+
 	if (!found)
 		throw std::invalid_argument("Variable name unknown: " + parts.at(1));
 }
 
 int main(int argc, char *argv[]) {
-	
+
 	interactive = isatty(fileno(stdin));
-	
+
 	std::vector<std::string> args;
 	args.reserve(argc);
 	for (int i = 0; i < argc; i++) {
@@ -343,7 +343,7 @@ int main(int argc, char *argv[]) {
 		std::string arg(targ);
 		args.push_back(arg);
 	}
-	
+
 	try {
 		// evaluate arguments
 		for (unsigned int i = 1; i < args.size(); i++) {
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 				} else {
 					transportType = args.at(i);
 				}
-			} else		
+			} else
 			if (args.at(i) == "-d") {
 				i++;
 				if (args.size() == i) {
@@ -424,13 +424,13 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
-		
+
 		ArducomMasterTransport *transport;
-		
+
 		if (transportType == "i2c") {
 			if (device == "")
 				throw std::invalid_argument("Error: missing transport device name (argument -d)");
-				
+
 			if ((deviceAddress < 1) || (deviceAddress > 127))
 				throw std::invalid_argument("Expected device address within range 1..127 (argument -a)");
 
@@ -461,30 +461,30 @@ int main(int argc, char *argv[]) {
 
 		// initialize protocol
 		ArducomMaster master(transport, verbose);
-		
+
 		std::vector<uint8_t> params;
 		std::vector<uint8_t> result;
-		
+
 		initSlaveFAT(master, transport);
 
 		// command loop
 		while (std::cin.good()) {
-			
+
 			prompt();
-			
+
 			try {
 				std::string command;
 				getline(std::cin, command);
 				// stdin is a file or a pipe?
 				if (!isatty(fileno(stdin)))
 					std::cout << command << std::endl;
-				
+
 				command = trim(command);
-				
+
 				// split parameters
 				std::vector<std::string> parts;
 				split(command, ' ', parts);
-				
+
 				if (parts.size() == 0)
 					continue;
 				else
@@ -508,17 +508,17 @@ int main(int argc, char *argv[]) {
 						uint8_t lastWriteTime1;
 						uint8_t lastWriteTime2;
 					} fileInfo;
-					
+
 					std::vector<FileInfo> fileInfos;
 					params.clear();	// no parameters
 
 					// rewind directory
 					execute(master, ARDUCOM_FTP_COMMAND_REWIND, params, transport->getDefaultExpectedBytes(), result);
-										
+
 					while (true) {
 						// list next file
 						execute(master, ARDUCOM_FTP_COMMAND_LISTFILES, params, transport->getDefaultExpectedBytes(), result);
-						
+
 						// record received?
 						if (result.size() > 0) {
 							memcpy(&fileInfo, result.data(), sizeof(fileInfo));
@@ -527,13 +527,13 @@ int main(int argc, char *argv[]) {
 							// no data - end of list
 							break;
 					}
-					
+
 					std::cout << std::endl;
 
 					size_t totalDirs = 0;
 					size_t totalFiles = 0;
 					uint32_t totalSize = 0;
-					
+
 					// display file infos
 					std::vector<FileInfo>::iterator it = fileInfos.begin();
 					while (it != fileInfos.end()) {
@@ -559,7 +559,7 @@ int main(int argc, char *argv[]) {
 						int minute = (fatTime >> 5) & 0X3F;
 						int second = 2*(fatTime & 0X1F);
 						std::string timezoneName = "UTC";
-						
+
 						// convert time to UTC timestamp
 						struct tm utc_tm;
 						utc_tm.tm_year = year;
@@ -569,7 +569,7 @@ int main(int argc, char *argv[]) {
 						utc_tm.tm_min = minute;
 						utc_tm.tm_sec = second;
 						utc_tm.tm_isdst = 0;
-						
+
 						time_t utc_time = mktime(&utc_tm);
 						if (utc_time >= 0) {
 							// convert to local time
@@ -582,7 +582,7 @@ int main(int argc, char *argv[]) {
 							second = local_tm.tm_sec;
 							timezoneName = "local";
 						}
-						
+
 						std::cout << "    " << std::setfill('0') << std::setw(4) << year;
 						std::cout <<    "-" << std::setfill('0') << std::setw(2) << month;
 						std::cout <<    "-" << std::setfill('0') << std::setw(2) << day;
@@ -590,15 +590,15 @@ int main(int argc, char *argv[]) {
 						std::cout <<    ":" << std::setfill('0') << std::setw(2) << minute;
 						std::cout <<    ":" << std::setfill('0') << std::setw(2) << second;
 						std::cout << " " << timezoneName << std::endl;
-						
+
 						it++;
 					}
 					std::cout << std::setfill(' ') << std::endl;
 					std::cout << std::setw(8) << std::right << totalFiles << " file(s),";
-					std::cout << std::setw(15) << std::right << totalSize << " bytes total" << std::endl;				
+					std::cout << std::setw(15) << std::right << totalSize << " bytes total" << std::endl;
 					std::cout << std::setw(8) << std::right << totalDirs << " folder(s) " << std::endl;
-					
-				} else 
+
+				} else
 				if (parts.at(0) == "set") {
 					setVariable(parts);
 				} else
@@ -637,14 +637,14 @@ int main(int argc, char *argv[]) {
 							// no need to execute
 							exec = false;
 						}
-						
+
 						if (exec) {
 							params.clear();
 							// send command to change directory
 							for (size_t i = 0; i < parts.at(1).length(); i++)
 								params.push_back(parts.at(1)[i]);
 							execute(master, ARDUCOM_FTP_COMMAND_CHDIR, params, transport->getDefaultExpectedBytes(), result);
-	/*						
+	/*
 							char dirname[13];
 							size_t dirlen = result.size();
 							if (dirlen > 12)
@@ -652,25 +652,24 @@ int main(int argc, char *argv[]) {
 							std::cout << dirlen << std::endl;
 							memcpy(dirname, result.data(), dirlen);
 							dirname[dirlen] = '\0';
-	*/						
+	*/
 							// store current directory name
 							pathComponents.push_back(parts.at(1));
 						}
 					}
-				} else 
+				} else
 				if (parts.at(0) == "get") {
 					if (parts.size() == 1) {
 						std::cout << "Error: get expects a file name as argument" << std::endl;
 					} else if (parts.size() > 2) {
 						std::cout << "Error: get expects only one argument" << std::endl;
 					} else {
-						
 						params.clear();
 						// send command to open the file
 						for (size_t i = 0; i < parts.at(1).length(); i++)
 							params.push_back(parts.at(1)[i]);
 						execute(master, ARDUCOM_FTP_COMMAND_OPENREAD, params, transport->getDefaultExpectedBytes(), result);
-						
+
 						// the result is the file size
 						if (result.size() < 4) {
 							std::cout << "Error: device did not send a proper file size" << std::endl;
@@ -702,7 +701,7 @@ int main(int argc, char *argv[]) {
 								}
 
 								// get file size; this is the position to continue reading from
-								struct stat st; 
+								struct stat st;
 
 								if (stat(parts.at(1).c_str(), &st) == 0)
 									position = st.st_size;
@@ -710,10 +709,10 @@ int main(int argc, char *argv[]) {
 									perror("Unable to read get file size");
 									throw std::runtime_error((std::string("Unable to read get file size: ") + parts.at(1)).c_str());
 								}
-								
+
 								close(fd);
 							}
-							
+
 							// overwrite or continue?
 							if (continueFile && (position >= 0) && (position < totalSize)) {
 								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
@@ -754,7 +753,7 @@ int main(int argc, char *argv[]) {
 								std::cout << "File seems to be complete" << std::endl;
 								continue;	// next command
 							}
-							
+
 							// file read loop
 							while (true) {
 								// send current seek position
@@ -766,23 +765,23 @@ int main(int argc, char *argv[]) {
 
 								// this command can be resent in case of errors (idempotent)
 								execute(master, ARDUCOM_FTP_COMMAND_READFILE, params, transport->getDefaultExpectedBytes(), result, true);
-								
+
 								position += result.size();
-								
+
 								// write data to local file
 								write(fd, result.data(), result.size());
-								
+
 								// show "progress bar" only in interactive mode
 								if (interactive)
 									printProgress(totalSize, position, 50);
-								
+
 								if (position >= totalSize)
 									break;
 							}
-							
+
 							std::cout << std::endl;
 							needEndl = false;
-							
+
 							// send command to close the file
 							params.clear();
 							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, params, transport->getDefaultExpectedBytes(), result);						
@@ -817,16 +816,16 @@ int main(int argc, char *argv[]) {
 				if (needEndl)
 					std::cout << std::endl;
 				needEndl = false;
-				
+
 				print_what(e);
-				
+
 				// non-interactive mode causes immediate exit on errors
 				// this way an exit code can be queried by scripts
 				if (!interactive)
 					exit(master.lastError);
 			}
 		}	// while (true)
-		
+
 	} catch (const std::exception& e) {
 		if (needEndl)
 			std::cout << std::endl;
