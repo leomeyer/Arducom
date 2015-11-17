@@ -294,7 +294,7 @@ raw_upload_hex:
 #include <avr/wdt.h>
 
 #include <SPI.h>
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>
 #include <WSWire.h>
 
 // use RTClib from Adafruit
@@ -889,7 +889,7 @@ void dateTime(uint16_t* date, uint16_t* time) {
 	}
 }
 
-
+#if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
 // Interrupt Service Routine (ISR) for Timer2 overflow (S0 impulse detection)
 ISR(TIMER2_OVF_vect) {
 	// reload the timer
@@ -1008,6 +1008,7 @@ ISR(TIMER2_OVF_vect) {
 	}
 	#endif
 }
+#endif
 
 // this routine is called the first time the watchdog timeout occurs
 ISR(WDT_vect) {
@@ -1281,6 +1282,8 @@ void setup()
 	
 	// **** S0 polling interrupt setup ****
 
+#if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
+
 	// configure interrupt (once per ms)
 	/* First disable the timer overflow interrupt while we're configuring */
 	TIMSK2 &= ~(1<<TOIE2);
@@ -1312,6 +1315,8 @@ void setup()
 	/* Finally load end enable the timer */
 	TCNT2 = tcnt2;
 	TIMSK2 |= (1<<TOIE2);
+	
+#endif
 
 	// **** Watchdog setup ****
 	

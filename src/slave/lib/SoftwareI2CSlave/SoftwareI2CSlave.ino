@@ -7,6 +7,7 @@
 // Testing with a Raspberry Pi
 // Precondition: I2C has been properly set up, please see for example:
 // https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c
+// Set the Raspberry Pi's I2C speed to 40 kHz (how to do this depends on your OS).
 //
 // Connect Raspberry GND to Arduino GND
 // Connect Raspberry GPIO1 (SCL) to Arduino pin A0
