@@ -1127,10 +1127,11 @@ void setup()
 
 	// initialize OBIS port to get the correct log output (if DEBUG_OUTPUT is used)
 	#ifdef OBIS_IR_POWER_PIN
+		// initialize serial port for OBIS data
 		#ifndef SERIAL_7E1
 		#warning Your Arduino libraries are too old to use the OBIS parser; serial input requires the define SERIAL_7E1 (since 1.02)
+		Serial.begin(9600, 0x24);
 		#else
-		// initialize serial port for OBIS data
 		Serial.begin(9600, SERIAL_7E1);
 		#endif
 	#endif
