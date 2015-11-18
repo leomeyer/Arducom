@@ -295,6 +295,7 @@ raw_upload_hex:
 
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
+#include <Arduino.h>
 
 #include <SPI.h>
 // #include <SoftwareSerial.h>
@@ -456,7 +457,8 @@ raw_upload_hex:
 #ifdef SERIAL_7E1
 #define OBIS_PROTOCOL		SERIAL_7E1
 #else
-#define OBIS_PROTOCOL		0x24
+// you have to specify the bits for the UCSRC register manually
+#define OBIS_PROTOCOL		0x24	// ((1 << UPM1) | (0 < USBS) | (1 << UCSZ1))
 #endif
 
 // Define this macro for OBIS debugging. This will generate a lot of output (sent to DEBUG_OUTPUT)
@@ -1138,7 +1140,7 @@ void setup()
 		#if defined(__AVR_ATmega8__)
 		UCSRC = (1 << URSEL) | OBIS_PROTOCOL;	// select UCSRC (shared with UBRRH)
 		#else
-		UCSRC = OBIS_PROTOCOL;
+		UCSR0C = OBIS_PROTOCOL;
 		#endif
 		#endif
 	#endif
