@@ -4,8 +4,9 @@ TRANSPORT=i2c
 DEVICE=/dev/i2c-1
 ADDRESS=5
 BAUDRATE=57600
-DELAY=20
+DELAY=40
 RETRIES=5
+VERBOSE=
 
 set -e
 
@@ -20,7 +21,7 @@ while IFS= read -r line; do
 	FILENAME=`echo $line | cut -c 1-12`
 	if [[ $FILENAME == *.log ]]; then
 		echo "Preparing download: $FILENAME"
-		echo "get $FILENAME" | ./arducom-ftp -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -x $RETRIES -l $DELAY
+		echo "get $FILENAME" | ./arducom-ftp -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -x $RETRIES -l $DELAY $VERBOSE
 	fi
 
 done < ftpdir

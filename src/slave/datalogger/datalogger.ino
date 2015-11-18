@@ -1131,7 +1131,7 @@ void setup()
 		#ifndef SERIAL_7E1
 		#warning Your Arduino libraries are too old to use the OBIS parser; serial input requires the define SERIAL_7E1 (since 1.02)
 		Serial.begin(9600);
-		*_ucsrc = 0x24;
+		//*_ucsrc = 0x24;
 		#else
 		Serial.begin(9600, SERIAL_7E1);
 		#endif

@@ -102,7 +102,16 @@ receive:
 		usleep(delay * 1000);
 		size = 0;
 
-		uint8_t result = master.receive(expectedBytes, buffer, &size, &errorInfo);
+		uint8_t result = ARDUCOM_NO_DATA;
+		if (m_retries > 0) {
+			try {
+				result = master.receive(expectedBytes, buffer, &size, &errorInfo);
+			} catch (...) {
+				// ignore errors; retry logic is handled below
+			}
+		} else
+			// for the last retry, let exceptions propagate
+			result = master.receive(expectedBytes, buffer, &size, &errorInfo);
 
 		// no error?
 		if (result == ARDUCOM_OK) {
@@ -160,7 +169,12 @@ receive:
 		case ARDUCOM_BUFFER_OVERRUN:
 			throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
 		case ARDUCOM_CHECKSUM_ERROR:
-			throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
+			m_retries--;
+			if (m_retries < 0)
+				throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
+			else
+				// try again
+				continue;
 		case ARDUCOM_FUNCTION_ERROR:
 			switch (errorInfo) {
 			case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": SD card unavailable").c_str());
@@ -706,8 +720,8 @@ int main(int argc, char *argv[]) {
 								if (stat(parts.at(1).c_str(), &st) == 0)
 									position = st.st_size;
 								else {
-									perror("Unable to read get file size");
-									throw std::runtime_error((std::string("Unable to read get file size: ") + parts.at(1)).c_str());
+									perror("Unable to get file size");
+									throw std::runtime_error((std::string("Unable to get file size: ") + parts.at(1)).c_str());
 								}
 
 								close(fd);
