@@ -136,7 +136,7 @@
 //
 // Pin map for Uno; check whether this works if using a different board:
 //
-// D0 - RX: D0 OBIS input (9600 7E1)
+// D0 - RX: D0 OBIS input
 // D1 - TX: used for programmer, do not use
 // D2: suggested Software Serial RX on Uno
 // D3: suggested Software Serial TX on Uno 
@@ -192,6 +192,9 @@ raw_upload_hex:
 // When doing I2C with a Raspberry Pi it is recommended to use the software I2C library to avoid
 // bus conflicts with the RTC as the Raspberry Pi does not support multi-master setups. Please see the example
 // in lib/SoftwareI2CSlave for information on how to setup and test such a configuration.
+// The recommended speed for software I2C is 40 kHz.
+// It is possible that the software I2C interrupt messes up the timing for the DHT22 sensor queries.
+// This may be the case during extended data downloads.
 //
 // Sensor data is exposed via command 20. To query a sensor's data you have to know the sensor's memory 
 // variable address and length in bytes. For details see section "RAM layout" below. Example:
@@ -325,7 +328,7 @@ raw_upload_hex:
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
 // #define SERIAL_STREAM	Serial
-#define SERIAL_BAUDRATE		9600
+#define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
@@ -446,7 +449,19 @@ raw_upload_hex:
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
 #define OBIS_IR_POWER_PIN	A2
+// serial stream to use for OBIS data
+#define OBIS_STREAM			Serial
+#define OBIS_BAUDRATE		9600
+// older Arduino libraries (< 102) do not yet have serial protocol configuration constants
+#ifdef SERIAL_7E1
+#define OBIS_PROTOCOL		SERIAL_7E1
+#else
+#define OBIS_PROTOCOL		0x24
+#endif
 
+// Define this macro for OBIS debugging. This will generate a lot of output (sent to DEBUG_OUTPUT)
+// which may interfere with programming.
+// Use it only if you encounter problems parsing the OBIS data.
 // #define OBIS_DEBUG			1
 
 // file log interval (milliseconds)
@@ -841,7 +856,7 @@ uint32_t lastDHT22poll;
 
 #ifdef OBIS_IR_POWER_PIN
 // OBIS functionality
-OBISParser obisParser(&Serial);
+OBISParser obisParser(&OBIS_STREAM);
 #endif
 
 // S0 counters
@@ -1107,12 +1122,25 @@ void setup()
 	// disable watchdog in case it's still on
 	wdt_disable();
 
-	#ifdef DEBUG_OUTPUT
-		// OBIS uses 7E1, so if it is defined, do not initialize the debug output
-		#ifndef OBIS_IR_POWER_PIN
-		DEBUG_OUTPUT.begin(9600);
-		#endif
+	// initialize debug output (only if the OBIS parser is not used)
+	#if defined DEBUG_OUTPUT && !defined OBIS_IR_POWER_PIN
+	DEBUG_OUTPUT.begin(SERIAL_BAUDRATE);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
+	#endif
+
+	// initialize OBIS port to get the correct log output (if DEBUG_OUTPUT is used)
+	#ifdef OBIS_IR_POWER_PIN
+		#if ARDUINO >= 102
+		OBIS_STREAM.begin(OBIS_BAUDRATE, OBIS_PROTOCOL);
+		#else
+		OBIS_STREAM.begin(OBIS_BAUDRATE);
+		#warning Trying to set OBIS serial configuration directly
+		#if defined(__AVR_ATmega8__)
+		UCSRC = (1 << URSEL) | OBIS_PROTOCOL;	// select UCSRC (shared with UBRRH)
+		#else
+		UCSRC = OBIS_PROTOCOL;
+		#endif
+		#endif
 	#endif
 	
 	// **** Initialize hardware components ****
@@ -1125,18 +1153,6 @@ void setup()
 	digitalWrite(SDA, 1);
 	digitalWrite(SCL, 1);
 
-	// initialize OBIS port to get the correct log output (if DEBUG_OUTPUT is used)
-	#ifdef OBIS_IR_POWER_PIN
-		// initialize serial port for OBIS data
-		#ifndef SERIAL_7E1
-		#warning Your Arduino libraries are too old to use the OBIS parser; serial input requires the define SERIAL_7E1 (since 1.02)
-		Serial.begin(9600);
-		//*_ucsrc = 0x24;
-		#else
-		Serial.begin(9600, SERIAL_7E1);
-		#endif
-	#endif
-	
 	#ifdef SDCARD_CHIPSELECT
 	// initialize SD system
 	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
@@ -1287,7 +1303,6 @@ void setup()
 	// **** S0 polling interrupt setup ****
 
 #if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
-
 	// configure interrupt (once per ms)
 	/* First disable the timer overflow interrupt while we're configuring */
 	TIMSK2 &= ~(1<<TOIE2);
@@ -1318,8 +1333,7 @@ void setup()
 
 	/* Finally load end enable the timer */
 	TCNT2 = tcnt2;
-	TIMSK2 |= (1<<TOIE2);
-	
+	TIMSK2 |= (1<<TOIE2);	
 #endif
 
 	// **** Watchdog setup ****
