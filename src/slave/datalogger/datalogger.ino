@@ -122,6 +122,8 @@
 // Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
 // To correctly determine the day the TIMEZONE_OFFSET_SECONDS is added to the RTC time (which is UTC).
 // Data that cannot be reliably timestamped (due to RTC or I2C problems) is appended to the file /fallback.log.
+// To facilitate a clean shutdown you can add a shutdown button which, when pressed, writes all relevant
+// current values to the EEPROM, closes all files and halts the system. Use this e. g. before changing SD cards.
 
 // ********* Validation **********
 //
@@ -134,21 +136,21 @@
 
 // ********* GPIO pin map **********
 //
-// Pin map for Uno; check whether this works if using a different board:
+// Suggested pin map for Uno; check whether this works if using a different board:
 //
-// D0 - RX: D0 OBIS input
-// D1 - TX: used for programmer, do not use
-// D2: suggested Software Serial RX on Uno
-// D3: suggested Software Serial TX on Uno 
-// D4 - D7: suggested S0 inputs (attention: 4 is Chip Select for some data logger shields)
-// D8: suggested data pin for DHT22 A
-// D9: suggested data pin for DHT22 B
-// D10: Chip Select for SD card on Keyes Data Logger Shield
-// D11 - D13: MOSI, MISO, CLK for SD card on Keyes Data Logger Shield
+// 0 (RX): D0 OBIS input
+// 1 (TX): used for programmer, do not use
+// 2: Software Serial RX on Uno (unused if using Software I2C)
+// 3: Software Serial TX on Uno (unused if using Software I2C) 
+// 4 - 7: S0 inputs (attention: 4 is Chip Select for some data logger shields)
+// 8: data pin for DHT22 A
+// 9: data pin for DHT22 B
+// 10: Chip Select for SD card on Keyes Data Logger Shield
+// 11 - 13: MOSI, MISO, SCK for SD card on Keyes Data Logger Shield (13 is also the default LED pin)
 // A0: Software I2C SDA
 // A1: Software I2C SCL
-// A2: suggested power supply for OBIS serial input circuit
-// A3: Reserved
+// A2: power supply for OBIS serial input circuit
+// A3: shutdown button (active if low)
 // A4: I2C SDA
 // A5: I2C SCL
 
@@ -298,7 +300,6 @@ raw_upload_hex:
 #include <Arduino.h>
 
 #include <SPI.h>
-// #include <SoftwareSerial.h>
 #include <WSWire.h>
 
 // use RTClib from Adafruit
@@ -334,7 +335,7 @@ raw_upload_hex:
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
 
-// To use software I2C for Arducom, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
+// To use software I2C for Arducom, define SOFTWARE_I2C. If undefined, hardware I2C is used.
 #define SOFTWARE_I2C		1
 
 // If using software I2C specify the configuration here
@@ -347,9 +348,9 @@ raw_upload_hex:
 	// The numbers of the Arduino pins to use (in this example, A0 and A1)
 	// Pins 0 - 7 are on PIND
 	// Pins 8 - 13 are on PINB
-	// Pins 14 - 19 are on PINC
-	#define I2C_SLAVE_SCL_PIN		14
-	#define I2C_SLAVE_SDA_PIN		15
+	// Pins 14 - 19 (or A0 - A5) are on PINC
+	#define I2C_SLAVE_SCL_PIN		A0
+	#define I2C_SLAVE_SDA_PIN		A1
 
 	// The pin read command (input port register)
 	// Subsequent definitions mainly depend on this setting.
@@ -394,8 +395,10 @@ raw_upload_hex:
 #endif	// SOFTWARE_I2C
 
 // If you use software serial output for debugging, specify its pins here.
+// Note that you cannot use software serial and software I2C at the same time!
 #define SOFTWARESERIAL_RX	2
 #define SOFTWARESERIAL_TX	3
+// #include <SoftwareSerial.h>
 // SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 
 // Specifies a Print object to use for the debug output.
@@ -405,14 +408,7 @@ raw_upload_hex:
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-#define DEBUG_OUTPUT		Serial
-
-// Macro for debug output
-#ifdef DEBUG_OUTPUT
-#define DEBUG(x) if (DEBUG_OUTPUT) (DEBUG_OUTPUT).x
-#else
-#define DEBUG(x) /* x */
-#endif
+//#define DEBUG_OUTPUT		Serial
 
 // If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use
@@ -428,14 +424,6 @@ raw_upload_hex:
 // #define S0_B_PIN			5
 // #define S0_C_PIN			6
 // #define S0_D_PIN			7
-
-// The following macros are used to translate S0 pins to ports and bits.
-// They work for the Arduino Uno but may need work for other boards.
-#define PIN_TO_PORT(P)	\
-(((P) >= 0 && (P) <= 7) ? PIND : (((P) >= 8 && (P) <= 13 ? PINB : PINC)))
-
-#define PIN_TO_BIT(P)	\
-(((P) >= 0 && (P) <= 7) ? P : (((P) >= 8 && (P) <= 13 ? (P - 8) : (P - 14))))	
 
 // DHT22 sensor definitions
 #define DHT22_A_PIN					8
@@ -471,6 +459,30 @@ raw_upload_hex:
 
 // interval for S0 EEPROM transfer (seconds)
 #define EEPROM_INTERVAL_S	3600
+
+// Undefine this if you are not using a shutdown button (not recommended).
+#define SHUTDOWN_BUTTON		A3
+// LED pin to blink to indicate successful shutdown
+#define LED_PIN				13
+
+/*******************************************************
+* Dependent macros
+*******************************************************/
+
+// Macro for debug output
+#ifdef DEBUG_OUTPUT
+#define DEBUG(x) if (DEBUG_OUTPUT) (DEBUG_OUTPUT).x
+#else
+#define DEBUG(x) /* x */
+#endif
+
+// The following macros are used to translate S0 pins to ports and bits.
+// They work for the Arduino Uno but may need work for other boards.
+#define PIN_TO_PORT(P)	\
+(((P) >= 0 && (P) <= 7) ? PIND : (((P) >= 8 && (P) <= 13 ? PINB : PINC)))
+
+#define PIN_TO_BIT(P)	\
+(((P) >= 0 && (P) <= 7) ? P : (((P) >= 8 && (P) <= 13 ? (P - 8) : (P - 14))))	
 
 /*******************************************************
 * Global helper routines
@@ -1124,6 +1136,11 @@ void setup()
 	// disable watchdog in case it's still on
 	wdt_disable();
 
+	// configure shutdown button as input, pullup on
+	#ifdef SHUTDOWN_BUTTON
+	digitalWrite(SHUTDOWN_BUTTON, HIGH);
+	#endif
+
 	// initialize debug output (only if the OBIS parser is not used)
 	#if defined DEBUG_OUTPUT && !defined OBIS_IR_POWER_PIN
 	DEBUG_OUTPUT.begin(SERIAL_BAUDRATE);
@@ -1306,34 +1323,37 @@ void setup()
 
 #if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
 	// configure interrupt (once per ms)
-	/* First disable the timer overflow interrupt while we're configuring */
+	
+	// Credits: Adapted from http://popdevelop.com/2010/04/mastering-timer-interrupts-on-the-arduino/
+	
+	// disable timer overflow interrupt while configuring
 	TIMSK2 &= ~(1<<TOIE2);
 
-	/* Configure timer2 in normal mode (pure counting, no PWM etc.) */
+	// configure timer2 in normal mode (pure counting, no PWM etc.)
 	TCCR2A &= ~((1<<WGM21) | (1<<WGM20));
 	TCCR2B &= ~(1<<WGM22);
 
-	/* Select clock source: internal I/O clock */
+	// select clock source: internal I/O clock
 	ASSR &= ~(1<<AS2);
 
-	/* Disable Compare Match A interrupt enable (only want overflow) */
+	// disable Compare Match A interrupt enable (only want overflow)
 	TIMSK2 &= ~(1<<OCIE2A);
 
-	/* Now configure the prescaler to CPU clock divided by 128 */
-	TCCR2B |= (1<<CS22)  | (1<<CS20); // Set bits
-	TCCR2B &= ~(1<<CS21);             // Clear bit
+	// configure the prescaler to CPU clock divided by 128
+	TCCR2B |= (1<<CS22) | (1<<CS20);	// Set bits
+	TCCR2B &= ~(1<<CS21); 				// Clear bit
 
-	/* We need to calculate a proper value to load the timer counter.
+	/* Calculate a proper value to load the timer counter.
 	* The following loads the value 131 into the Timer 2 counter register
 	* The math behind this is:
 	* (CPU frequency) / (prescaler value) = 125000 Hz = 8us.
 	* (desired period) / 8us = 125.
 	* MAX(uint8) + 1 - 125 = 131;
 	*/
-	/* Save value globally for later reload in ISR */
+	// save value globally for later reload in ISR
 	tcnt2 = 131; 
 
-	/* Finally load end enable the timer */
+	// load and enable the timer
 	TCNT2 = tcnt2;
 	TIMSK2 |= (1<<TOIE2);	
 #endif
@@ -1635,8 +1655,12 @@ void loop()
 	
 	wdt_reset();
 
-	// EEPROM transfer interval reached?
-	if (millis() / 1000 - lastEEPROMWrite > EEPROM_INTERVAL_S) {
+	// shutdown requested or EEPROM transfer interval reached?
+	if (
+	#ifdef SHUTDOWN_BUTTON
+		(digitalRead(SHUTDOWN_BUTTON) == LOW) ||
+	#endif
+		(millis() / 1000 - lastEEPROMWrite > EEPROM_INTERVAL_S)) {
 		
 		// write S0 values to EEPROM
 		eeprom_update_block((const void*)&readings[S0_A_VALUE], (void*)EEPROM_S0COUNTER_A, EEPROM_S0COUNTER_LEN);
@@ -1648,4 +1672,25 @@ void loop()
 		
 		log(F("S0 values stored"));
 	}
+
+	// shutdown requested?
+	#ifdef SHUTDOWN_BUTTON
+	if (digitalRead(SHUTDOWN_BUTTON) == LOW) {
+		log(F("Shutdown requested"));
+		
+		// halt the system, blink the LED
+		cli();	// disable interrupts
+		while (true) {
+			wdt_reset();
+			#ifdef LED_PIN
+			digitalWrite(LED_PIN, HIGH);
+			delay(500);
+			wdt_reset();
+			digitalWrite(LED_PIN, LOW);
+			delay(500);
+			#endif
+		}
+	}
+	#endif
+
 }
