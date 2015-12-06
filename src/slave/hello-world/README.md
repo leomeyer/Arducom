@@ -1,7 +1,7 @@
 Getting started with the Arducom hello-world example
 ====================================================
 
-Suppose we start from a clean Linux installation (e. g. Ubuntu 14.04).
+Suppose you start from a clean Linux installation (e. g. Ubuntu 14.04).
 
     $ sudo apt-get update
     $ sudo apt-get upgrade
@@ -41,45 +41,16 @@ Change into the hello-world folder and build the sketch:
     $ cd Arducom/src/slave/hello-world
     $ make
 
-You will probably get an error message about missing libraries.
-Something like: 
-
-    /usr/share/arduino/Arduino.mk:743: *** The following libraries specified in ARDUINO_LIBS could not be found (searched USER_LIB_PATH and ARDUINO_LIB_PATH): RTClib SdFat SdFat/utility Arducom.  Stop.
-
-To install the libraries, change to the ~/Arducom/src/slave/lib folder:
-
-    $ cd ../lib
-
-Download the libraries and install them one by one by creating symbolic links:
-
-RTClib:
-
-    $ git clone https://github.com/adafruit/RTClib
-    $ sudo ln -s ~/Arducom/src/slave/lib/RTClib /usr/share/arduino/libraries
-
-SdFat:
-
-    $ git clone https://github.com/greiman/SdFat
-    $ sudo ln -s ~/Arducom/src/slave/lib/SdFat/SdFat /usr/share/arduino/libraries
-
-Arducom:
-
-    $ sudo ln -s ~/Arducom/src/slave/lib/ /usr/share/arduino/libraries/Arducom
-
-Go back to the hello-world folder and make again:
-
-    $ cd -
-    $ make
-
 The make command should now produce output similar to this:
 
     ...
 
-    Program:   22032 bytes (67.2% Full)
-    (.text + .data + .bootloader)
+	Program:   22886 bytes (69.8% Full)
+	(.text + .data + .bootloader)
 
-    Data:       1429 bytes (69.8% Full)
-    (.data + .bss + .noinit)
+	Data:       1277 bytes (62.4% Full)
+	(.data + .bss + .noinit)
+
 
 Check that the Arduino's serial port is correctly set in the Makefile.
 Upload the compiled sketch to your Arduino:
@@ -88,13 +59,15 @@ Upload the compiled sketch to your Arduino:
 
 The default hello-world sketch uses serial communication at 57600 baud. To test the sketch go to the folder ~/Arducom/src/master. Build the programs:
 
-    $ ./make && ./make-ftp
+    $ ./make.sh && ./make-ftp.sh
 
+These programs require C++11. On Linux, use GCC 4.8 or newer.
+	
 Issue the Arducom version request (command 0). Your serial port may be different from /dev/ttyACM0 (check this first).
 
     $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 0
 
-arducom will try to interpret the reply. The output is something like:
+arducom will try to interpret the reply. The correct output is something like:
 
     Arducom slave version: 1; Uptime: 175696 ms; Flags: 0 (debug off); Free RAM: 289 bytes; Info: HelloWorld
 
@@ -134,6 +107,8 @@ You can experiment with the EEPROM (commands 1 - 10) and the RAM variables (comm
 | 18      | 8 bytes    | Write Int64 variable                                               | -      |
 | 19      | 3 bytes    | Read from RAM array; specify offset (two bytes) and length         | data   |
 | 20      | n bytes    | Write to RAM array; the first two bytes are the start offset       | -      |
+
+Multi-byte values are transferred LSB first. I. e. a value of 0x12345678 would have to be sent as 78563412.
 
 For example, to read the 8 bytes at EEPROM address 0x0A issue the following command:
 

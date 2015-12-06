@@ -65,7 +65,7 @@
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
 // #define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		9600
+#define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
@@ -274,10 +274,10 @@ void setup()
 #endif
 	
 #ifdef DEBUG_OUTPUT
-	DEBUG_OUTPUT.begin(9600);
+	DEBUG_OUTPUT.begin(SERIAL_BAUDRATE);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
-	
 #endif
+
 	DEBUG(println(F("HelloWorld starting...")));
 
 	// reserved version command (it's recommended to leave this in
