@@ -401,7 +401,7 @@ raw_upload_hex:
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-#define DEBUG_OUTPUT		Serial
+// #define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -1119,9 +1119,9 @@ void setup()
 	// initialize I2C
 	Wire.begin();
 
-	// deactivate internal pullups for twi
-	digitalWrite(SDA, 0);
-	digitalWrite(SCL, 0);
+	// activate internal pullups for hardware I2C
+	digitalWrite(SDA, 1);
+	digitalWrite(SCL, 1);
 
 	// initialize OBIS port to get the correct log output (if DEBUG_OUTPUT is used)
 	#ifdef OBIS_IR_POWER_PIN
