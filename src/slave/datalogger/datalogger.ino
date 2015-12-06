@@ -72,9 +72,25 @@
 // The UART must be configured to support the serial protocol after start (e. g. for an Easymeter Q3D: 9600 baud, 7E1).
 // The D0 input does not require persistent storage as the meter will always transmit total values.
 // The following circuit can be used to detect D0 data that is transmitted via an IR LED:
-
-// [...]
-
+//
+// OBIS_POWER_PIN ___
+//            o--|___|--.
+//               100k   |
+//                      |          .---o RX
+//                 -> |>           |
+//       IR LED    -> |  BPW40     |
+//                 -> |\           |
+//                      |        |/
+//                      o--------|  BC548
+//                      |        |>
+//                     .-.         |
+//                     | |         |
+//                 100k| |         |
+//                     '-'         |
+//                      |          |
+//            o---------o----------'
+//         GND
+//
 // Parsed D0 records are matched against added variable definitions and stored in the respective variables.
 //
 // If the data logger does not use a serial input (D0) port for OBIS input, data (real time and stored)
