@@ -1,5 +1,5 @@
 // Arducom hello world example
-// by Leo Meyer <leomeyer@gmx.de>
+// by Leo Meyer <leo@leomeyer.de>
 
 // Demonstrates the use of the Arducom library.
 // Supports serial or I2C transport methods, with I2C

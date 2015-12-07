@@ -1,5 +1,5 @@
 // Minimal Arducom slave example
-// by Leo Meyer <leomeyer@gmx.de>
+// by Leo Meyer <leo@leomeyer.de>
 
 // Receives Arducom commands via serial stream.
 // Understands the Arducom version command (code 0).

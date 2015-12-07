@@ -12,13 +12,13 @@
 //
 // For interoperation with a Raspberry Pi it is recommended to use the software I2C slave
 // implementation instead of a multi-master setup (if using other peripherals like an RTC).
+// Software I2C supports a maximum baud rate of about 40 kHz.
 // 
 // This file is best viewed with a monospace font and tab width 4.
 
 // ********* Description **********
 //
 // This data logger can be used standalone or connected to a host (e. g. Raspberry Pi) via serial port or I2C.
-// It can also be powered over USB.
 // The intended use case is to connect some kind of automation software (e. g. OPDID) to the data logger
 // for querying current values as well as having an automated job download history data.
 // 
@@ -41,7 +41,7 @@
 // Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
 // S0 EEPROM range starts at 0 (eight bytes S0_A, eight bytes S0_B, eight bytes S0_C, eight bytes S0_D).
 // The S0 EEPROM values can be adjusted ("primed") via Arducom to set the current meter readings (make sure to 
-// take the impulse factor of the respective device into consideration). This should be done regularly.
+// take the impulse factor of the respective device into consideration).
 // Each detected S0 impulse increments its RAM variable by 1. These variables are written to the log file.
 // There are also delta RAM variables that are reset after each log interval. These delta variables are of type uint16_t
 // which allows a log interval of 65535 imp / 32 imp/s = 2114 seconds maximum before overflow
@@ -55,7 +55,8 @@
 // to last at least about 11 years. If the cell life should be exhausted the EEPROM range can also be moved to fresh cells.
 // The program attempts to detect whether the last start was due to a watchdog reset. If yes, the S0 values in memory
 // are not overwritten from EEPROM to minimize data loss.
-// 
+// In the event of a requested shutdown (shutdown button pressed) the S0 values are stored in EEPROM, too.
+//
 // Transmitting large data blocks via software I2C may cause S0 timing to become inaccurate. This may affect devices 
 // that send impulses very fast, approaching the 30 ms per impulse limit. This is unlikely to occur in practice.
 
@@ -73,8 +74,9 @@
 // The D0 input does not require persistent storage as the meter will always transmit total values.
 // The following circuit can be used to detect D0 data that is transmitted via an IR LED:
 //
-// OBIS_POWER_PIN ___
-//            o--|___|--.
+//
+// OBIS_IR_       ___
+// POWER_PIN  o--|___|--.
 //               100k   |
 //                      |          .---o RX
 //                 -> |>           |
@@ -118,11 +120,10 @@
 // Internally the RTC also runs on UTC time. To correctly determine date rollovers for log files
 // you need to specify a timezone offset value to convert between UTC and local time.
 // If you don't do this the logger won't be able to determine the beginning of a new day correctly
-// and the timestamps in the file probably won't match the file date.
+// and the (UTC) timestamps in the file probably won't match the (local) file date.
 // The timezone offset is stored in EEPROM as an int16_t at offset 32 (0x20). It needs to be changed if you want
-// to move the device to a different timezone, or if you want to compensate for daylight saving time changes.
+// to move the device to a different timezone, or if you want to adjust for daylight saving time changes.
 // You can read or adjust the timezone offset using the Arducom EEPROM read and write block commands.
-// The log files will contain UTC timestamps, however.
 // To set the timezone offset to 7200 (two hours), use the following command (assume I2C):
 // $ ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
 //
@@ -172,7 +173,7 @@
 
 // ********* Debug output **********
 //
-// You can use the HardwareSerial object Serial for OBIS input and debug output at the same time.
+// You can use the HardwareSerial instance Serial for OBIS input and debug output at the same time.
 // If you want to listen to the output on a Linux system you can listen to the serial output:
 // $ cu -s 9600 -e -l /dev/ttyACM0
 // Use this only for debugging because it slows down operation. Do not send data using cu while
@@ -198,7 +199,8 @@ raw_upload_hex:
 
 // As usual with makefiles, take special care of the indentation and whitespace.
 // A fixed Arduino.mk file is included with this sketch.
-// To upload the hex file, use "make upload_hex".
+// To upload the hex file, use "make upload_hex". It may be necessary to build on the Raspberry first
+// to create make dependencies. After that, copy the hex file to the Raspberry and upload it.
 
 // ********* Transferring data to a host **********
 //
@@ -351,6 +353,10 @@ raw_upload_hex:
 // If you want to use I2C communications, define a slave address.
 #define I2C_SLAVE_ADDRESS	5
 
+#if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
+#error You cannot use serial and I2C communication at the same time.
+#endif
+
 // To use software I2C for Arducom, define SOFTWARE_I2C. If undefined, hardware I2C is used.
 #define SOFTWARE_I2C		1
 
@@ -431,10 +437,6 @@ raw_upload_hex:
 // this during normal operation.
 // #define USE_ARDUCOM_DEBUG	1
 
-#if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
-#error You cannot use serial and I2C communication at the same time.
-#endif
-
 // S0 pin definitions. If you do not use a pin comment it out for performance.
 #define S0_A_PIN			4
 // #define S0_B_PIN			5
@@ -505,7 +507,7 @@ raw_upload_hex:
 *******************************************************/
 
 void print64(Print* print, int64_t n) {
-	// code copied from: http://www.hlevkin.com/C_progr/long64.c
+	// code adapted from: http://www.hlevkin.com/C_progr/long64.c
 	  int i = 0;
 	  int m;
 	  int len;
@@ -877,7 +879,6 @@ SdFat sdFat;
 uint8_t sdCardOK;
 uint32_t lastWriteMs;
 uint32_t lastOKDateFromRTC;
-
 bool rtcOK;
 
 // DHT sensor 
@@ -1147,8 +1148,7 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 * Setup
 *******************************************************/
 
-void setup()
-{	
+void setup() {	
 	// disable watchdog in case it's still on
 	wdt_disable();
 
@@ -1388,8 +1388,7 @@ void setup()
 * Main loop
 *******************************************************/
 
-void loop()
-{
+void loop() {
 	// reset watchdog timer
 	wdt_reset();
 	
