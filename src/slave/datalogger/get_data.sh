@@ -5,6 +5,11 @@
 # The content of this folder is then uploaded to a target host via scp.
 # scp requires that a key-based login has been setup for ssh. For instructions see:
 # http://www.linuxproblem.org/art_9.html
+# Retrieved values are only uploaded if they validate. This is an important detail:
+# Values being queried from a device may be periodically reset and then re-read. If the
+# value is being queried in between an invalid value is returned. In this case the file
+# may not be uploaded in order to not confuse the receiver. Each particular value is therefore
+# validated against a number specifying the expected invalid value for the value.
 
 # Arducom connection settings
 ARDUCOM_PATH=~/Arducom/src/master
@@ -12,15 +17,15 @@ TRANSPORT=i2c
 DEVICE=/dev/i2c-1
 ADDRESS=5
 BAUDRATE=57600
-DELAY=10
+DELAY=20
 RETRIES=10
 
 # target folder
-TARGETDIR=SensorData
+TARGETDIR=/var/tmp/SensorData
 
 # Upload settings for SCP
-REMOTE=<remote_user>@<remote_host>
-REMOTEDIR=<remote_path>
+REMOTE=opdid@opdidsrv1
+REMOTEDIR=/var/opdid
 
 # queries using arducom
 # parameters:
@@ -29,6 +34,7 @@ REMOTEDIR=<remote_path>
 # $3: parameters (in hex)
 # $4: output format
 # $5: target filename
+# $6: validation (retrieved value must be greater than this value)
 function query {
 	TARGETFILE=$TARGETDIR/$5
 	# check retries
@@ -36,16 +42,20 @@ function query {
 		# query data
 		$ARDUCOM_PATH/arducom -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l $DELAY -x $RETRIES -c $2 -p $3 -o $4 >$TARGETFILE
 		CODE=$?
-		# if file is empty, or an error occurred, retry recursively
+		# if an error occurred, or the file is empty, or contents do not validate, retry recursively
 		if (( $CODE == 0 )); then
-			return
-		fi
-		if [ -s $TARGETFILE ]; then
-			return
+			if [ -s $TARGETFILE ]; then
+				# check validation value
+				if (( `cat $TARGETFILE` > $6 )); then
+					return
+				fi
+				# not validated, do not keep the file
+				rm $TARGETFILE
+			fi	
 		fi
 		retries=`expr $1 - 1`
 
-		query $retries $2 $3 $4 $5
+		query $retries $2 $3 $4 $5 $6
 	fi
 }
 
@@ -53,17 +63,19 @@ function query {
 # main program
 
 # clear target directory
-rm $TARGETDIR/*
+rm -rf $TARGETDIR
+mkdir $TARGETDIR
 
 # perform queries
 
-query 1 20 000004 Int32 momPhase1
-query 1 20 040004 Int32 momPhase2
-query 1 20 080004 Int32 momPhase3
-query 1 20 0C0004 Int32 momTotal
-query 1 20 100008 Int64 totalKWh
-query 1 20 180002 Int16 DHTAtemp
-query 1 20 1A0002 Int16 DHTAhumid
+query 1 20 000004 Int32 momPhase1 -1
+query 1 20 040004 Int32 momPhase2 -1
+query 1 20 080004 Int32 momPhase3 -1
+query 1 20 0C0004 Int32 momTotal -1
+query 1 20 100008 Int64 totalKWh -1
+query 1 20 180002 Int16 DHTAtemp -9999
+query 1 20 1A0002 Int16 DHTAhumid -9999
+query 1 20 200008 Int64 GasCounter 0
 
 # upload data
 
