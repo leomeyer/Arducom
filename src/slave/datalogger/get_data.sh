@@ -23,7 +23,7 @@ RETRIES=10
 # target folder
 TARGETDIR=/var/tmp/SensorData
 
-# Upload settings for SCP
+# upload settings for SCP
 REMOTE=opdid@opdidsrv1
 REMOTEDIR=/var/opdid
 
@@ -49,9 +49,9 @@ function query {
 				if (( `cat $TARGETFILE` > $6 )); then
 					return
 				fi
-				# not validated, do not keep the file
-				rm $TARGETFILE
 			fi	
+			# not validated, do not keep the file
+			rm $TARGETFILE
 		fi
 		retries=`expr $1 - 1`
 
