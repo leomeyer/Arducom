@@ -50,9 +50,11 @@ function query {
 					return
 				fi
 			fi	
-			# not validated, do not keep the file
-			rm $TARGETFILE
 		fi
+		
+		# not validated, do not keep the file
+		rm $TARGETFILE
+		
 		retries=`expr $1 - 1`
 
 		query $retries $2 $3 $4 $5 $6
