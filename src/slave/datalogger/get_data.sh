@@ -39,6 +39,7 @@ function query {
 	TARGETFILE=$TARGETDIR/$5
 	# check retries
 	if (( $1 > 0 )); then
+		# echo -n "Querying data... "
 		# query data
 		$ARDUCOM_PATH/arducom -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l $DELAY -x $RETRIES -c $2 -p $3 -o $4 >$TARGETFILE
 		CODE=$?
@@ -47,9 +48,16 @@ function query {
 			if [ -s $TARGETFILE ]; then
 				# check validation value
 				if (( `cat $TARGETFILE` > $6 )); then
-					return
+					# echo "OK."
+					return				
+				#else
+					# no message (this is a common case)
 				fi
+			else
+				echo "An error occurred at: `date` (File is empty)"
 			fi	
+		else
+			echo "An error occurred at: `date` (Code: $CODE)"
 		fi
 		
 		# not validated, do not keep the file
