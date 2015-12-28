@@ -371,8 +371,8 @@ raw_upload_hex:
 	// Pins 0 - 7 are on PIND
 	// Pins 8 - 13 are on PINB
 	// Pins 14 - 19 (or A0 - A5) are on PINC
-	#define I2C_SLAVE_SCL_PIN		A0
-	#define I2C_SLAVE_SDA_PIN		A1
+	#define I2C_SLAVE_SCL_PIN		A1
+	#define I2C_SLAVE_SDA_PIN		A0
 
 	// The pin read command (input port register)
 	// Subsequent definitions mainly depend on this setting.
@@ -385,8 +385,8 @@ raw_upload_hex:
 	#define I2C_SLAVE_DDR_PINS		DDRC
 
 	// The corresponding bits of the pins on the input and data direction registers
-	#define I2C_SLAVE_SCL_BIT		0
-	#define I2C_SLAVE_SDA_BIT		1
+	#define I2C_SLAVE_SCL_BIT		1
+	#define I2C_SLAVE_SDA_BIT		0
 
 	// The pin change interrupt vector corresponding to the input port
 	// For PINB, use PCINT0_vect

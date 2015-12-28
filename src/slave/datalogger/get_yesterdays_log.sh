@@ -11,14 +11,14 @@ BAUDRATE=57600
 DELAY=20
 RETRIES=10
 
-# mail settings
+# mail settings (mail address must be passed as a parameter)
 MAILRECEIVER=$1
 
 # target folder, must contain a trailing slash
 TARGETDIR=~/Logfiles/
 
 # grep validation regex; a log file is invalid if a line does not match this pattern
-VALIDPATTERN='^\([0-9]*;\)\{11\}$'
+VALIDPATTERN='^\(-*[0-9]*;\)\{11\}$'
 
 # Upload settings for SCP
 REMOTE=leo@fileserver

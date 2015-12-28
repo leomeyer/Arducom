@@ -24,7 +24,7 @@ RETRIES=10
 TARGETDIR=/var/tmp/SensorData
 
 # upload settings for SCP
-REMOTE=opdid@opdidsrv1
+REMOTE=localhost
 REMOTEDIR=/var/opdid
 
 # queries using arducom
@@ -87,6 +87,8 @@ query 1 20 180002 Int16 DHTAtemp -9999
 query 1 20 1A0002 Int16 DHTAhumid -9999
 query 1 20 200008 Int64 GasCounter 0
 
-# upload data
+# upload data using scp
+#scp $TARGETDIR/* $REMOTE:$REMOTEDIR
 
-scp $TARGETDIR/* $REMOTE:$REMOTEDIR
+# direct copy if on the same host
+cp $TARGETDIR/* $REMOTEDIR

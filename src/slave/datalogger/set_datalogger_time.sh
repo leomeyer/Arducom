@@ -12,7 +12,7 @@ ADDRESS=5
 BAUDRATE=57600
 CHECKFILE=timeset.txt
 
-rm $CHECKFILE >/dev/null
+rm -rf $CHECKFILE
 
 # fail on errors
 set -e
