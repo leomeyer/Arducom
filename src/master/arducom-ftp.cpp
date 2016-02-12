@@ -26,22 +26,6 @@
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
 
-std::string transportType;
-std::string device;
-int deviceAddress = 0;
-int baudrate = 9600;
-bool verbose = false;
-long delayMs = 0;
-int retries = 0;
-uint8_t commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
-bool continueFile = true;
-bool useChecksum = true;
-bool interactive = true;		// if false (piping input) errors cause immediate exit
-bool allowDelete = false;
-
-std::vector<std::string> pathComponents;
-
-bool needEndl = false;		// flag: cout << endl before printing messages
 
 // trim from start
 static inline std::string &ltrim(std::string &s) {
@@ -60,18 +44,6 @@ static inline std::string &trim(std::string &s) {
         return ltrim(rtrim(s));
 }
 
-// recursively print exception whats:
-void print_what (const std::exception& e) {
-	std::cerr << e.what();
-	try {
-		std::rethrow_if_nested(e);
-	} catch (const std::exception& nested) {
-		std::cerr << ": ";
-		print_what(nested);
-	}
-	std::cerr << std::endl;
-}
-
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
@@ -81,19 +53,67 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
-void execute(ArducomMaster &master, uint8_t command, std::vector<uint8_t> &params, uint8_t expectedBytes, std::vector<uint8_t> &result, bool canResend = false) {
+class ArducomFTPParameters : public ArducomBaseParameters {
+
+public:
+	uint8_t commandBase;
+	bool continueFile;
+	bool allowDelete;
+
+	ArducomFTPParameters() : ArducomBaseParameters() {
+		commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
+		continueFile = true;
+		allowDelete = false;
+	}
+	
+	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
+		if (args.at(*i) == "--no-continue") {
+			continueFile = false;
+		} else
+		if (args.at(*i) == "--allow-delete") {
+			allowDelete = true;
+		} else
+			ArducomBaseParameters::evaluateArgument(args, i);
+	};
+	
+	inline ArducomMasterTransport* validate() {
+		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
+		return transport;
+	};
+	
+	inline void showVersion(void) override {
+		std::cout << "Version" << std::endl;
+		exit(0);
+	};	
+	
+	inline void showHelp(void) override {
+		std::cout << "Help" << std::endl;
+		exit(0);		
+	};
+};
+
+/********************************************************************************/
+
+ArducomFTPParameters parameters;
+std::vector<std::string> pathComponents;
+bool needEndl = false;		// flag: cout << endl before printing messages
+bool interactive;			// if false (piping input) errors cause immediate exit
+
+/********************************************************************************/
+
+void execute(ArducomMaster &master, uint8_t command, std::vector<uint8_t> &payload, uint8_t expectedBytes, std::vector<uint8_t> &result, bool canResend = false) {
 	uint8_t buffer[255];
 	uint8_t size;
-	int m_retries = retries;
+	int m_retries = parameters.retries;
 	uint8_t errorInfo;
 	bool sent = false;
-	int delay = delayMs;
+	int delay = parameters.delayMs;
 
 	// retry loop
 	while (m_retries >= 0) {
 		if (!sent || canResend) {
 			// send command
-			master.send(command + commandBase, useChecksum, params.data(), params.size(), retries);
+			master.send(command + parameters.commandBase, parameters.useChecksum, payload.data(), payload.size(), parameters.retries);
 			sent = true;
 		}
 
@@ -126,11 +146,12 @@ receive:
 		if (result == ARDUCOM_NO_DATA) {
 			m_retries--;
 			if (m_retries > 0) {
-				if (verbose) {
+				if (parameters.verbose) {
 					std::cout << "Received no data, " << m_retries << " retries left" << std::endl;
 				}
 				// resend after half the possible retries (message may have been lost)
-				if (m_retries == retries / 2) {
+				// TODO
+				if (m_retries == parameters.retries / 2) {
 					master.done();
 					continue;
 				}
@@ -216,11 +237,11 @@ void prompt(void) {
 }
 
 void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
-	std::vector<uint8_t> params;
+	std::vector<uint8_t> payload;
 	std::vector<uint8_t> result;
 
 	// send INIT message
-	execute(master, ARDUCOM_FTP_COMMAND_INIT, params, transport->getDefaultExpectedBytes(), result);
+	execute(master, ARDUCOM_FTP_COMMAND_INIT, payload, transport->getDefaultExpectedBytes(), result);
 
 	struct __attribute__((packed)) CardInfo {
 		char cardType[4];
@@ -262,7 +283,7 @@ void printProgress(uint32_t total, uint32_t current, uint8_t width) {
 	needEndl = true;
 }
 
-void setVariable(std::vector<std::string> parts, bool print = true) {
+void setParameter(std::vector<std::string> parts, bool print = true) {
 	bool printOnly = false;
 	if (parts.size() < 2) {
 		printOnly = true;
@@ -272,15 +293,15 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 	if (parts.at(1) == "allowdelete" || printOnly) {
 		if (parts.size() > 2) {
 			if (parts.at(2) == "on")
-				allowDelete = true;
+				parameters.allowDelete = true;
 			else
 			if (parts.at(2) == "off")
-				allowDelete = false;
+				parameters.allowDelete = false;
 			else
 				throw std::invalid_argument("Expected 'on' or 'off'");
 		}
 		if (print)
-			std::cout << "set allowdelete " << (allowDelete ? "on" : "off") << std::endl;
+			std::cout << "set allowdelete " << (parameters.allowDelete ? "on" : "off") << std::endl;
 		found = true;
 	}
 	if (parts.at(1) == "interactive" || printOnly) {
@@ -300,15 +321,15 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 	if (parts.at(1) == "continue" || printOnly) {
 		if (parts.size() > 2) {
 			if (parts.at(2) == "on")
-				continueFile = true;
+				parameters.continueFile = true;
 			else
 			if (parts.at(2) == "off")
-				continueFile = false;
+				parameters.continueFile = false;
 			else
 				throw std::invalid_argument("Expected 'on' or 'off'");
 		}
 		if (print)
-			std::cout << "set continue " << (continueFile ? "on" : "off") << std::endl;
+			std::cout << "set continue " << (parameters.continueFile ? "on" : "off") << std::endl;
 		found = true;
 	}
 	if (parts.at(1) == "retries" || printOnly) {
@@ -317,13 +338,13 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 				int m_retries = std::stoi(parts.at(2));
 				if (m_retries < 0)
 					throw std::invalid_argument("");
-				retries = m_retries;
+				parameters.retries = m_retries;
 			} catch (std::exception& e) {
 				throw std::invalid_argument("Expected non-negative number of retries");
 			}
 		}
 		if (print)
-			std::cout << "set retries " << retries << std::endl;
+			std::cout << "set retries " << parameters.retries << std::endl;
 		found = true;
 	}
 	if (parts.at(1) == "delay" || printOnly) {
@@ -332,151 +353,35 @@ void setVariable(std::vector<std::string> parts, bool print = true) {
 				long m_delayMs = std::stol(parts.at(2));
 				if (m_delayMs < 0)
 					throw std::invalid_argument("");
-				delayMs = m_delayMs;
+				parameters.delayMs = m_delayMs;
 			} catch (std::exception& e) {
 				throw std::invalid_argument("Expected non-negative delay in ms");
 			}
 		}
 		if (print)
-			std::cout << "set delay " << delayMs << std::endl;
+			std::cout << "set delay " << parameters.delayMs << std::endl;
 		found = true;
 	}
 
 	if (!found)
-		throw std::invalid_argument("Variable name unknown: " + parts.at(1));
+		throw std::invalid_argument("Parameter name unknown: " + parts.at(1));
 }
 
 int main(int argc, char *argv[]) {
 
-	interactive = isatty(fileno(stdin));
-
 	std::vector<std::string> args;
-	args.reserve(argc);
-	for (int i = 0; i < argc; i++) {
-		char* targ = argv[i];
-		std::string arg(targ);
-		args.push_back(arg);
-	}
+	ArducomBaseParameters::convertCmdLineArgs(argc, argv, args);
 
 	try {
-		// evaluate arguments
-		for (unsigned int i = 1; i < args.size(); i++) {
-			if (args.at(i) == "-h" || args.at(i) == "-?") {
-				return 0;
-			} else
-			if (args.at(i) == "--version") {
-				return 0;
-			} else
-			if (args.at(i) == "-v") {
-				verbose = true;
-			} else
-			if (args.at(i) == "-n") {
-				useChecksum = false;
-			} else
-			if (args.at(i) == "-t") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected transport type after argument -t");
-				} else {
-					transportType = args.at(i);
-				}
-			} else
-			if (args.at(i) == "-d") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected device file name after argument -d");
-				} else {
-					device = args.at(i);
-				}
-			} else
-			if (args.at(i) == "-a") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected device address after argument -a");
-				} else {
-					try {
-						deviceAddress = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric device address after argument -a");
-					}
-				}
-			} else
-			if (args.at(i) == "-b") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected baud rate after argument -b");
-				} else {
-					try {
-						baudrate = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric baudrate after argument -b");
-					}
-				}
-			} else
-			if (args.at(i) == "-l") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected delay in ms after argument -l");
-				} else {
-					try {
-						delayMs = std::stol(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric delay in ms after argument -l");
-					}
-				}
-			} else
-			if (args.at(i) == "-x") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected number of retries after argument -x");
-				} else {
-					try {
-						retries = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected number after argument -x");
-					}
-				}
-			}
-		}
-
-		ArducomMasterTransport *transport;
-
-		if (transportType == "i2c") {
-			if (device == "")
-				throw std::invalid_argument("Error: missing transport device name (argument -d)");
-
-			if ((deviceAddress < 1) || (deviceAddress > 127))
-				throw std::invalid_argument("Expected device address within range 1..127 (argument -a)");
-
-			transport = new ArducomMasterTransportI2C(device, deviceAddress);
-			try {
-				transport->init();
-			} catch (const std::exception& e) {
-				std::throw_with_nested(std::runtime_error("Error initializing transport"));
-			}
-		} else
-		if (transportType == "serial") {
-			if (device == "")
-				throw std::invalid_argument("Error: missing transport device name (argument -d)");
-
-			// TODO check baud rate
-
-			transport = new ArducomMasterTransportSerial(device, baudrate, 1000);
-			try {
-				transport->init();
-			} catch (const std::exception& e) {
-				std::throw_with_nested(std::runtime_error("Error initializing transport"));
-			}
-		} else
-			throw std::invalid_argument("Error: transport type not supported (argument -t), use 'i2c' or 'serial'");
-
-		if (retries < 0)
-			throw std::invalid_argument("Number of retries must not be negative (argument -x)");
+		interactive = isatty(fileno(stdin));
+		parameters.setFromArguments(args);
+		
+		ArducomMasterTransport *transport = parameters.validate();
 
 		// initialize protocol
-		ArducomMaster master(transport, verbose);
+		ArducomMaster master(transport, parameters.verbose);
 
-		std::vector<uint8_t> params;
+		std::vector<uint8_t> payload;
 		std::vector<uint8_t> result;
 
 		initSlaveFAT(master, transport);
@@ -495,7 +400,7 @@ int main(int argc, char *argv[]) {
 
 				command = trim(command);
 
-				// split parameters
+				// split command
 				std::vector<std::string> parts;
 				split(command, ' ', parts);
 
@@ -524,14 +429,14 @@ int main(int argc, char *argv[]) {
 					} fileInfo;
 
 					std::vector<FileInfo> fileInfos;
-					params.clear();	// no parameters
+					payload.clear();	// no payload
 
 					// rewind directory
-					execute(master, ARDUCOM_FTP_COMMAND_REWIND, params, transport->getDefaultExpectedBytes(), result);
+					execute(master, ARDUCOM_FTP_COMMAND_REWIND, payload, transport->getDefaultExpectedBytes(), result);
 
 					while (true) {
 						// list next file
-						execute(master, ARDUCOM_FTP_COMMAND_LISTFILES, params, transport->getDefaultExpectedBytes(), result);
+						execute(master, ARDUCOM_FTP_COMMAND_LISTFILES, payload, transport->getDefaultExpectedBytes(), result);
 
 						// record received?
 						if (result.size() > 0) {
@@ -614,14 +519,14 @@ int main(int argc, char *argv[]) {
 
 				} else
 				if (parts.at(0) == "set") {
-					setVariable(parts);
+					setParameter(parts);
 				} else
 				if (parts.at(0) == "cd") {
 					if (parts.size() == 1) {
 						printPathComponents();
 						std::cout << std::endl;
 					} else if (parts.size() > 2) {
-						std::cout << "Error: cd expects only one argument" << std::endl;
+						std::cout << "Invalid input: cd expects only one argument" << std::endl;
 					} else {
 						bool exec = true;
 						// cd into root?
@@ -637,11 +542,11 @@ int main(int argc, char *argv[]) {
 								std::vector<std::string> pathComps = pathComponents;
 								pathComponents.clear();
 								for (size_t p = 0; p < pathComps.size() - 1; p++) {
-									params.clear();
+									payload.clear();
 									// send command to change directory
 									for (size_t i = 0; i < pathComps.at(p).length(); i++)
-										params.push_back(pathComps.at(p)[i]);
-									execute(master, ARDUCOM_FTP_COMMAND_CHDIR, params, transport->getDefaultExpectedBytes(), result);
+										payload.push_back(pathComps.at(p)[i]);
+									execute(master, ARDUCOM_FTP_COMMAND_CHDIR, payload, transport->getDefaultExpectedBytes(), result);
 									pathComponents.push_back(pathComps.at(p));
 								}
 							}
@@ -653,11 +558,11 @@ int main(int argc, char *argv[]) {
 						}
 
 						if (exec) {
-							params.clear();
+							payload.clear();
 							// send command to change directory
 							for (size_t i = 0; i < parts.at(1).length(); i++)
-								params.push_back(parts.at(1)[i]);
-							execute(master, ARDUCOM_FTP_COMMAND_CHDIR, params, transport->getDefaultExpectedBytes(), result);
+								payload.push_back(parts.at(1)[i]);
+							execute(master, ARDUCOM_FTP_COMMAND_CHDIR, payload, transport->getDefaultExpectedBytes(), result);
 	/*
 							char dirname[13];
 							size_t dirlen = result.size();
@@ -674,15 +579,15 @@ int main(int argc, char *argv[]) {
 				} else
 				if (parts.at(0) == "get") {
 					if (parts.size() == 1) {
-						std::cout << "Error: get expects a file name as argument" << std::endl;
+						std::cout << "Invalid input: get expects a file name as argument" << std::endl;
 					} else if (parts.size() > 2) {
-						std::cout << "Error: get expects only one argument" << std::endl;
+						std::cout << "Invalid input: get expects only one argument" << std::endl;
 					} else {
-						params.clear();
+						payload.clear();
 						// send command to open the file
 						for (size_t i = 0; i < parts.at(1).length(); i++)
-							params.push_back(parts.at(1)[i]);
-						execute(master, ARDUCOM_FTP_COMMAND_OPENREAD, params, transport->getDefaultExpectedBytes(), result);
+							payload.push_back(parts.at(1)[i]);
+						execute(master, ARDUCOM_FTP_COMMAND_OPENREAD, payload, transport->getDefaultExpectedBytes(), result);
 
 						// the result is the file size
 						if (result.size() < 4) {
@@ -728,7 +633,7 @@ int main(int argc, char *argv[]) {
 							}
 
 							// overwrite or continue?
-							if (continueFile && (position >= 0) && (position < totalSize)) {
+							if (parameters.continueFile && (position >= 0) && (position < totalSize)) {
 								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -771,14 +676,14 @@ int main(int argc, char *argv[]) {
 							// file read loop
 							while (true) {
 								// send current seek position
-								params.clear();
-								params.push_back((uint8_t)position);
-								params.push_back((uint8_t)(position >> 8));
-								params.push_back((uint8_t)(position >> 16));
-								params.push_back((uint8_t)(position >> 24));
+								payload.clear();
+								payload.push_back((uint8_t)position);
+								payload.push_back((uint8_t)(position >> 8));
+								payload.push_back((uint8_t)(position >> 16));
+								payload.push_back((uint8_t)(position >> 24));
 
 								// this command can be resent in case of errors (idempotent)
-								execute(master, ARDUCOM_FTP_COMMAND_READFILE, params, transport->getDefaultExpectedBytes(), result, true);
+								execute(master, ARDUCOM_FTP_COMMAND_READFILE, payload, transport->getDefaultExpectedBytes(), result, true);
 
 								position += result.size();
 
@@ -797,8 +702,8 @@ int main(int argc, char *argv[]) {
 							needEndl = false;
 
 							// send command to close the file
-							params.clear();
-							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, params, transport->getDefaultExpectedBytes(), result);						
+							payload.clear();
+							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, payload, transport->getDefaultExpectedBytes(), result);						
 
 							// close local file
 							close(fd);
@@ -808,19 +713,19 @@ int main(int argc, char *argv[]) {
 				} else
 				if ((parts.at(0) == "rm") || (parts.at(0) == "del")) {
 					if (parts.size() == 1) {
-						std::cout << "Error: rm and del expect a file name as argument" << std::endl;
+						std::cout << "Invalid input: rm and del expect a file name as argument" << std::endl;
 					} else if (parts.size() > 2) {
-						std::cout << "Error: rm and del expect only one argument" << std::endl;
+						std::cout << "Invalid input: rm and del expect only one argument" << std::endl;
 					} else {
-						if (!allowDelete) {
+						if (!parameters.allowDelete) {
 							std::cout << "Warning: Deleting files is possibly buggy and can corrupt your SD card!" << std::endl;
 							std::cout << "'Type 'set allowdelete on' if you want to delete anyway." << std::endl;
 						} else {
-							params.clear();
+							payload.clear();
 							// send command to delete the file
 							for (size_t i = 0; i < parts.at(1).length(); i++)
-								params.push_back(parts.at(1)[i]);
-							execute(master, ARDUCOM_FTP_COMMAND_DELETE, params, transport->getDefaultExpectedBytes(), result);
+								payload.push_back(parts.at(1)[i]);
+							execute(master, ARDUCOM_FTP_COMMAND_DELETE, payload, transport->getDefaultExpectedBytes(), result);
 						}
 					}
 				} else {

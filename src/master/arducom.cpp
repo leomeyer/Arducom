@@ -25,18 +25,6 @@ enum Format {
 	INT64
 };
 
-// recursively print exception whats:
-void print_what (const std::exception& e) {
-	std::cerr << e.what();
-	try {
-		std::rethrow_if_nested(e);
-	} catch (const std::exception& nested) {
-		std::cerr << ": ";
-		print_what(nested);
-	}
-	std::cerr << std::endl;
-}
-
 uint8_t char2byte(char input) {
 	if ((input >= '0') && (input <= '9'))
 		return input - '0';
@@ -78,7 +66,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
-void parseParameter(std::string arg, Format format, char separator, std::vector<uint8_t> &params) {
+void parsePayload(std::string arg, Format format, char separator, std::vector<uint8_t> &params) {
 	// for all formats but raw: does the string contain the separator?
 	if ((format != RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
 		// split along the separators
@@ -88,7 +76,7 @@ void parseParameter(std::string arg, Format format, char separator, std::vector<
 		std::vector<std::string>::const_iterator it = parts.begin();
 		while (it != parts.end()) {
 			// pass empty separator to avoid searching a second time
-			parseParameter(*it, format, '\0', params);
+			parsePayload(*it, format, '\0', params);
 			it++;
 		}
 	}
@@ -173,251 +161,143 @@ void parseParameter(std::string arg, Format format, char separator, std::vector<
 	}
 }
 
-int main(int argc, char *argv[]) {
-	
-	std::string transportType;
-	std::string device;
-	int baudrate = 9600;
-	int deviceAddress = 0;
-	bool verbose = false;
-	int command = -1;
-	std::vector<uint8_t> params;
-	bool paramSpecified = false;
-	bool readInputSpecified = false;
-	long delayMs = 0;
-	int expectedBytes = -1;
-	Format inputFormat = HEX;
-	Format outputFormat = HEX;
-	bool noNewline = false;
-	char outputSeparator = ',';
-	char inputSeparator = outputSeparator;
-	int retries = 0;
-	bool tryInterpret = true;
-	bool useChecksum = true;
-	ArducomMaster* master = NULL;
-	
-	std::vector<std::string> args;
-	args.reserve(argc);
-	for (int i = 0; i < argc; i++) {
-		char* targ = argv[i];
-		std::string arg(targ);
-		args.push_back(arg);
+class ArducomParameters : public ArducomBaseParameters {
+
+public:
+	std::vector<uint8_t> payload;
+	int command;
+	bool paramSpecified;
+	bool readInputSpecified;
+	int expectedBytes;
+	Format inputFormat;
+	Format outputFormat;
+	bool noNewline;
+	char outputSeparator;
+	char inputSeparator;
+	bool tryInterpret;
+
+	ArducomParameters() : ArducomBaseParameters() {
+		command = -1;
+		paramSpecified = false;
+		readInputSpecified = false;
+		expectedBytes = -1;
+		inputFormat = HEX;
+		outputFormat = HEX;
+		noNewline = false;
+		outputSeparator = ',';
+		inputSeparator = outputSeparator;
+		tryInterpret = true;
 	}
 	
-	try {
-		// evaluate arguments
-		for (unsigned int i = 1; i < args.size(); i++) {
-			if (args.at(i) == "-h" || args.at(i) == "-?") {
-				return 0;
-			} else
-			if (args.at(i) == "--version") {
-				return 0;
-			} else
-			if (args.at(i) == "-v") {
-				verbose = true;
-			} else
-			if (args.at(i) == "--no-interpret") {
-				tryInterpret = false;
-			} else
-			if (args.at(i) == "-n") {
-				useChecksum = false;
-			} else
-			if (args.at(i) == "-p") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected parameter value after argument -p");
-				} else {
-					paramSpecified = true;
-					parseParameter(args.at(i), inputFormat, inputSeparator, params);
+	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
+		if (args.at(*i) == "-c") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected command number after argument -c");
+			} else {
+				try {
+					command = std::stoi(args.at(*i));
+				} catch (std::exception& e) {
+					throw std::invalid_argument("Expected numeric command number after argument -c");
 				}
-			} else		
-			if (args.at(i) == "-r") {
-				readInputSpecified = true;
-			} else
-			if (args.at(i) == "-t") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected transport type after argument -t");
-				} else {
-					transportType = args.at(i);
-				}
-			} else		
-			if (args.at(i) == "-d") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected device file name after argument -d");
-				} else {
-					device = args.at(i);
-				}
-			} else
-			if (args.at(i) == "-a") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected device address after argument -a");
-				} else {
-					try {
-						deviceAddress = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric device address after argument -a");
-					}
-				}
-			} else
-			if (args.at(i) == "-b") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected baud rate after argument -b");
-				} else {
-					try {
-						baudrate = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric baudrate after argument -b");
-					}
-				}
-			} else
-			if (args.at(i) == "-c") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected command number after argument -c");
-				} else {
-					try {
-						command = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric command number after argument -c");
-					}
-				}
-			} else
-			if (args.at(i) == "-e") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected number of expected bytes after argument -e");
-				} else {
-					try {
-						expectedBytes = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected number after argument -e");
-					}
-				}
-			} else
-			if (args.at(i) == "-l") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected delay in ms after argument -l");
-				} else {
-					try {
-						delayMs = std::stol(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected numeric delay in ms after argument -l");
-					}
-				}
-			} else
-			if (args.at(i) == "-i") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected input format after argument -i");
-				} else {
-					inputFormat = parseFormat(args.at(i), "-i");
-				}
-			} else
-			if (args.at(i) == "-o") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected output format after argument -o");
-				} else {
-					outputFormat = parseFormat(args.at(i), "-o");
-				}
-			} else
-			if (args.at(i) == "-s") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected separator character after argument -s");
-				} else {
-					outputSeparator = args.at(i)[0];
-					inputSeparator = args.at(i)[0];
-				}
-			} else
-			if (args.at(i) == "-si") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected input separator character after argument -si");
-				} else {
-					inputSeparator = args.at(i)[0];
-				}
-			} else
-			if (args.at(i) == "-so") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected output separator character after argument -so");
-				} else {
-					outputSeparator = args.at(i)[0];
-				}
-			} else
-			if (args.at(i) == "-x") {
-				i++;
-				if (args.size() == i) {
-					throw std::invalid_argument("Expected number of retries after argument -x");
-				} else {
-					try {
-						retries = std::stoi(args.at(i));
-					} catch (std::exception& e) {
-						throw std::invalid_argument("Expected number after argument -x");
-					}
-				}
-			} else
-			if (args.at(i) == "--no-newline") {
-				noNewline = true;
-			}
-		}
-		
-		ArducomMasterTransport *transport;
-		
-		if (transportType == "i2c") {
-			if (device == "")
-				throw std::invalid_argument("Error: missing transport device name (argument -d)");
-				
-			if ((deviceAddress < 1) || (deviceAddress > 127))
-				throw std::invalid_argument("Expected device address within range 1..127 (argument -a)");
-
-			transport = new ArducomMasterTransportI2C(device, deviceAddress);
-			try {
-				transport->init();
-			} catch (const std::exception& e) {
-				std::throw_with_nested(std::runtime_error("Error initializing transport"));
 			}
 		} else
-		if (transportType == "serial") {
-			if (device == "")
-				throw std::invalid_argument("Error: missing transport device name (argument -d)");
-
-			// TODO check baud rate
-
-			transport = new ArducomMasterTransportSerial(device, baudrate, 1000);
-			try {
-				transport->init();
-			} catch (const std::exception& e) {
-				std::throw_with_nested(std::runtime_error("Error initializing transport"));
+		if (args.at(*i) == "-e") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected number of expected bytes after argument -e");
+			} else {
+				try {
+					expectedBytes = std::stoi(args.at(*i));
+				} catch (std::exception& e) {
+					throw std::invalid_argument("Expected number after argument -e");
+				}
 			}
 		} else
-			throw std::invalid_argument("Error: transport type not supported (argument -t), use 'i2c' or 'serial'");
-
+		if (args.at(*i) == "-i") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected input format after argument -i");
+			} else {
+				inputFormat = parseFormat(args.at(*i), "-i");
+			}
+		} else
+		if (args.at(*i) == "-o") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected output format after argument -o");
+			} else {
+				outputFormat = parseFormat(args.at(*i), "-o");
+			}
+		} else
+		if (args.at(*i) == "-s") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected separator character after argument -s");
+			} else {
+				outputSeparator = args.at(*i)[0];
+				inputSeparator = args.at(*i)[0];
+			}
+		} else
+		if (args.at(*i) == "-si") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected input separator character after argument -si");
+			} else {
+				inputSeparator = args.at(*i)[0];
+			}
+		} else
+		if (args.at(*i) == "-so") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected output separator character after argument -so");
+			} else {
+				outputSeparator = args.at(*i)[0];
+			}
+		} else
+		if (args.at(*i) == "--no-newline") {
+			noNewline = true;
+		} else
+		if (args.at(*i) == "--no-interpret") {
+			tryInterpret = false;
+		} else
+		if (args.at(*i) == "-p") {
+			(*i)++;
+			if (args.size() == *i) {
+				throw std::invalid_argument("Expected payload value after argument -p");
+			} else {
+				paramSpecified = true;
+				parsePayload(args.at(*i), inputFormat, inputSeparator, payload);
+			}
+		} else		
+		if (args.at(*i) == "-r") {
+			readInputSpecified = true;
+		} else
+			ArducomBaseParameters::evaluateArgument(args, i);
+	};
+	
+	inline ArducomMasterTransport* validate() {
 		if ((command < 0) || (command > 126))
 			throw std::invalid_argument("Expected command number within range 0..126 (argument -c)");
 			
 		if (readInputSpecified && paramSpecified)
 			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
 		
+		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
+
 		if (readInputSpecified) {
 			// fill buffer from stdin
 			char buffer[transport->getMaximumCommandSize() * 4];	// this should be enough for all input formats
 			size_t readBytes = fread(buffer, 1, sizeof buffer - 1, stdin);
 			
 			buffer[readBytes] = '\0';
-			parseParameter(std::string(buffer), inputFormat, inputSeparator, params);
+			parsePayload(std::string(buffer), inputFormat, inputSeparator, payload);
 		}
 			
-		if (params.size() > transport->getMaximumCommandSize()) {
+		if (payload.size() > transport->getMaximumCommandSize()) {
 			char numstr[21];
 			sprintf(numstr, "%zu", transport->getMaximumCommandSize());
-			throw std::invalid_argument((std::string("Command parameter length must not exceed the transport's maximum command size: ") 
+			throw std::invalid_argument((std::string("Command payload length must not exceed the transport's maximum command size: ") 
 				+ numstr).c_str());
 		}
 
@@ -428,14 +308,40 @@ int main(int argc, char *argv[]) {
 		if ((expectedBytes < 0) || (expectedBytes > 64))
 			throw std::invalid_argument("Expected number of bytes must be within range 0..64 (argument -e)");
 
-		if (retries < 0)
-			throw std::invalid_argument("Number of retries must not be negative (argument -x)");
+		return transport;
+	};
+	
+	inline void showVersion(void) override {
+		std::cout << "Version" << std::endl;
+		exit(0);
+	};	
+	
+	inline void showHelp(void) override {
+		std::cout << "Help" << std::endl;
+		exit(0);		
+	};
+};
 
+/********************************************************************************/
+int main(int argc, char* argv[]) {
+	
+	ArducomMaster* master = NULL;
+	
+	std::vector<std::string> args;
+	ArducomParameters::convertCmdLineArgs(argc, argv, args);
+	
+	try {
+		// create and initialize parameter object
+		ArducomParameters parameters;
+		parameters.setFromArguments(args);
+		
+		ArducomMasterTransport *transport = parameters.validate();
+		
 		// initialize protocol
-		master = new ArducomMaster(transport, verbose);
+		master = new ArducomMaster(transport, parameters.verbose);
 		
 		// send command
-		master->send(command, useChecksum, params.data(), params.size());
+		master->send(parameters.command, parameters.useChecksum, parameters.payload.data(), parameters.payload.size());
 		
 		// receive response
 		uint8_t buffer[255];
@@ -443,12 +349,12 @@ int main(int argc, char *argv[]) {
 		uint8_t errorInfo;
 		
 		// retry loop
-		while (retries >= 0) {
+		while (parameters.retries >= 0) {
 			// wait for the specified delay
-			usleep(delayMs * 1000);
+			usleep(parameters.delayMs * 1000);
 			size = 0;
 			
-			uint8_t result = master->receive(expectedBytes, buffer, &size, &errorInfo);
+			uint8_t result = master->receive(parameters.expectedBytes, buffer, &size, &errorInfo);
 
 			// no error?
 			if (result == ARDUCOM_OK) {
@@ -461,10 +367,10 @@ int main(int argc, char *argv[]) {
 			// special case: if NO_DATA has been received, give the slave more time to react
 			// without resending the message
 			if (result == ARDUCOM_NO_DATA) {
-				retries--;
-				if (retries > 0) {
-					if (verbose) {
-						std::cout << "Received no data, " << retries << " retries left" << std::endl;
+				parameters.retries--;
+				if (parameters.retries > 0) {
+					if (parameters.verbose) {
+						std::cout << "Received no data, " << parameters.retries << " retries left" << std::endl;
 					}
 					master->done();
 					continue;
@@ -484,10 +390,10 @@ int main(int argc, char *argv[]) {
 			
 			switch (result) {
 			case ARDUCOM_NO_DATA: {
-				retries--;
-				if (retries <= 0)
+				parameters.retries--;
+				if (parameters.retries <= 0)
 					throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
-				if (verbose)
+				if (parameters.verbose)
 					std::cout << "No data received, retrying..." << std::endl;
 				continue;
 			}
@@ -498,8 +404,8 @@ int main(int argc, char *argv[]) {
 			case ARDUCOM_PARAMETER_MISMATCH: {
 				// sporadic I2C dropouts cause this error (receiver problems?)
 				// seem to be unrelated to baud rate...
-				retries--;
-				if (retries < 0)
+				parameters.retries--;
+				if (parameters.retries < 0)
 					throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
 				else
 					// try again
@@ -518,7 +424,7 @@ int main(int argc, char *argv[]) {
 		// output received?
 		if (size > 0) {
 			// interpret command 0 (version command)?
-			if (tryInterpret && command == 0) {
+			if (parameters.tryInterpret && (parameters.command == 0)) {
 				struct __attribute__((packed)) VersionInfo {
 					uint8_t version;
 					uint32_t uptime;
@@ -537,14 +443,14 @@ int main(int argc, char *argv[]) {
 				std::cout << "; Info: " << versionInfo.info;
 			} else {
 				// cannot or should not interpret
-				switch (outputFormat) {
+				switch (parameters.outputFormat) {
 				case HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
 				case RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
 				case BYTE: {
 					for (uint8_t i = 0; i < size; i++) {
 						std::cout << (int)buffer[i];
-						if ((i < size - 1) && (outputSeparator > '\0'))
-							std::cout << outputSeparator;
+						if ((i < size - 1) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
 					}
 					break;
 				}
@@ -553,8 +459,8 @@ int main(int argc, char *argv[]) {
 						throw std::invalid_argument("Output size must fit into two byte blocks for output format Int16");
 					for (uint8_t i = 0; i < size; i += 2) {
 						std::cout << ((int16_t)buffer[i] + (int16_t)(buffer[i + 1] << 8));
-						if ((i < size - 2) && (outputSeparator > '\0'))
-							std::cout << outputSeparator;
+						if ((i < size - 2) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
 					}
 					break;
 				}
@@ -563,8 +469,8 @@ int main(int argc, char *argv[]) {
 						throw std::invalid_argument("Output size must fit into four byte blocks for output format Int32");
 					for (uint8_t i = 0; i < size; i += 4) {
 						std::cout << ((int)buffer[i] + (int)(buffer[i + 1] << 8) + (int)(buffer[i + 2] << 16) + (int)(buffer[i + 3] << 24));
-						if ((i < size - 4) && (outputSeparator > '\0'))
-							std::cout << outputSeparator;
+						if ((i < size - 4) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
 					}
 					break;
 				}
@@ -573,8 +479,8 @@ int main(int argc, char *argv[]) {
 						throw std::invalid_argument("Output size must fit into eight byte blocks for output format Int64");
 					for (uint8_t i = 0; i < size; i += 8) {
 						std::cout << ((long long)buffer[0] + ((long long)buffer[i + 1] << 8) + ((long long)buffer[i + 2] << 16) + ((long long)buffer[i + 3] << 24) + ((long long)buffer[i + 4] << 32) + ((long long)buffer[i + 5] << 40) + ((long long)buffer[i + 6] << 48) + ((long long)buffer[i + 7] << 56));
-						if ((i < size - 8) && (outputSeparator > '\0'))
-							std::cout << outputSeparator;
+						if ((i < size - 8) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
 					}
 					break;
 				}
@@ -582,12 +488,15 @@ int main(int argc, char *argv[]) {
 					throw std::invalid_argument("Output format not supported");
 				}
 			}
-			if (!noNewline)
+			if (!parameters.noNewline)
 				std::cout << std::endl;
 		}	// output received
 	} catch (const std::exception& e) {
 		print_what(e);
-		exit(master->lastError);
+		if (master != NULL)
+			exit(master->lastError);
+		else
+			exit(1);
 	}
 
 	return 0;

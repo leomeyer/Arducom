@@ -1,6 +1,7 @@
 #ifndef __ARDUCOMMASTER_H
 #define __ARDUCOMMASTER_H
 
+#include <vector>
 #include <stdexcept>
 #include <inttypes.h>
 
@@ -9,6 +10,11 @@ public:
 	TimeoutException(const char *what) : std::runtime_error(what) {}
 };
 
+// recursively print exception whats:
+void print_what (const std::exception& e);
+
+/** This class defines how an Arducom transport mechanism works.
+ */
 class ArducomMasterTransport {
 
 public:
@@ -36,7 +42,8 @@ public:
 	virtual void printBuffer(void) = 0;	
 };
 
-
+/** This class contains the functions to send and receive data over a transport.
+ */
 class ArducomMaster {
 
 public:
@@ -45,13 +52,8 @@ public:
 	* Codes lower than 128 are local. Codes greater than 127 come from the slave. */
 	uint8_t lastError;
 
-	ArducomMaster(ArducomMasterTransport *transport, bool verbose) {
-		this->transport = transport;
-		this->verbose = verbose;
-		this->lastCommand = 255;	// set to invalid command
-		this->lastError = 0;
-	};
-	
+	ArducomMaster(ArducomMasterTransport *transport, bool verbose);
+		
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);
 
@@ -74,6 +76,61 @@ protected:
 	uint8_t lastCommand;
 	
 	virtual void invalidResponse(uint8_t commandByte);
+};
+
+
+/** This class encapsulates parameter validation and basic transport creation.
+ * It is used by tools to reduce code duplication. Tools are expected to extend
+ * this class by adding their specific requirements.
+ */
+class ArducomBaseParameters {
+	
+public:
+	std::string transportType;
+	std::string device;
+	int baudrate;
+	int deviceAddress;
+	bool verbose;
+	long delayMs;
+	int retries;
+	bool useChecksum;
+	
+	/** Standard constructor. Applies the default values. */
+	inline ArducomBaseParameters() {
+		baudrate = 9600;
+		deviceAddress = 0;
+		verbose = false;
+		delayMs = 0;
+		retries = 0;
+		useChecksum = true;
+	}
+
+	/** Helper function to convert char* array to vector */
+	static inline void convertCmdLineArgs(int argc, char* argv[], std::vector<std::string>& args) {
+		args.reserve(argc);
+		for (int i = 0; i < argc; i++) {
+			char* targ = argv[i];
+			std::string arg(targ);
+			args.push_back(arg);
+		}
+	}
+	
+	/** Iterates over the arguments and tries to evaluate them. */
+	void setFromArguments(std::vector<std::string>& args);
+
+	/** Tries to evaluate the argument at position i and sets the corresponding
+	 * parameter(s) if successful. Throws an exception if the argument is not recognized. */
+	virtual void evaluateArgument(std::vector<std::string>& args, size_t* i);
+	
+	/** Throws an exception if the parameters cannot be validated. 
+	 * Returns an initialized ArducomTransport object if everything is ok. */
+	virtual ArducomMasterTransport* validate();
+	
+	/** Display version information and exit. */
+	virtual void showVersion(void) = 0;
+	
+	/** Display help text and exit. */
+	virtual void showHelp(void) = 0;
 };
 
 #endif

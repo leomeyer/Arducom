@@ -4,6 +4,20 @@
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
+#include "ArducomMasterI2C.h"
+#include "ArducomMasterSerial.h"
+
+// recursively print exception whats:
+void print_what (const std::exception& e) {
+	std::cerr << e.what();
+	try {
+		std::rethrow_if_nested(e);
+	} catch (const std::exception& nested) {
+		std::cerr << ": ";
+		print_what(nested);
+	}
+	std::cerr << std::endl;
+}
 
 static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* data, uint8_t dataSize) {
 	int16_t sum = commandByte + code;
@@ -19,6 +33,13 @@ static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* dat
 	}
 	// return two's complement of result
 	return ~(uint8_t)sum;
+}
+
+ArducomMaster::ArducomMaster(ArducomMasterTransport *transport, bool verbose) {
+	this->transport = transport;
+	this->verbose = verbose;
+	this->lastCommand = 255;	// set to invalid command
+	this->lastError = 0;
 }
 
 void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool noRAW) {
@@ -216,4 +237,133 @@ void ArducomMaster::invalidResponse(uint8_t commandByte) {
 	this->printBuffer(&commandByte, 1);
 	std::cout << std::endl;
 	throw std::runtime_error("Invalid response");
+}
+
+
+void ArducomBaseParameters::setFromArguments(std::vector<std::string>& args) {
+	// evaluate arguments
+	for (size_t i = 1; i < args.size(); i++) {
+		evaluateArgument(args,  &i);
+	}
+}
+		
+void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, size_t* i) {
+	if (args.at(*i) == "-h" || args.at(*i) == "-?") {
+		this->showHelp();
+		exit(0);
+	} else
+	if (args.at(*i) == "--version") {
+		this->showVersion();
+		exit(0);
+	} else
+	if (args.at(*i) == "-v") {
+		this->verbose = true;
+	} else
+	if (args.at(*i) == "-n") {
+		useChecksum = false;
+	} else
+	if (args.at(*i) == "-t") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected transport type after argument -t");
+		} else {
+			transportType = args.at(*i);
+		}
+	} else		
+	if (args.at(*i) == "-d") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected device name or IP address after argument -d");
+		} else {
+			device = args.at(*i);
+		}
+	} else
+	if (args.at(*i) == "-a") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected address or port number after argument -a");
+		} else {
+			try {
+				deviceAddress = std::stoi(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected numeric address or port after argument -a");
+			}
+		}
+	} else
+	if (args.at(*i) == "-b") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected baud rate after argument -b");
+		} else {
+			try {
+				baudrate = std::stoi(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected numeric baudrate after argument -b");
+			}
+		}
+	} else
+	if (args.at(*i) == "-l") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected delay in ms after argument -l");
+		} else {
+			try {
+				delayMs = std::stol(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected numeric delay in ms after argument -l");
+			}
+		}
+	} else
+	if (args.at(*i) == "-x") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected number of retries after argument -x");
+		} else {
+			try {
+				retries = std::stoi(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected number after argument -x");
+			}
+		}
+	} else
+		throw std::invalid_argument("Unknown argument: " + args.at(*i));
+}
+
+ArducomMasterTransport* ArducomBaseParameters::validate() {
+	if (delayMs < 0)
+		throw std::invalid_argument("Delay must not be negative (argument -l)");
+
+	if (retries < 0)
+		throw std::invalid_argument("Number of retries must not be negative (argument -x)");
+
+	ArducomMasterTransport *transport;
+	
+	if (transportType == "i2c") {
+		if (device == "")
+			throw std::invalid_argument("Expected I2C transport device file name (argument -d)");
+			
+		if ((deviceAddress < 1) || (deviceAddress > 127))
+			throw std::invalid_argument("Expected I2C slave device address within range 1..127 (argument -a)");
+
+		transport = new ArducomMasterTransportI2C(device, deviceAddress);
+		try {
+			transport->init();
+		} catch (const std::exception& e) {
+			std::throw_with_nested(std::runtime_error("Error initializing transport"));
+		}
+	} else
+	if (transportType == "serial") {
+		if (device == "")
+			throw std::invalid_argument("Expected serial transport device file name (argument -d)");
+
+		transport = new ArducomMasterTransportSerial(device, baudrate, 1000);
+		try {
+			transport->init();
+		} catch (const std::exception& e) {
+			std::throw_with_nested(std::runtime_error("Error initializing transport"));
+		}
+	} else
+		throw std::invalid_argument("Transport type not supplied or unsupported (argument -t), use 'i2c' or 'serial'");
+		
+	return transport;
 }
