@@ -45,8 +45,6 @@ void ArducomMasterTransportI2C::unlock() {
 	semops.sem_op = -1;
 	semops.sem_flg = SEM_UNDO;
 	if (semop(this->semid, &semops, 1) < 0) {
-		// error decreasing semaphore
-		perror("Error decreasing I2C semaphore");
 		throw std::runtime_error("Error decreasing I2C semaphore");
 	}
 	this->hasLock = false;
@@ -62,7 +60,6 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 		// allow access for processes running under all users
 		this->semid = semget(this->semkey, 1, IPC_CREAT | 0666);
 		if (this->semid < 0) {
-			perror("Unable to create or open semaphore");
 			throw std::runtime_error("Unable to create or open semaphore");
 		}
 	}
@@ -100,7 +97,6 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 					continue;
 				} else {
 					// other error acquiring semaphore
-					perror("Error acquiring I2C semaphore");
 					throw std::runtime_error("Error acquiring I2C semaphore");
 				}
 			}
@@ -114,7 +110,6 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 		semops.sem_flg = SEM_UNDO;
 		if (semop(this->semid, &semops, 1) < 0) {
 			// error increasing semaphore
-			perror("Error increasing I2C semaphore");
 			throw std::runtime_error("Error increasing I2C semaphore");
 		}
 
@@ -125,14 +120,12 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 	if ((this->fileHandle = open(this->filename.c_str(), O_RDWR)) < 0) {
 		// release semaphore
 		this->unlock();
-		perror("Failed to open I2C device");
 		throw std::runtime_error("Failed to open I2C device: " + this->filename);
 	}
 
 	if (ioctl(this->fileHandle, I2C_SLAVE, this->slaveAddress) < 0) {
 		// release semaphore
 		this->unlock();
-		perror("Unable to get device access to talk to I2C slave");
 		throw std::runtime_error("Unable to get device access to talk to I2C slave");
 	}
 
@@ -142,7 +135,6 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 			if (my_retries <= 0) {
 				// release semaphore
 				this->unlock();
-				perror("Error sending data to I2C slave");
 				throw std::runtime_error("Error sending data to I2C slave");
 			} else {
 				my_retries--;
@@ -163,7 +155,6 @@ void ArducomMasterTransportI2C::request(uint8_t expectedBytes) {
 	}
 	if (read(this->fileHandle, this->buffer, expectedBytes) != expectedBytes) {
 		this->unlock();
-		perror("Unable to read from I2C slave");
 		throw std::runtime_error("Unable to read from I2C slave");
 	}
 	this->pos = 0;

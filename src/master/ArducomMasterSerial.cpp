@@ -76,7 +76,6 @@ void ArducomMasterTransportSerial::init(void) {
 
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
-		perror("Failed to open serial device");
 		throw std::runtime_error("Failed to open serial device: " + this->filename);
 	}
 
@@ -84,7 +83,6 @@ void ArducomMasterTransportSerial::init(void) {
 
 	memset (&tty, 0, sizeof tty);
 	if (tcgetattr(fd, &tty) != 0) {
-		perror("tcgetattr");
 		throw std::runtime_error("tcgetattr");
 	}
 
@@ -146,7 +144,6 @@ void ArducomMasterTransportSerial::init(void) {
 	tty.c_cflag &= ~CRTSCTS;
 
 	if (tcsetattr (fd, TCSANOW, &tty) != 0) {
-		perror("tcsetattr");
 		throw std::runtime_error("tcsetattr");
 	}
 
@@ -173,7 +170,6 @@ repeat:
 
 		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
-				perror("Error sending data to serial device");
 				throw std::runtime_error("Error sending data to serial device");
 			} else {
 				my_retries--;
@@ -187,7 +183,6 @@ repeat:
 uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 	int bytesRead = read(this->fileHandle, buffer, 1);
 	if (bytesRead < 0) {
-		perror("Unable to read from serial device");
 		throw std::runtime_error("Unable to read from serial device");
 	} else 
 	if (bytesRead == 0) {

@@ -570,7 +570,6 @@ int main(int argc, char *argv[]) {
 								// open local file for reading
 								fd = open(parts.at(1).c_str(), O_RDONLY);
 								if (fd < 0) {
-									perror("Unable to read output file");
 									throw std::runtime_error((std::string("Unable to read output file: ") + parts.at(1)).c_str());
 								}
 
@@ -580,7 +579,6 @@ int main(int argc, char *argv[]) {
 								if (stat(parts.at(1).c_str(), &st) == 0)
 									position = st.st_size;
 								else {
-									perror("Unable to get file size");
 									throw std::runtime_error((std::string("Unable to get file size: ") + parts.at(1)).c_str());
 								}
 
@@ -593,7 +591,6 @@ int main(int argc, char *argv[]) {
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
-									perror("Unable to append to output file");
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 							} else {
@@ -615,7 +612,6 @@ int main(int argc, char *argv[]) {
 								// open local file for writing; create from scratch
 								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
-									perror("Unable to create output file");
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 								// start downloading from beginning
