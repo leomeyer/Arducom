@@ -105,14 +105,15 @@ bool interactive;			// if false (piping input) errors cause immediate exit
 
 void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& payload, uint8_t expectedBytes, std::vector<uint8_t>& result, bool canRetry = false) {
 
-	uint8_t buffer[255];
-	uint8_t size = payload.size();
-	uint8_t errorInfo;
 	int8_t retries = parameters.retries;
-
+	uint8_t errorInfo;
+	
 	while (retries >= 0) {
 		try {
+			uint8_t buffer[255];
+			uint8_t size = payload.size();
 			errorInfo = 0;
+			
 			master.execute(parameters, parameters.commandBase + command, payload.data(), &size, expectedBytes, buffer, &errorInfo);
 
 			// everything ok, copy response
@@ -151,8 +152,6 @@ void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& paylo
 				print_what(e);
 				retries--;
 				std::cout << "Retrying, " << (int)retries << " " << (retries == 1 ? "retry" : "retries") << " left..." << std::endl;
-				// test: set verbose for debugging
-				parameters.verbose = true;
 				continue;
 			}
 			else
@@ -231,6 +230,20 @@ void setParameter(std::vector<std::string> parts, bool print = true) {
 		parts.push_back("");	// push dummy
 	}
 	bool found = false;
+	if (parts.at(1) == "verbose" || printOnly) {
+		if (parts.size() > 2) {
+			if (parts.at(2) == "on")
+				parameters.verbose = true;
+			else
+			if (parts.at(2) == "off")
+				parameters.verbose = false;
+			else
+				throw std::invalid_argument("Expected 'on' or 'off'");
+		}
+		if (print)
+			std::cout << "set verbose " << (parameters.allowDelete ? "on" : "off") << std::endl;
+		found = true;
+	}
 	if (parts.at(1) == "allowdelete" || printOnly) {
 		if (parts.size() > 2) {
 			if (parts.at(2) == "on")
