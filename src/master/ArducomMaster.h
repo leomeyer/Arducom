@@ -11,7 +11,7 @@ public:
 };
 
 // recursively print exception whats:
-void print_what (const std::exception& e);
+void print_what (const std::exception& e, bool printEndl = true);
 
 /** This class defines how an Arducom transport mechanism works.
  */

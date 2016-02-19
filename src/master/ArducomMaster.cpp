@@ -9,15 +9,16 @@
 #include "ArducomMasterSerial.h"
 
 // recursively print exception whats:
-void print_what (const std::exception& e) {
+void print_what (const std::exception& e, bool printEndl) {
 	std::cerr << e.what();
 	try {
 		std::rethrow_if_nested(e);
 	} catch (const std::exception& nested) {
 		std::cerr << ": ";
-		print_what(nested);
+		print_what(nested, false);
 	}
-	std::cerr << std::endl;
+	if (printEndl)
+		std::cerr << std::endl;
 }
 
 static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* data, uint8_t dataSize) {
@@ -127,7 +128,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			switch (result) {
 
 			case ARDUCOM_NO_DATA:
-				throw std::runtime_error((std::string("No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
+				throw std::runtime_error("No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)");
 
 			case ARDUCOM_COMMAND_UNKNOWN:
 				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errInfoStr).c_str());
@@ -138,7 +139,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			case ARDUCOM_PARAMETER_MISMATCH: {
 				// sporadic I2C dropouts cause this error (receiver problems?)
 				// seem to be unrelated to baud rate...
-				throw std::runtime_error(std::string msg(std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
+				throw std::runtime_error((std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
 			}
 
 			case ARDUCOM_BUFFER_OVERRUN:
