@@ -16,6 +16,7 @@
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
 
+/* Input and output data formats */
 enum Format {
 	HEX,
 	RAW,
@@ -57,6 +58,7 @@ Format parseFormat(std::string arg, std::string argName) {
 		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Byte, Int16, Int32, Int64");
 }
 
+/* Split string into parts at specified delimiter */
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
@@ -66,6 +68,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
+/* Parse parameter and add to payload; convert depending on specified format */
 void parsePayload(std::string arg, Format format, char separator, std::vector<uint8_t> &params) {
 	// for all formats but raw: does the string contain the separator?
 	if ((format != RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
@@ -161,6 +164,7 @@ void parsePayload(std::string arg, Format format, char separator, std::vector<ui
 	}
 }
 
+/* Specialized parameters class */
 class ArducomParameters : public ArducomBaseParameters {
 
 public:
@@ -188,7 +192,7 @@ public:
 		inputSeparator = outputSeparator;
 		tryInterpret = true;
 	}
-	
+
 	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
 		if (args.at(*i) == "-c") {
 			(*i)++;
@@ -269,98 +273,101 @@ public:
 				paramSpecified = true;
 				parsePayload(args.at(*i), inputFormat, inputSeparator, payload);
 			}
-		} else		
+		} else
 		if (args.at(*i) == "-r") {
 			readInputSpecified = true;
 		} else
 			ArducomBaseParameters::evaluateArgument(args, i);
 	};
-	
-	inline ArducomMasterTransport* validate() {
+
+	ArducomMasterTransport* validate() {
 		if ((command < 0) || (command > 126))
 			throw std::invalid_argument("Expected command number within range 0..126 (argument -c)");
-			
+
 		if (readInputSpecified && paramSpecified)
 			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
-		
+
 		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
 
 		if (readInputSpecified) {
 			// fill buffer from stdin
 			char buffer[transport->getMaximumCommandSize() * 4];	// this should be enough for all input formats
 			size_t readBytes = fread(buffer, 1, sizeof buffer - 1, stdin);
-			
+
 			buffer[readBytes] = '\0';
 			parsePayload(std::string(buffer), inputFormat, inputSeparator, payload);
 		}
-			
+
 		if (payload.size() > transport->getMaximumCommandSize()) {
-			char numstr[21];
-			sprintf(numstr, "%zu", transport->getMaximumCommandSize());
+			char errorInfoStr[21];
+			sprintf(errorInfoStr, "%zu", transport->getMaximumCommandSize());
 			throw std::invalid_argument((std::string("Command payload length must not exceed the transport's maximum command size: ") 
-				+ numstr).c_str());
+				+ errorInfoStr).c_str());
 		}
 
 		// initialize default number of expected bytes
 		if (expectedBytes == -1)
 			expectedBytes = transport->getDefaultExpectedBytes();
-		
+
 		if ((expectedBytes < 0) || (expectedBytes > 64))
 			throw std::invalid_argument("Expected number of bytes must be within range 0..64 (argument -e)");
 
 		return transport;
 	};
-	
-	inline void showVersion(void) override {
+
+	void showVersion(void) override {
 		std::cout << "Version" << std::endl;
 		exit(0);
-	};	
-	
-	inline void showHelp(void) override {
+	};
+
+	 void showHelp(void) override {
 		std::cout << "Help" << std::endl;
-		exit(0);		
+		exit(0);
 	};
 };
 
-/********************************************************************************/
+//********************************************************************************
+// Main program
+//********************************************************************************
+
 int main(int argc, char* argv[]) {
-	
+
 	ArducomMaster* master = NULL;
-	
+
 	std::vector<std::string> args;
 	ArducomParameters::convertCmdLineArgs(argc, argv, args);
-	
+
 	try {
 		// create and initialize parameter object
 		ArducomParameters parameters;
 		parameters.setFromArguments(args);
-		
-		ArducomMasterTransport *transport = parameters.validate();
-		
+
+		ArducomMasterTransport* transport = parameters.validate();
+
 		// initialize protocol
 		master = new ArducomMaster(transport, parameters.verbose);
-		
+
 		// send command
 		master->send(parameters.command, parameters.useChecksum, parameters.payload.data(), parameters.payload.size());
-		
+
 		// receive response
 		uint8_t buffer[255];
 		uint8_t size;
 		uint8_t errorInfo;
-		
+
 		// retry loop
 		while (parameters.retries >= 0) {
 			// wait for the specified delay
 			usleep(parameters.delayMs * 1000);
 			size = 0;
-			
+
 			uint8_t result = master->receive(parameters.expectedBytes, buffer, &size, &errorInfo);
 
 			// no error?
 			if (result == ARDUCOM_OK) {
 				// let the master cleanup after the transaction
 				master->done();
-				
+
 				break;
 			}
 
@@ -376,51 +383,51 @@ int main(int argc, char* argv[]) {
 					continue;
 				}
 			}
-			
+
 			// let the master cleanup after the transaction
 			master->done();
-			
-			// convert error code to string
-			char errstr[21];
-			sprintf(errstr, "%d", result);
-			
+
+			// convert result code to string
+			char resultStr[21];
+			sprintf(resultStr, "%d", result);
+
 			// convert info code to string
-			char numstr[21];
-			sprintf(numstr, "%d", errorInfo);
-			
+			char errorInfoStr[21];
+			sprintf(errorInfoStr, "%d", errorInfo);
+
 			switch (result) {
 			case ARDUCOM_NO_DATA: {
 				parameters.retries--;
 				if (parameters.retries <= 0)
-					throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
+					throw std::runtime_error((std::string("Device error ") + resultStr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
 				if (parameters.verbose)
 					std::cout << "No data received, retrying..." << std::endl;
 				continue;
 			}
 			case ARDUCOM_COMMAND_UNKNOWN:
-				throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
+				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errorInfoStr).c_str());
 			case ARDUCOM_TOO_MUCH_DATA:
-				throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
+				throw std::runtime_error((std::string("Too much data (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
 			case ARDUCOM_PARAMETER_MISMATCH: {
 				// sporadic I2C dropouts cause this error (receiver problems?)
 				// seem to be unrelated to baud rate...
 				parameters.retries--;
 				if (parameters.retries < 0)
-					throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+					throw std::runtime_error((std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
 				else
 					// try again
 					continue;
 			}
 			case ARDUCOM_BUFFER_OVERRUN:
-				throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
+				throw std::runtime_error((std::string("Buffer overrun (") + resultStr + "); buffer size is: " + errorInfoStr).c_str());
 			case ARDUCOM_CHECKSUM_ERROR:
-				throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
+				throw std::runtime_error((std::string("Checksum error (") + resultStr + "); calculated checksum: " + errorInfoStr).c_str());
 			case ARDUCOM_FUNCTION_ERROR:
-				throw std::runtime_error((std::string("Function error ") + errstr + ": info code: " + numstr).c_str());
+				throw std::runtime_error((std::string("Function error ") + resultStr + ": info code: " + errorInfoStr).c_str());
 			}
-			throw std::runtime_error((std::string("Device error ") + errstr + "; info code: " + numstr).c_str());
+			throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errorInfoStr).c_str());
 		}
-		
+
 		// output received?
 		if (size > 0) {
 			// interpret command 0 (version command)?

@@ -27,23 +27,24 @@
 #include "ArducomMasterSerial.h"
 
 
-// trim from start
+/* Trim from start */
 static inline std::string &ltrim(std::string &s) {
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
         return s;
 }
 
-// trim from end
+/* Trim from end */
 static inline std::string &rtrim(std::string &s) {
         s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
         return s;
 }
 
-// trim from both ends
+/* Trim from both ends */
 static inline std::string &trim(std::string &s) {
         return ltrim(rtrim(s));
 }
 
+/* Split string into parts at specified delimiter */
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
@@ -53,6 +54,7 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
     return elems;
 }
 
+/* Specialized parameters class */
 class ArducomFTPParameters : public ArducomBaseParameters {
 
 public:
@@ -65,7 +67,7 @@ public:
 		continueFile = true;
 		allowDelete = false;
 	}
-	
+
 	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
 		if (args.at(*i) == "--no-continue") {
 			continueFile = false;
@@ -75,20 +77,20 @@ public:
 		} else
 			ArducomBaseParameters::evaluateArgument(args, i);
 	};
-	
-	inline ArducomMasterTransport* validate() {
+
+	ArducomMasterTransport* validate() {
 		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
 		return transport;
 	};
-	
-	inline void showVersion(void) override {
+
+	void showVersion(void) override {
 		std::cout << "Version" << std::endl;
 		exit(0);
-	};	
-	
-	inline void showHelp(void) override {
+	};
+
+	void showHelp(void) override {
 		std::cout << "Help" << std::endl;
-		exit(0);		
+		exit(0);
 	};
 };
 
@@ -162,54 +164,54 @@ receive:
 		// let the master cleanup after the transaction
 		master.done();
 
-		// convert error code to string
-		char errstr[21];
-		sprintf(errstr, "%d", result);
+		// convert result code to string
+		char resultStr[21];
+		sprintf(resultStr, "%d", result);
 
 		// convert info code to string
-		char numstr[21];
-		sprintf(numstr, "%d", errorInfo);
+		char errorInfoStr[21];
+		sprintf(errorInfoStr, "%d", errorInfo);
 
 		switch (result) {
 		case ARDUCOM_NO_DATA:
-				throw std::runtime_error((std::string("Device error ") + errstr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
+				throw std::runtime_error((std::string("Device error ") + resultStr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
 		case ARDUCOM_COMMAND_UNKNOWN:
-			throw std::runtime_error((std::string("Command unknown (") + errstr + "): " + numstr).c_str());
+			throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errorInfoStr).c_str());
 		case ARDUCOM_TOO_MUCH_DATA:
-			throw std::runtime_error((std::string("Too much data (") + errstr + "); expected bytes: " + numstr).c_str());
+			throw std::runtime_error((std::string("Too much data (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
 		case ARDUCOM_PARAMETER_MISMATCH: {
 			// sporadic I2C dropouts cause this error (receiver problems?)
 			// seem to be unrelated to baud rate...
 			m_retries--;
 			if (m_retries < 0)
-				throw std::runtime_error((std::string("Parameter mismatch (") + errstr + "); expected bytes: " + numstr).c_str());
+				throw std::runtime_error((std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
 			else
 				// try again
 				continue;
 		}
 		case ARDUCOM_BUFFER_OVERRUN:
-			throw std::runtime_error((std::string("Buffer overrun (") + errstr + "); buffer size is: " + numstr).c_str());
+			throw std::runtime_error((std::string("Buffer overrun (") + resultStr + "); buffer size is: " + errorInfoStr).c_str());
 		case ARDUCOM_CHECKSUM_ERROR:
 			m_retries--;
 			if (m_retries < 0)
-				throw std::runtime_error((std::string("Checksum error (") + errstr + "); calculated checksum: " + numstr).c_str());
+				throw std::runtime_error((std::string("Checksum error (") + resultStr + "); calculated checksum: " + errorInfoStr).c_str());
 			else
 				// try again
 				continue;
 		case ARDUCOM_FUNCTION_ERROR:
 			switch (errorInfo) {
-			case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": SD card unavailable").c_str());
-			case ARDUCOM_FTP_SDCARD_TYPE_UNKNOWN: throw std::runtime_error((std::string("FTP error ") + numstr + ": SD card type unknown").c_str());
-			case ARDUCOM_FTP_FILESYSTEM_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": SD card file system error").c_str());
-			case ARDUCOM_FTP_NOT_INITIALIZED: throw std::runtime_error((std::string("FTP error ") + numstr + ": FTP system not initialized").c_str());
-			case ARDUCOM_FTP_MISSING_FILENAME: throw std::runtime_error((std::string("FTP error ") + numstr + ": Required file name is missing").c_str());
-			case ARDUCOM_FTP_NOT_A_DIRECTORY: throw std::runtime_error((std::string("FTP error ") + numstr + ": Not a directory").c_str());		
-			case ARDUCOM_FTP_FILE_OPEN_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": Error opening file").c_str());		
-			case ARDUCOM_FTP_READ_ERROR: throw std::runtime_error((std::string("FTP error ") + numstr + ": Read error").c_str());		
-			case ARDUCOM_FTP_FILE_NOT_OPEN: throw std::runtime_error((std::string("FTP error ") + numstr + ": File not open").c_str());		
-			case ARDUCOM_FTP_POSITION_INVALID: throw std::runtime_error((std::string("FTP error ") + numstr + ": File seek position invalid").c_str());		
-			case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + numstr + ": Cannot delete this file or folder (LFN?)").c_str());		
-			default: throw std::runtime_error((std::string("FTP error ") + numstr + ": Unknown error").c_str());		
+			case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card unavailable").c_str());
+			case ARDUCOM_FTP_SDCARD_TYPE_UNKNOWN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card type unknown").c_str());
+			case ARDUCOM_FTP_FILESYSTEM_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card file system error").c_str());
+			case ARDUCOM_FTP_NOT_INITIALIZED: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": FTP system not initialized").c_str());
+			case ARDUCOM_FTP_MISSING_FILENAME: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Required file name is missing").c_str());
+			case ARDUCOM_FTP_NOT_A_DIRECTORY: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Not a directory").c_str());
+			case ARDUCOM_FTP_FILE_OPEN_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Error opening file").c_str());
+			case ARDUCOM_FTP_READ_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Read error").c_str());
+			case ARDUCOM_FTP_FILE_NOT_OPEN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File not open").c_str());
+			case ARDUCOM_FTP_POSITION_INVALID: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File seek position invalid").c_str());
+			case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Cannot delete this file or folder (LFN?)").c_str());
+			default: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Unknown error").c_str());
 			}
 		}
 	}
@@ -375,7 +377,7 @@ int main(int argc, char *argv[]) {
 	try {
 		interactive = isatty(fileno(stdin));
 		parameters.setFromArguments(args);
-		
+
 		ArducomMasterTransport *transport = parameters.validate();
 
 		// initialize protocol
@@ -703,7 +705,7 @@ int main(int argc, char *argv[]) {
 
 							// send command to close the file
 							payload.clear();
-							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, payload, transport->getDefaultExpectedBytes(), result);						
+							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, payload, transport->getDefaultExpectedBytes(), result);
 
 							// close local file
 							close(fd);

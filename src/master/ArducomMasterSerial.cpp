@@ -66,7 +66,7 @@ void ArducomMasterTransportSerial::init(void) {
 	uint8_t byteSize = 8;
 	uint8_t parity = 0;
 	uint8_t stopBits = 1;
-	
+
 	// initialize the serial device
 	struct termios tty;
 
@@ -163,14 +163,14 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 
 	// clear buffers
 	tcflush(this->fileHandle, TCIOFLUSH);
-	
+
 	for (uint8_t i = 0; i < size; i++) {
 		int my_retries = retries;
 repeat:
 		std::cout << "Sending byte: ";
 		ArducomMaster::printBuffer(&buffer[i], 1);
 		std::cout << std::endl;
-		
+
 		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
 				perror("Error sending data to serial device");
@@ -210,7 +210,7 @@ void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {
 		throw std::runtime_error("Error: number of bytes to receive exceeds serial block size limit");
 	uint8_t pos = 0;
 	memset(&this->buffer, 0, SERIAL_BLOCKSIZE_LIMIT);
-	
+
 	// read the first byte
 	uint8_t resultCode = this->readByteInternal(&this->buffer[pos++]);
 	if (expectedBytes > 1) {

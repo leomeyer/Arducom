@@ -55,7 +55,7 @@ void ArducomMasterTransportI2C::unlock() {
 void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > I2C_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds I2C block size limit");
-		
+
 	// mutex not yet opened?
 	if (this->semid == 0) {
 		// acquire interprocess semaphore to avoid contention
@@ -66,10 +66,10 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 			throw std::runtime_error("Unable to create or open semaphore");
 		}
 	}
-	
+
 	struct sembuf semops;
-	
-/*	
+
+/*
 	// debug
 	int sval;
 	if (sem_getvalue(this->mutex, &sval) == 0) {
@@ -120,25 +120,28 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 
 		this->hasLock = true;
 	}
-	
+
 	// initialize the I2C bus
 	if ((this->fileHandle = open(this->filename.c_str(), O_RDWR)) < 0) {
+		// release semaphore
 		this->unlock();
 		perror("Failed to open I2C device");
 		throw std::runtime_error("Failed to open I2C device: " + this->filename);
 	}
-	
+
 	if (ioctl(this->fileHandle, I2C_SLAVE, this->slaveAddress) < 0) {
 		// release semaphore
 		this->unlock();
-		perror("Unable to get bus access to talk to slave");
-		throw std::runtime_error("Unable to get bus access to talk to slave");
+		perror("Unable to get device access to talk to I2C slave");
+		throw std::runtime_error("Unable to get device access to talk to I2C slave");
 	}
-	
+
 	int my_retries = retries;
 	while (true) {
 		if ((write(this->fileHandle, buffer, size)) != size) {
 			if (my_retries <= 0) {
+				// release semaphore
+				this->unlock();
 				perror("Error sending data to I2C slave");
 				throw std::runtime_error("Error sending data to I2C slave");
 			} else {
@@ -163,7 +166,7 @@ void ArducomMasterTransportI2C::request(uint8_t expectedBytes) {
 		perror("Unable to read from I2C slave");
 		throw std::runtime_error("Unable to read from I2C slave");
 	}
-	this->pos = 0;	
+	this->pos = 0;
 }
 
 uint8_t ArducomMasterTransportI2C::readByte(void) {

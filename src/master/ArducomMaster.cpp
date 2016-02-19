@@ -35,7 +35,7 @@ static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* dat
 	return ~(uint8_t)sum;
 }
 
-ArducomMaster::ArducomMaster(ArducomMasterTransport *transport, bool verbose) {
+ArducomMaster::ArducomMaster(ArducomMasterTransport* transport, bool verbose) {
 	this->transport = transport;
 	this->verbose = verbose;
 	this->lastCommand = 255;	// set to invalid command
@@ -92,12 +92,12 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 
 uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo) {
 	this->lastError = ARDUCOM_OK;
-	
+
 	if (this->lastCommand > 127) {
 		this->lastError = ARDUCOM_NO_COMMAND;
 		throw std::runtime_error("Cannot receive without sending a command first");
 	}
-	
+
 	try {
 		this->transport->request(expected);
 	} catch (const TimeoutException &te) {
@@ -107,12 +107,13 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error requesting data"));
 	}
-	
+
 	if (verbose) {
 		std::cout << "Receive buffer: ";
 		this->transport->printBuffer();
 		std::cout << std::endl;
 	}
+
 	// read first byte of the reply
 	uint8_t resultCode;
 	try	{
@@ -121,7 +122,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error reading data"));
 	}
-		
+
 	// error?
 	if (resultCode == ARDUCOM_ERROR_CODE) {
 		if (this->verbose)
@@ -160,9 +161,11 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->lastError = ARDUCOM_INVALID_RESPONSE;
 		this->invalidResponse(resultCode & ~0x80);
 	}
+
 	if (this->verbose) {
 		std::cout << "Response command code is ok." << std::endl;
 	}
+
 	// read code byte
 	uint8_t code;
 	try	{
@@ -171,6 +174,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error reading data"));
 	}
+
 	uint8_t length = (code & 0b00111111);
 	bool checksum = (code & 0x80) == 0x80;
 	if (this->verbose) {
@@ -195,7 +199,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
-	
+
 	*size = 0;
 	// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
 	for (uint8_t i = 0; (i < expected) && (i < length); i++) {
@@ -226,7 +230,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 void ArducomMaster::done() {
 	this->transport->done();
 }
-	
+
 void ArducomMaster::invalidResponse(uint8_t commandByte) {
 	uint8_t expectedReply = this->lastCommand | 0x80;
 	std::cout << "Expected reply to command ";
@@ -239,6 +243,7 @@ void ArducomMaster::invalidResponse(uint8_t commandByte) {
 	throw std::runtime_error("Invalid response");
 }
 
+/** ArducomBaseParameters implementation */
 
 void ArducomBaseParameters::setFromArguments(std::vector<std::string>& args) {
 	// evaluate arguments
@@ -246,7 +251,7 @@ void ArducomBaseParameters::setFromArguments(std::vector<std::string>& args) {
 		evaluateArgument(args,  &i);
 	}
 }
-		
+
 void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, size_t* i) {
 	if (args.at(*i) == "-h" || args.at(*i) == "-?") {
 		this->showHelp();
@@ -269,7 +274,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 		} else {
 			transportType = args.at(*i);
 		}
-	} else		
+	} else
 	if (args.at(*i) == "-d") {
 		(*i)++;
 		if (args.size() == *i) {
@@ -337,11 +342,11 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		throw std::invalid_argument("Number of retries must not be negative (argument -x)");
 
 	ArducomMasterTransport *transport;
-	
+
 	if (transportType == "i2c") {
 		if (device == "")
 			throw std::invalid_argument("Expected I2C transport device file name (argument -d)");
-			
+
 		if ((deviceAddress < 1) || (deviceAddress > 127))
 			throw std::invalid_argument("Expected I2C slave device address within range 1..127 (argument -a)");
 
@@ -364,6 +369,6 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		}
 	} else
 		throw std::invalid_argument("Transport type not supplied or unsupported (argument -t), use 'i2c' or 'serial'");
-		
+
 	return transport;
 }
