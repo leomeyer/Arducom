@@ -103,41 +103,62 @@ bool interactive;			// if false (piping input) errors cause immediate exit
 
 /********************************************************************************/
 
-void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& payload, uint8_t expectedBytes, std::vector<uint8_t>& result, bool canResend = false) {
+void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& payload, uint8_t expectedBytes, std::vector<uint8_t>& result, bool canRetry = false) {
 
 	uint8_t buffer[255];
 	uint8_t size = payload.size();
 	uint8_t errorInfo;
+	int8_t retries = parameters.retries;
 
-	try {
-		master->execute(parameters, command, payload.data(), &size, expectedBytes, buffer, &errorInfo);
+	while (retries >= 0) {
+		try {
+			errorInfo = 0;
+			master.execute(parameters, parameters.commandBase + command, payload.data(), &size, expectedBytes, buffer, &errorInfo);
 
-	} catch (const std:exception& e) {
+			// everything ok, copy response
+			result.clear();
 		
-		// function error (errorInfo > 0)?
-		if (errorInfo > 0) {
-			switch (errorInfo) {
-			case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card unavailable").c_str());
-			case ARDUCOM_FTP_SDCARD_TYPE_UNKNOWN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card type unknown").c_str());
-			case ARDUCOM_FTP_FILESYSTEM_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card file system error").c_str());
-			case ARDUCOM_FTP_NOT_INITIALIZED: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": FTP system not initialized").c_str());
-			case ARDUCOM_FTP_MISSING_FILENAME: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Required file name is missing").c_str());
-			case ARDUCOM_FTP_NOT_A_DIRECTORY: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Not a directory").c_str());
-			case ARDUCOM_FTP_FILE_OPEN_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Error opening file").c_str());
-			case ARDUCOM_FTP_READ_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Read error").c_stlr());
-			case ARDUCOM_FTP_FILE_NOT_OPEN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File not open").c_str());
-			case ARDUCOM_FTP_POSITION_INVALID: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File seek position invalid").c_str());
-			case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Cannot delete this file or folder (LFN?)").c_str());
-			default: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Unknown error").c_str());
+			for (size_t i = 0; i < size; i++) 
+				result.push_back(buffer[i]);
+				
+			return;
+			
+		} catch (const std::exception& e) {
+			
+			// function error (errorInfo > 0)?
+			if (errorInfo > 0) {
+				// convert info code to string
+				char errorInfoStr[21];
+				sprintf(errorInfoStr, "%d", errorInfo);
+				
+				switch (errorInfo) {
+				case ARDUCOM_FTP_SDCARD_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card unavailable").c_str());
+				case ARDUCOM_FTP_SDCARD_TYPE_UNKNOWN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card type unknown").c_str());
+				case ARDUCOM_FTP_FILESYSTEM_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": SD card file system error").c_str());
+				case ARDUCOM_FTP_NOT_INITIALIZED: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": FTP system not initialized").c_str());
+				case ARDUCOM_FTP_MISSING_FILENAME: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Required file name is missing").c_str());
+				case ARDUCOM_FTP_NOT_A_DIRECTORY: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Not a directory").c_str());
+				case ARDUCOM_FTP_FILE_OPEN_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Error opening file").c_str());
+				case ARDUCOM_FTP_READ_ERROR: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Read error").c_str());
+				case ARDUCOM_FTP_FILE_NOT_OPEN: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File not open").c_str());
+				case ARDUCOM_FTP_POSITION_INVALID: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": File seek position invalid").c_str());
+				case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Cannot delete this file or folder (long file name?)").c_str());
+				default: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Unknown error").c_str());
+				}
 			}
+			
+			if (canRetry && (retries > 0)) {
+				print_what(e);
+				retries--;
+				std::cout << "Retrying, " << (int)retries << " " << (retries == 1 ? "retry" : "retries") << " left..." << std::endl;
+				// test: set verbose for debugging
+				parameters.verbose = true;
+				continue;
+			}
+			else
+				std::throw_with_nested(std::runtime_error("Error during FTP operation"));
 		}
-	}
-
-	// everything ok, move response
-	result.clear();
-
-	for (size_t i = 0; i < size; i++) 
-		result.push_back(buffer[i]);
+	}	// while (retries)
 }
 
 void printPathComponents(void) {
