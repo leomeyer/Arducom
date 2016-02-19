@@ -72,20 +72,19 @@ public:
 
 protected:
 	/** Sends the specified command and the content of the buffer to the slave. */
-	virtual void send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries = 0);
+	virtual void send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries, bool verbose);
 
 	/** Places up to the number of expected bytes in the destBuffer if expected is >= 0.
 	* size indicates the number of received payload bytes. 
 	* The return code 0 indicates success. Other values mean that an error occurred. 
 	* In these cases, errorInfo contains the info byte as transferred from
 	* the slave, if available. May throw exceptions. */
-	virtual uint8_t receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo);
+	virtual uint8_t receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose);
 
 	/** Must be called when the transaction is complete. */
 	virtual void done(void);
 
 	ArducomMasterTransport *transport;
-	bool verbose;
 	uint8_t lastCommand;
 
 	virtual void invalidResponse(uint8_t commandByte);

@@ -39,7 +39,6 @@ static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* dat
 
 ArducomMaster::ArducomMaster(ArducomMasterTransport* transport, bool verbose) {
 	this->transport = transport;
-	this->verbose = verbose;
 	this->lastCommand = 255;	// set to invalid command
 	this->lastError = 0;
 }
@@ -79,7 +78,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 		// send the command and payload to the slave
 		// The command is sent only once. If the caller requires the command to be re-sent in case
 		// of failure, it should handle this case by itself.
-		send(command, parameters.useChecksum, buffer, *size);
+		send(command, parameters.useChecksum, buffer, *size, parameters.retries, parameters.verbose);
 
 		// receive response
 		uint8_t errInfo;
@@ -99,7 +98,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 
 			// try to retrieve the result
 			*size = 0;
-			uint8_t result = receive(expected, destBuffer, size, &errInfo);
+			uint8_t result = receive(expected, destBuffer, size, &errInfo, parameters.verbose);
 
 			// no error?
 			if (result == ARDUCOM_OK) {
@@ -172,7 +171,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	done();
 }
 
-void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries) {
+void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries, bool verbose) {
 	this->lastError = ARDUCOM_OK;
 
 	uint8_t data[size + (checksum ? 3 : 2)];
@@ -183,7 +182,7 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 	}
 	if (checksum)
 		data[2] = calculateChecksum(data[0], data[1], &data[3], size);
-	if (this->verbose) {
+	if (verbose) {
 		std::cout << "Sending bytes: " ;
 		this->printBuffer(data, size + (checksum ? 3 : 2));
 		std::cout << std::endl;
@@ -197,7 +196,7 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 	this->lastCommand = command;
 }
 
-uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo) {
+uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose) {
 	this->lastError = ARDUCOM_OK;
 
 	if (this->lastCommand > 127) {
@@ -232,7 +231,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 
 	// error?
 	if (resultCode == ARDUCOM_ERROR_CODE) {
-		if (this->verbose)
+		if (verbose)
 			std::cout << "Received error code 0xff" << std::endl;
 		try	{
 			resultCode = this->transport->readByte();
@@ -240,7 +239,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
-		if (this->verbose) {
+		if (verbose) {
 			std::cout << "Error: ";
 			this->printBuffer(&resultCode, 1);
 		}
@@ -250,7 +249,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
-		if (this->verbose) {
+		if (verbose) {
 			std::cout << ", additional info: ";
 			this->printBuffer(errorInfo, 1);
 			std::cout << std::endl;
@@ -269,7 +268,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		this->invalidResponse(resultCode & ~0x80);
 	}
 
-	if (this->verbose) {
+	if (verbose) {
 		std::cout << "Response command code is ok." << std::endl;
 	}
 
@@ -284,7 +283,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 
 	uint8_t length = (code & 0b00111111);
 	bool checksum = (code & 0x80) == 0x80;
-	if (this->verbose) {
+	if (verbose) {
 		std::cout << "Code byte: ";
 		this->printBuffer(&code, 1);
 		std::cout << " Payload length is " << (int)length << " bytes.";
@@ -318,7 +317,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		}
 		*size = i + 1;
 	}
-	if (this->verbose) {
+	if (verbose) {
 		std::cout << "Received payload: ";
 		this->printBuffer(destBuffer, *size);
 		std::cout << std::endl;
