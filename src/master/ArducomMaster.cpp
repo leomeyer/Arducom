@@ -1,6 +1,7 @@
 #include <exception>
 #include <stdexcept>
 #include <iostream>
+#include <unistd.h>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
@@ -63,6 +64,123 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 				std::cout << '.';
 		}
 	}
+}
+
+void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size, uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo) {
+	
+	// Sends the command to the slave and returns the response if possible.
+	// Throws exceptions in case of errors. Exceptions that are handled by the standard
+	// always set errorInfo to 0 (if it is not null). For errors of type ARDUCOM_FUNCTION_ERROR
+	// errorInfo contains the error code as supplied by the device. This gives the caller
+	// the ability to react to device specific function errors.
+	
+	try {
+		// send the command and payload to the slave
+		// The command is sent only once. If the caller requires the command to be re-sent in case
+		// of failure, it should handle this case by itself.
+		send(command, parameters.useChecksum, buffer, *size);
+
+		// receive response
+		uint8_t errInfo;
+		int retries = parameters.retries;
+
+		// retry loop
+		// The logic tries to retrieve the response several times in case there is 
+		// a delay of execution on the slave.
+		while (retries >= 0) {
+			// errorInfo may be null if the caller is not interested in error details
+			if (errorInfo != nullptr)
+				*errorInfo = 0;
+
+			// wait for the specified delay
+			usleep(parameters.delayMs * 1000);
+			size = 0;
+
+			// try to retrieve the result
+			uint8_t result = receive(expected, buffer, size, &errInfo);
+
+			// no error?
+			if (result == ARDUCOM_OK) {
+				break;
+			}
+
+			// special case: if NO_DATA has been received, give the slave more time to react
+			if ((result == ARDUCOM_NO_DATA) && (retries >= 0)) {
+				retries--;
+				if (parameters.verbose) {
+					std::cout << "Retrying to receive data, " << retries << " retries left" << std::endl;
+				}
+				continue;
+			}
+			
+			// retries exceeded or another error occurred
+
+			// convert result code to string
+			char resultStr[21];
+			sprintf(resultStr, "%d", result);
+
+			// convert info code to string
+			char errInfoStr[21];
+			sprintf(errInfoStr, "%d", errInfo);
+
+			switch (result) {
+			case ARDUCOM_NO_DATA: {
+				throw std::runtime_error((std::string("Device error ") + resultStr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
+			}
+			case ARDUCOM_COMMAND_UNKNOWN:
+				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errInfoStr).c_str());
+			case ARDUCOM_TOO_MUCH_DATA:
+				throw std::runtime_error((std::string("Too much data (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
+			case ARDUCOM_PARAMETER_MISMATCH: {
+				// sporadic I2C dropouts cause this error (receiver problems?)
+				// seem to be unrelated to baud rate...
+				// can be retried
+				retries--;
+				std::string msg(std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errInfoStr);
+				if (parameters.verbose) {
+					std::cout << msg << "; retrying to receive data, " << retries << " retries left" << std::endl;
+				}
+				if (retries < 0)
+					throw std::runtime_error(msg.c_str());
+				else
+					// try again
+					continue;
+			}
+			case ARDUCOM_BUFFER_OVERRUN:
+				throw std::runtime_error((std::string("Buffer overrun (") + resultStr + "); buffer size is: " + errInfoStr).c_str());
+			case ARDUCOM_CHECKSUM_ERROR: {
+				// transportation error
+				// can be retried
+				retries--;
+				std::string msg(std::string("Checksum error (") + resultStr + "); calculated checksum: " + errInfoStr);
+				if (parameters.verbose) {
+					std::cout << msg << "; retrying to receive data, " << retries << " retries left" << std::endl;
+				}
+				if (retries < 0)
+					throw std::runtime_error(msg.c_str());
+				else
+					// try again
+					continue;
+			}
+			case ARDUCOM_FUNCTION_ERROR:
+				// set errorInfo and throw an exception to signal the caller that a function error occurred
+				if (errorInfo != nullptr)
+					*errorInfo = errInfo;
+				throw std::runtime_error((std::string("Function error ") + resultStr + ": info code: " + errInfoStr).c_str());
+			}
+			// handle unknown errors
+			throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errInfoStr).c_str());
+		}
+	} catch (const std::exception& e) {
+		// cleanup after the transaction
+		done();
+		char commandStr[21];
+		sprintf(commandStr, "%d", command);
+		std::throw_with_nested(std::runtime_error((std::string("Error sending command ") + commandStr).c_str()));
+	}
+
+	// cleanup after the transaction
+	done();
 }
 
 void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries) {

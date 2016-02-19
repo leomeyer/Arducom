@@ -337,6 +337,8 @@ int main(int argc, char* argv[]) {
 	std::vector<std::string> args;
 	ArducomParameters::convertCmdLineArgs(argc, argv, args);
 
+	uint8_t errorInfo = 0;
+	
 	try {
 		// create and initialize parameter object
 		ArducomParameters parameters;
@@ -346,87 +348,11 @@ int main(int argc, char* argv[]) {
 
 		// initialize protocol
 		master = new ArducomMaster(transport, parameters.verbose);
-
-		// send command
-		master->send(parameters.command, parameters.useChecksum, parameters.payload.data(), parameters.payload.size());
-
-		// receive response
+		
 		uint8_t buffer[255];
-		uint8_t size;
-		uint8_t errorInfo;
+		uint8_t size = parameters.payload.size();
 
-		// retry loop
-		while (parameters.retries >= 0) {
-			// wait for the specified delay
-			usleep(parameters.delayMs * 1000);
-			size = 0;
-
-			uint8_t result = master->receive(parameters.expectedBytes, buffer, &size, &errorInfo);
-
-			// no error?
-			if (result == ARDUCOM_OK) {
-				// let the master cleanup after the transaction
-				master->done();
-
-				break;
-			}
-
-			// special case: if NO_DATA has been received, give the slave more time to react
-			// without resending the message
-			if (result == ARDUCOM_NO_DATA) {
-				parameters.retries--;
-				if (parameters.retries > 0) {
-					if (parameters.verbose) {
-						std::cout << "Received no data, " << parameters.retries << " retries left" << std::endl;
-					}
-					master->done();
-					continue;
-				}
-			}
-
-			// let the master cleanup after the transaction
-			master->done();
-
-			// convert result code to string
-			char resultStr[21];
-			sprintf(resultStr, "%d", result);
-
-			// convert info code to string
-			char errorInfoStr[21];
-			sprintf(errorInfoStr, "%d", errorInfo);
-
-			switch (result) {
-			case ARDUCOM_NO_DATA: {
-				parameters.retries--;
-				if (parameters.retries <= 0)
-					throw std::runtime_error((std::string("Device error ") + resultStr + ": No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)").c_str());
-				if (parameters.verbose)
-					std::cout << "No data received, retrying..." << std::endl;
-				continue;
-			}
-			case ARDUCOM_COMMAND_UNKNOWN:
-				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errorInfoStr).c_str());
-			case ARDUCOM_TOO_MUCH_DATA:
-				throw std::runtime_error((std::string("Too much data (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
-			case ARDUCOM_PARAMETER_MISMATCH: {
-				// sporadic I2C dropouts cause this error (receiver problems?)
-				// seem to be unrelated to baud rate...
-				parameters.retries--;
-				if (parameters.retries < 0)
-					throw std::runtime_error((std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errorInfoStr).c_str());
-				else
-					// try again
-					continue;
-			}
-			case ARDUCOM_BUFFER_OVERRUN:
-				throw std::runtime_error((std::string("Buffer overrun (") + resultStr + "); buffer size is: " + errorInfoStr).c_str());
-			case ARDUCOM_CHECKSUM_ERROR:
-				throw std::runtime_error((std::string("Checksum error (") + resultStr + "); calculated checksum: " + errorInfoStr).c_str());
-			case ARDUCOM_FUNCTION_ERROR:
-				throw std::runtime_error((std::string("Function error ") + resultStr + ": info code: " + errorInfoStr).c_str());
-			}
-			throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errorInfoStr).c_str());
-		}
+		master->execute(parameters, parameters.command, parameters.payload.data(), &size, parameters.expectedBytes, buffer, &errorInfo);
 
 		// output received?
 		if (size > 0) {

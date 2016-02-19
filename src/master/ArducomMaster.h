@@ -60,6 +60,17 @@ public:
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);
 
+	/** Sends the specified command to the slave.
+	* Expects the payload in buffer and the payload size in size.
+	* The number of expected bytes must be specified.
+	* Places up to the number of expected bytes in the destBuffer if expected is >= 0.
+	* size is modified to contain the response size. 
+	* Throws an exception if an error occurred. 
+	* In case of an ARDUCOM_FUNCTION_ERROR, errorInfo contains the info byte as transferred from
+	* the slave, if available (can be null if not required). */
+	virtual void execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size, uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo);
+
+protected:
 	/** Sends the specified command and the content of the buffer to the slave. */
 	virtual void send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries = 0);
 
