@@ -2,7 +2,7 @@
 
 # This script can be used to read sensor data from the data logger.
 # It queries the specified Arducom device for current values and stores them in a separate folder.
-# The content of this folder is then uploaded to a target host via scp.
+# The content of this folder is then uploaded to a target host via scp or copied to a target folder.
 # scp requires that a key-based login has been setup for ssh. For instructions see:
 # http://www.linuxproblem.org/art_9.html
 # Retrieved values are only uploaded if they validate. This is an important detail:

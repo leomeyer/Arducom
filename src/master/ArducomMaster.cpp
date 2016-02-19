@@ -94,10 +94,10 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 
 			// wait for the specified delay
 			usleep(parameters.delayMs * 1000);
-			size = 0;
+			*size = 0;
 
 			// try to retrieve the result
-			uint8_t result = receive(expected, buffer, size, &errInfo);
+			uint8_t result = receive(expected, destBuffer, size, &errInfo);
 
 			// no error?
 			if (result == ARDUCOM_OK) {
