@@ -149,9 +149,12 @@ void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& paylo
 			}
 			
 			if (canRetry && (retries > 0)) {
-				print_what(e);
 				retries--;
-				std::cout << "Retrying, " << (int)retries << " " << (retries == 1 ? "retry" : "retries") << " left..." << std::endl;
+				// do not print retry messages except in verbose mode
+				if (parameters.verbose) {
+					print_what(e);
+					std::cout << "Retrying, " << (int)retries << " " << (retries == 1 ? "retry" : "retries") << " left..." << std::endl;
+				}
 				continue;
 			}
 			else
@@ -181,7 +184,7 @@ void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
 	std::vector<uint8_t> result;
 
 	// send INIT message
-	execute(master, ARDUCOM_FTP_COMMAND_INIT, payload, transport->getDefaultExpectedBytes(), result);
+	execute(master, ARDUCOM_FTP_COMMAND_INIT, payload, transport->getDefaultExpectedBytes(), result, true);
 
 	struct __attribute__((packed)) CardInfo {
 		char cardType[4];
@@ -387,7 +390,7 @@ int main(int argc, char *argv[]) {
 					payload.clear();	// no payload
 
 					// rewind directory
-					execute(master, ARDUCOM_FTP_COMMAND_REWIND, payload, transport->getDefaultExpectedBytes(), result);
+					execute(master, ARDUCOM_FTP_COMMAND_REWIND, payload, transport->getDefaultExpectedBytes(), result, true);
 
 					while (true) {
 						// list next file
@@ -542,7 +545,7 @@ int main(int argc, char *argv[]) {
 						// send command to open the file
 						for (size_t i = 0; i < parts.at(1).length(); i++)
 							payload.push_back(parts.at(1)[i]);
-						execute(master, ARDUCOM_FTP_COMMAND_OPENREAD, payload, transport->getDefaultExpectedBytes(), result);
+						execute(master, ARDUCOM_FTP_COMMAND_OPENREAD, payload, transport->getDefaultExpectedBytes(), result, true);
 
 						// the result is the file size
 						if (result.size() < 4) {
@@ -654,7 +657,7 @@ int main(int argc, char *argv[]) {
 
 							// send command to close the file
 							payload.clear();
-							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, payload, transport->getDefaultExpectedBytes(), result);
+							execute(master, ARDUCOM_FTP_COMMAND_CLOSEFILE, payload, transport->getDefaultExpectedBytes(), result, true);
 
 							// close local file
 							close(fd);
