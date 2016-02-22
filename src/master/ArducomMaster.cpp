@@ -324,7 +324,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	}
 
 	// cleanup after the transaction
-	done(parameters.verbose);
+	done(parameters.debug);
 }
 
 /*** ArducomMaster internal functions ***/
@@ -364,7 +364,7 @@ void ArducomMaster::lock(bool verbose) {
 
 	// try to acquire resource with a one second timeout
 	if (semtimedop(this->semid, semops, 2, &timeout) < 0) {
-		// time
+		// timeout occurred?
 		if (errno == EAGAIN)
 			throw std::runtime_error("Timeout waiting semaphore");
 		else
@@ -388,7 +388,7 @@ void ArducomMaster::unlock(bool verbose) {
 	struct sembuf semops;
 	semops.sem_num = 0;
 	semops.sem_op = -1;
-	semops.sem_flg = 0;
+	semops.sem_flg = SEM_UNDO;
 	if (semop(this->semid, &semops, 1) < 0)
 		perror("Error decreasing semaphore");
 
