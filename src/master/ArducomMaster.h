@@ -4,14 +4,19 @@
 #include <vector>
 #include <stdexcept>
 #include <inttypes.h>
+#include <sstream>
+#include <string>
 
 class TimeoutException: public std::runtime_error {
 public:
 	TimeoutException(const char *what) : std::runtime_error(what) {}
 };
 
-// recursively print exception whats:
-void print_what (const std::exception& e, bool printEndl = true);
+/** Helper function that throws an error message with system error information */
+void throw_system_error(const char* what, const char* info = NULL);
+
+/** Recursively prints exception whats */
+void print_what(const std::exception& e, bool printEndl = true);
 
 class ArducomBaseParameters;
 
@@ -62,6 +67,7 @@ public:
 	bool verbose;
 	bool debug;
 	long delayMs;
+	long timeoutMs;
 	int retries;
 	bool useChecksum;
 	int semkey;		// semaphore key; usually determined from transport but can be specified in case of conflict
@@ -73,6 +79,7 @@ public:
 		verbose = false;
 		debug = false;
 		delayMs = 0;
+		timeoutMs = 1000;
 		retries = 0;
 		useChecksum = true;
 		semkey = -1;
@@ -142,7 +149,7 @@ protected:
 	bool hasLock;
 
 	/** If the transport specifies a semaphore key, attempts to acquire the semaphore. */
-	virtual void lock(bool verbose);
+	virtual void lock(bool verbose, long timeoutMs);
 
 	/** If the transport specifies a semaphore key, releases the semaphore. */
 	virtual void unlock(bool verbose);

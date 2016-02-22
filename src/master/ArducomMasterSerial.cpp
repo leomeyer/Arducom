@@ -55,10 +55,9 @@ static speed_t serial_baud_lookup(long baud)
   throw std::invalid_argument("Unsupported baud rate");
 }
 
-ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename, int baudrate, int timeout) {
+ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename, int baudrate) {
 	this->filename = filename;
 	this->baudrate = baudrate;
-	this->timeout = timeout;
 	this->pos = -1;
 	
 	// calculate SHA1 hash of the filename
@@ -84,12 +83,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
-		throw std::runtime_error("Failed to open serial device: " + this->filename);
+		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 
 	memset(&tty, 0, sizeof(tty));
 	if (tcgetattr(fd, &tty) != 0) {
-		throw std::runtime_error("Error getting serial device attributes (is the device valid?)");
+		throw_system_error("Error getting serial device attributes (is the device valid?)");
 	}
 
 	if (this->baudrate > 0) {
@@ -105,8 +104,8 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	tty.c_lflag = 0;                // no signaling chars, no echo,
 									// no canonical processing
 	tty.c_oflag = 0;                // no remapping, no delays
-	tty.c_cc[VMIN]  = (this->timeout < 1 ? 1 : 0);	// block if no timeout specified
-	tty.c_cc[VTIME] = (this->timeout < 1 ? 0 : (this->timeout / 100));	// read timeout
+	tty.c_cc[VMIN]  = (this->parameters->timeoutMs < 1 ? 1 : 0);	// block if no timeout specified
+	tty.c_cc[VTIME] = (this->parameters->timeoutMs < 1 ? 0 : (this->parameters->timeoutMs / 100));	// read timeout
 
 	tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
 
@@ -150,7 +149,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	tty.c_cflag &= ~CRTSCTS;
 
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
-		throw std::runtime_error("Error setting serial device attributes (is the device valid?)");
+		throw_system_error("Error setting serial device attributes (is the device valid?)");
 	}
 
 	this->fileHandle = fd;
@@ -168,7 +167,7 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 repeat:
 		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
-				throw std::runtime_error("Error sending data to serial device");
+				throw_system_error("Error sending data to serial device");
 			} else {
 				my_retries--;
 				goto repeat;
@@ -181,7 +180,7 @@ repeat:
 uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 	int bytesRead = read(this->fileHandle, buffer, 1);
 	if (bytesRead < 0) {
-		throw std::runtime_error("Unable to read from serial device");
+		throw_system_error("Unable to read from serial device");
 	} else 
 	if (bytesRead == 0) {
 		throw TimeoutException("Timeout");
@@ -196,6 +195,7 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 */
 		return *buffer;
 	}
+	return 0;
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {

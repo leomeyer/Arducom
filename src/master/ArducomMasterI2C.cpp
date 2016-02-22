@@ -42,18 +42,18 @@ void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries)
 
 	// initialize the I2C bus
 	if ((this->fileHandle = open(this->filename.c_str(), O_RDWR)) < 0) {
-		throw std::runtime_error("Failed to open I2C device: " + this->filename);
+		throw_system_error("Failed to open I2C device: ", this->filename.c_str());
 	}
 
 	if (ioctl(this->fileHandle, I2C_SLAVE, this->slaveAddress) < 0) {
-		throw std::runtime_error("Unable to get device access to talk to I2C slave");
+		throw_system_error("Unable to get device access to talk to I2C slave");
 	}
 
 	int my_retries = retries;
 	while (true) {
 		if ((write(this->fileHandle, buffer, size)) != size) {
 			if (my_retries <= 0) {
-				throw std::runtime_error("Error sending data to I2C slave");
+				throw_system_error("Error sending data to I2C slave");
 			} else {
 				my_retries--;
 				continue;
@@ -68,7 +68,7 @@ void ArducomMasterTransportI2C::request(uint8_t expectedBytes) {
 		throw std::runtime_error("Error: number of bytes to receive exceeds I2C block size limit");
 	}
 	if (read(this->fileHandle, this->buffer, expectedBytes) != expectedBytes) {
-		throw std::runtime_error("Unable to read from I2C slave");
+		throw_system_error("Unable to read from I2C slave");
 	}
 	this->pos = 0;
 }

@@ -2,12 +2,13 @@
 
 #include "ArducomMaster.h"
 
-#define SERIAL_BLOCKSIZE_LIMIT	32
+#define TCPIP_BLOCKSIZE_LIMIT	32
+#define DEFAULT_PORT			4152
 
-class ArducomMasterTransportSerial: public ArducomMasterTransport {
+class ArducomMasterTransportTCPIP: public ArducomMasterTransport {
 public:
 
-	ArducomMasterTransportSerial(std::string filename, int baudrate);
+	ArducomMasterTransportTCPIP(std::string host, int port);
 
 	virtual void init(ArducomBaseParameters* parameters);
 
@@ -28,16 +29,16 @@ public:
 	virtual void printBuffer(void);
 
 protected:
-	std::string filename;
-	int baudrate;
+	std::string host;
+	int port;
 	ArducomBaseParameters* parameters;
 	
 	// semaphore key
 	key_t semkey;
 
-	int fileHandle;
+	int sockfd;
 
-	uint8_t buffer[SERIAL_BLOCKSIZE_LIMIT];
+	uint8_t buffer[TCPIP_BLOCKSIZE_LIMIT];
 	int8_t pos;
 
 	uint8_t readByteInternal(uint8_t* buffer);

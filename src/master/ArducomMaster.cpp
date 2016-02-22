@@ -2,14 +2,22 @@
 #include <stdexcept>
 #include <iostream>
 #include <unistd.h>
+#include <string.h>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
+#include "ArducomMasterTCPIP.h"
 
-// recursively print exception whats:
-void print_what (const std::exception& e, bool printEndl) {
+void throw_system_error(const char* what, const char* info) {
+	std::stringstream fullWhatSS;
+	fullWhatSS << what << ": " << (info != NULL ? info : "") << (info != NULL ? ": " : "") << strerror(errno);
+	std::string fullWhat = fullWhatSS.str();
+	throw std::runtime_error(fullWhat.c_str());
+}
+
+void print_what(const std::exception& e, bool printEndl) {
 	std::cerr << e.what();
 	try {
 		std::rethrow_if_nested(e);
@@ -93,6 +101,18 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 			}
 		}
 	} else
+	if (args.at(*i) == "-u") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected timeout value in milliseconds after argument -u");
+		} else {
+			try {
+				timeoutMs = std::stoi(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected numeric timeout value in milliseconds after argument -u");
+			}
+		}
+	} else
 	if (args.at(*i) == "-b") {
 		(*i)++;
 		if (args.size() == *i) {
@@ -108,12 +128,12 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 	if (args.at(*i) == "-l") {
 		(*i)++;
 		if (args.size() == *i) {
-			throw std::invalid_argument("Expected delay in ms after argument -l");
+			throw std::invalid_argument("Expected delay in milliseconds after argument -l");
 		} else {
 			try {
 				delayMs = std::stol(args.at(*i));
 			} catch (std::exception& e) {
-				throw std::invalid_argument("Expected numeric delay in ms after argument -l");
+				throw std::invalid_argument("Expected numeric delay in milliseconds after argument -l");
 			}
 		}
 	} else
@@ -166,9 +186,18 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		if (device == "")
 			throw std::invalid_argument("Expected serial transport device file name (argument -d)");
 
-		transport = new ArducomMasterTransportSerial(device, baudrate, 1000);		
+		transport = new ArducomMasterTransportSerial(device, baudrate);		
 	} else
-		throw std::invalid_argument("Transport type not supplied or unsupported (argument -t), use 'i2c' or 'serial'");
+	if (transportType == "tcpip") {
+		if (device == "")
+			throw std::invalid_argument("Expected TCP/IP host name (argument -d)");
+			
+		if ((deviceAddress < 0) || (deviceAddress > 65535))
+			throw std::invalid_argument("TCP/IP port number must be within 0 (default) and 65535");
+
+		transport = new ArducomMasterTransportTCPIP(device, deviceAddress);
+	} else
+		throw std::invalid_argument("Transport type not supplied or unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
 
 	try {
 		transport->init(this);
@@ -223,13 +252,14 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	
 	// determine the semaphore key to use
 	// If the parameters specify a value < 0 (default), use the transport's semaphore key.
+	// A value of 0 disables the semaphore mechanism.
 	if (parameters.semkey < 0)
 		this->semkey = transport->getSemkey();
 	else
 		this->semkey = parameters.semkey;
 	
 	try {
-		this->lock(parameters.debug);
+		this->lock(parameters.debug, parameters.timeoutMs);
 		
 		// send the command and payload to the slave
 		// The command is sent only once. If the caller requires the command to be re-sent in case
@@ -329,8 +359,8 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 
 /*** ArducomMaster internal functions ***/
 
-void ArducomMaster::lock(bool verbose) {
-	if (this->semkey <= 0)
+void ArducomMaster::lock(bool verbose, long timeoutMs) {
+	if (this->semkey == 0)
 		return;
 
 	// acquire interprocess semaphore to avoid contention
@@ -340,7 +370,7 @@ void ArducomMaster::lock(bool verbose) {
 	// when creating, allow access for processes running under all users
 	this->semid = semget(this->semkey, 1, IPC_CREAT | 0666);
 	if (this->semid < 0)
-		throw std::runtime_error("Unable to create or open semaphore");
+		throw_system_error("Unable to create or open semaphore");
 
 	// avoid increasing the semaphore more than once
 	if (this->hasLock)
@@ -358,18 +388,15 @@ void ArducomMaster::lock(bool verbose) {
 	semops[1].sem_op = 1;
 	semops[1].sem_flg = SEM_UNDO;
 	
+	// wait for the specified timeout
 	struct timespec timeout;
-	timeout.tv_sec = 1;
+	timeout.tv_sec = timeoutMs / 1000;
 	timeout.tv_nsec = 0;
 
 	// try to acquire resource with a one second timeout
 	if (semtimedop(this->semid, semops, 2, &timeout) < 0) {
-		// timeout occurred?
-		if (errno == EAGAIN)
-			throw std::runtime_error("Timeout waiting semaphore");
-		else
-			// other error acquiring semaphore
-			throw std::runtime_error("Error acquiring semaphore");
+		// error acquiring semaphore
+		throw_system_error("Error acquiring semaphore");
 	}
 
 	this->hasLock = true;
