@@ -334,57 +334,42 @@ void ArducomMaster::lock(bool verbose) {
 		return;
 
 	// acquire interprocess semaphore to avoid contention
-	if (verbose) {
-		std::cout << "Acquiring interprocess communication semaphore with key " << this->semkey << "..." << std::endl;
-	}
+	if (verbose)
+		std::cout << "Acquiring interprocess communication semaphore with key 0x" << std::hex << this->semkey << "..." << std::dec << std::endl;
 	
 	// when creating, allow access for processes running under all users
 	this->semid = semget(this->semkey, 1, IPC_CREAT | 0666);
-	if (this->semid < 0) {
+	if (this->semid < 0)
 		throw std::runtime_error("Unable to create or open semaphore");
-	}
 
 	// avoid increasing the semaphore more than once
-	if (this->hasLock) {
+	if (this->hasLock)
 		throw std::runtime_error("Programming error: Trying to increase the resource more than once");
-		
-	}
 
-	struct sembuf semops;
+	struct sembuf semops[2];
 
 	// semaphore has been created or opened, wait until it becomes available
-	// allow a wait time of one second
-	semops.sem_num = 0;
-	semops.sem_op = 0;		// wait until the semaphore becomes zero
-	semops.sem_flg = IPC_NOWAIT;
-	int counter = 1000;
-	while (counter > 0) {
-		// try to acquire resource
-		if (semop(this->semid, &semops, 1) < 0) {
-			// still locked?
-			if (errno == EAGAIN) {
-				counter--;
-				if (counter <= 0)
-					throw std::runtime_error("Timeout waiting for I2C semaphore");
-				// wait for a ms
-				usleep(1000000);
-				continue;
-			} else {
-				// other error acquiring semaphore
-				throw std::runtime_error("Error acquiring I2C semaphore");
-			}
-		}
-		// ok
-		break;
-	}
+	// wait until the semaphore becomes zero
+	semops[0].sem_num = 0;
+	semops[0].sem_op = 0;
+	semops[0].sem_flg = 0;
+	// increment the value by one
+	semops[1].sem_num = 0;
+	semops[1].sem_op = 1;
+	semops[1].sem_flg = SEM_UNDO;
+	
+	struct timespec timeout;
+	timeout.tv_sec = 1;
+	timeout.tv_nsec = 0;
 
-	// increase the semaphore (allocate the resource)
-	semops.sem_num = 0;
-	semops.sem_op = 1;
-	semops.sem_flg = SEM_UNDO;
-	if (semop(this->semid, &semops, 1) < 0) {
-		// error increasing semaphore
-		throw std::runtime_error("Error increasing I2C semaphore");
+	// try to acquire resource with a one second timeout
+	if (semtimedop(this->semid, semops, 2, &timeout) < 0) {
+		// time
+		if (errno == EAGAIN)
+			throw std::runtime_error("Timeout waiting semaphore");
+		else
+			// other error acquiring semaphore
+			throw std::runtime_error("Error acquiring semaphore");
 	}
 
 	this->hasLock = true;
@@ -396,17 +381,17 @@ void ArducomMaster::unlock(bool verbose) {
 	if (!this->hasLock)
 		return;
 
-	if (verbose) {
+	if (verbose)
 		std::cout << "Releasing interprocess communication semaphore..." << std::endl;
-	}
+		
 	// decrease the semaphore
 	struct sembuf semops;
 	semops.sem_num = 0;
 	semops.sem_op = -1;
-	semops.sem_flg = SEM_UNDO;
-	if (semop(this->semid, &semops, 1) < 0) {
-		perror("Error decreasing I2C semaphore");
-	}
+	semops.sem_flg = 0;
+	if (semop(this->semid, &semops, 1) < 0)
+		perror("Error decreasing semaphore");
+
 	this->hasLock = false;	
 }
 
