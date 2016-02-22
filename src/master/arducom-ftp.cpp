@@ -238,13 +238,29 @@ void setParameter(std::vector<std::string> parts, bool print = true) {
 			if (parts.at(2) == "on")
 				parameters.verbose = true;
 			else
-			if (parts.at(2) == "off")
+			if (parts.at(2) == "off") {
 				parameters.verbose = false;
+				parameters.debug = false;
+			} else
+				throw std::invalid_argument("Expected 'on' or 'off'");
+		}
+		if (print)
+			std::cout << "set verbose " << (parameters.verbose ? "on" : "off") << std::endl;
+		found = true;
+	}
+	if (parts.at(1) == "debug" || printOnly) {
+		if (parts.size() > 2) {
+			if (parts.at(2) == "on") {
+				parameters.verbose = true;
+				parameters.debug = true;
+			} else
+			if (parts.at(2) == "off")
+				parameters.debug = false;
 			else
 				throw std::invalid_argument("Expected 'on' or 'off'");
 		}
 		if (print)
-			std::cout << "set verbose " << (parameters.allowDelete ? "on" : "off") << std::endl;
+			std::cout << "set debug " << (parameters.debug ? "on" : "off") << std::endl;
 		found = true;
 	}
 	if (parts.at(1) == "allowdelete" || printOnly) {
