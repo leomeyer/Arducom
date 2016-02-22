@@ -281,13 +281,13 @@ public:
 	};
 
 	ArducomMasterTransport* validate() {
+		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
+
 		if ((command < 0) || (command > 126))
 			throw std::invalid_argument("Expected command number within range 0..126 (argument -c)");
 
 		if (readInputSpecified && paramSpecified)
 			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
-
-		ArducomMasterTransport* transport = ArducomBaseParameters::validate();
 
 		if (readInputSpecified) {
 			// fill buffer from stdin

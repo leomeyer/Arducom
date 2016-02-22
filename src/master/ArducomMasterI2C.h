@@ -9,13 +9,14 @@
 /** Implements an I2C transport mechanism. This class is not thread-safe!
 */
 class ArducomMasterTransportI2C: public ArducomMasterTransport {
+
 public:
 
 	ArducomMasterTransportI2C(std::string filename, int slaveAddress);
 
 	~ArducomMasterTransportI2C();
 
-	virtual void init(void);
+	virtual void init(ArducomBaseParameters* parameters);
 
 	virtual void send(uint8_t* buffer, uint8_t size, int retries = 0);
 
@@ -29,22 +30,19 @@ public:
 
 	virtual size_t getDefaultExpectedBytes(void);
 
+	virtual int getSemkey(void);
+
 	virtual void printBuffer(void);
 
 protected:
 	std::string filename;
 	int slaveAddress;
+	ArducomBaseParameters* parameters;
 
 	int fileHandle;
 	// semaphore key
 	key_t semkey;
-	// semaphore for mutually exclusive access
-	int semid;
 
 	uint8_t buffer[I2C_BLOCKSIZE_LIMIT];
 	int8_t pos;
-
-	bool hasLock;
-	// release the semaphore
-	void unlock();
 };

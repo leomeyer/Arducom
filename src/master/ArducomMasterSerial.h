@@ -9,7 +9,7 @@ public:
 
 	ArducomMasterTransportSerial(std::string filename, int baudrate, int timeout);
 
-	virtual void init(void);
+	virtual void init(ArducomBaseParameters* parameters);
 
 	virtual void send(uint8_t* buffer, uint8_t size, int retries = 0);
 
@@ -23,11 +23,17 @@ public:
 
 	virtual size_t getDefaultExpectedBytes(void);
 
+	virtual int getSemkey(void);
+
 	virtual void printBuffer(void);
 
 protected:
 	std::string filename;
 	int baudrate;
+	ArducomBaseParameters* parameters;
+	
+	// semaphore key
+	key_t semkey;
 
 	int fileHandle;
 	long timeout;

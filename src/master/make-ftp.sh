@@ -1,3 +1,4 @@
 #! /bin/bash
 
-g++ ArducomMaster.cpp ArducomMasterI2C.cpp ArducomMasterSerial.cpp arducom-ftp.cpp -o arducom-ftp -W -Wall -Wextra -std=c++11 -Wno-unused-parameter -lrt -pthread
+# requires package libssl-dev for the crypto functions
+g++ ArducomMaster.cpp ArducomMasterI2C.cpp ArducomMasterSerial.cpp arducom-ftp.cpp -o arducom-ftp -W -Wall -Wextra -std=c++11 -Wno-unused-parameter -lrt -lcrypto -pthread

@@ -11,6 +11,7 @@
 #include <sys/param.h>
 #include <termios.h>
 #include <cstring>
+#include <openssl/sha.h>
 
 #include "ArducomMasterSerial.h"
 #include "../slave/lib/Arducom/Arducom.h"
@@ -59,9 +60,20 @@ ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename,
 	this->baudrate = baudrate;
 	this->timeout = timeout;
 	this->pos = -1;
+	
+	// calculate SHA1 hash of the filename
+	unsigned char hash[SHA_DIGEST_LENGTH];
+	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
+	
+	// IPC semaphore key is the first four bytes of the hash
+	this->semkey = *(int*)&hash;
+	
+	// std::cout << "Semaphore key:" << this->semkey << std::endl;
 }
 
-void ArducomMasterTransportSerial::init(void) {
+void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
+	this->parameters = parameters;
+	
 	// default protocol: 8N1
 	uint8_t byteSize = 8;
 	uint8_t parity = 0;
@@ -70,20 +82,14 @@ void ArducomMasterTransportSerial::init(void) {
 	// initialize the serial device
 	struct termios tty;
 
-		std::cout << "Opening device: ";
-		std::cout << this->filename;
-		std::cout << std::endl;
-
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		throw std::runtime_error("Failed to open serial device: " + this->filename);
 	}
 
-	std::cout << "Setting device attributes..." << std::endl;
-
-	memset (&tty, 0, sizeof tty);
+	memset(&tty, 0, sizeof(tty));
 	if (tcgetattr(fd, &tty) != 0) {
-		throw std::runtime_error("tcgetattr");
+		throw std::runtime_error("Error getting serial device attributes (is the device valid?)");
 	}
 
 	if (this->baudrate > 0) {
@@ -143,15 +149,11 @@ void ArducomMasterTransportSerial::init(void) {
 
 	tty.c_cflag &= ~CRTSCTS;
 
-	if (tcsetattr (fd, TCSANOW, &tty) != 0) {
-		throw std::runtime_error("tcsetattr");
+	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+		throw std::runtime_error("Error setting serial device attributes (is the device valid?)");
 	}
 
 	this->fileHandle = fd;
-
-		std::cout << "Opened device.";
-		std::cout << std::endl;
-
 }
 
 void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retries) {
@@ -164,10 +166,6 @@ void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retri
 	for (uint8_t i = 0; i < size; i++) {
 		int my_retries = retries;
 repeat:
-		std::cout << "Sending byte: ";
-		ArducomMaster::printBuffer(&buffer[i], 1);
-		std::cout << std::endl;
-
 		if ((write(this->fileHandle, &buffer[i], 1)) != 1) {
 			if (my_retries <= 0) {
 				throw std::runtime_error("Error sending data to serial device");
@@ -252,6 +250,10 @@ size_t ArducomMasterTransportSerial::getMaximumCommandSize(void) {
 
 size_t ArducomMasterTransportSerial::getDefaultExpectedBytes(void) {
 	return SERIAL_BLOCKSIZE_LIMIT;
+}
+
+int ArducomMasterTransportSerial::getSemkey(void) {
+	return this->semkey;
 }
 
 void ArducomMasterTransportSerial::printBuffer(void) {
