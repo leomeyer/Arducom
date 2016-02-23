@@ -81,13 +81,15 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	// initialize the serial device
 	struct termios tty;
 
-	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd < 0) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 	
 	// initialization delay specified?
 	if (this->parameters->initDelayMs > 0) {
+		if (this->parameters->debug)
+			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms" << std::endl;
 		// sleep for the specified time
 		usleep(this->parameters->initDelayMs * 1000);
 	}
@@ -110,7 +112,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	tty.c_lflag = 0;                // no signaling chars, no echo,
 									// no canonical processing
 	tty.c_oflag = 0;                // no remapping, no delays
-	tty.c_cc[VMIN]  = (this->parameters->timeoutMs < 1 ? 1 : 0);	// block if no timeout specified
+	tty.c_cc[VMIN] = 1; //(this->parameters->timeoutMs < 1 ? 1 : 0);	// block if no timeout specified
 	tty.c_cc[VTIME] = (this->parameters->timeoutMs < 1 ? 0 : (this->parameters->timeoutMs / 100));	// read timeout
 
 	tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
@@ -129,10 +131,10 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	}
 
 	if (stopBits == 2) {
-       	tty.c_cflag |= CSTOPB;
+		tty.c_cflag |= CSTOPB;
 	} else
 	if (stopBits == 1) {
-       	tty.c_cflag &= ~CSTOPB;
+		tty.c_cflag &= ~CSTOPB;
 	}
 
 	if (byteSize == 5) {
@@ -154,9 +156,10 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 
 	tty.c_cflag &= ~CRTSCTS;
 	
-	// cfmakeraw(&tty);
+	cfmakeraw(&tty);
 
 	tcflush(fd, TCIFLUSH);
+	
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
 		throw_system_error("Error setting serial device attributes (is the device valid?)");
 	}
@@ -192,24 +195,38 @@ repeat:
 }
 
 uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
-	int bytesRead = read(this->fileHandle, buffer, 1);
-	if (bytesRead < 0) {
-		throw_system_error("Unable to read from serial device");
-	} else 
-	if (bytesRead == 0) {
-		throw TimeoutException("Timeout");
-	} else 
-	if (bytesRead > 1) {
-		throw std::runtime_error("Big trouble! Read returned more than one byte");
+	int timeout = this->parameters->timeoutMs;
+	while (timeout >= 0) {
+		int bytesRead = read(this->fileHandle, buffer, 1);
+		if (bytesRead < 0) {
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+				if (this->parameters->timeoutMs > 0) {
+					if (timeout <= 0)
+						break;
+					timeout--;
+					// sleep for a ms
+					usleep(1000);
+				}
+				// in case of no timeout, repeat infinitely
+				continue;
+			}
+			
+			throw_system_error("Unable to read from serial device");
+		} else 
+		if (bytesRead > 1) {
+			throw std::runtime_error("Big trouble! Read returned more than one byte");
+		}
+		
+		if (this->parameters->debug) {
+			std::cout << "Byte received: ";
+			ArducomMaster::printBuffer(buffer, 1);
+			std::cout << std::endl;
+		}
+		
+		return *buffer;
 	}
 	
-	if (this->parameters->debug) {
-		std::cout << "Byte received: ";
-		ArducomMaster::printBuffer(buffer, 1);
-		std::cout << std::endl;
-	}
-	
-	return *buffer;
+	throw TimeoutException("Timeout reading from serial device");
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {
