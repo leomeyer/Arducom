@@ -65,7 +65,9 @@ The default hello-world sketch uses serial communication at 57600 baud. To test 
 
     $ ./make.sh && ./make-ftp.sh
 
-These programs require C++11. On Linux, use GCC 4.8 or newer.
+These programs require C++11. On Linux, use GCC 4.8 or newer. You may have to install libssl-dev:
+
+	$ sudo apt-get install libssl-dev
 	
 Issue the Arducom version request (command 0). Your serial port may be different from /dev/ttyACM0 (check this first).
 
