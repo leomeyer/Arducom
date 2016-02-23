@@ -36,7 +36,11 @@ Install arduino-mk:
 
     $ sudo apt-get install arduino-mk
 
-Change into the hello-world folder and build the sketch:
+Change into the hello-world folder and check the Makefile. Make sure that you have set the correct BOARD_TAG.
+The recommended system for this sketch is an Arduino Uno with an RTC and an SD card shield.
+If RTC and/or SD card are not present, the sketch will automatically disable the respective functions.
+
+Build the sketch:
 
     $ cd Arducom/src/slave/hello-world
     $ make
@@ -65,15 +69,23 @@ These programs require C++11. On Linux, use GCC 4.8 or newer.
 	
 Issue the Arducom version request (command 0). Your serial port may be different from /dev/ttyACM0 (check this first).
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 0
+    $ ./arducom -t serial -d /dev/ttyACM0 -c 0
 
 arducom will try to interpret the reply. The correct output is something like:
 
     Arducom slave version: 1; Uptime: 175696 ms; Flags: 0 (debug off); Free RAM: 289 bytes; Info: HelloWorld
+	
+If you only receive error messages of type "No data" you may have a problem that occurs with some serial over USB drivers.
+These drivers use the DTR line when opening the serial port, and this causes the Arduino to reset.
+Unfortunately there is no easy software fix for this. You can either disable the hardware reset, but this also prevents
+automatically uploading new code. Or you can use the Arducom parameter "--initDelay 3000" with each command.
+Arducom will then wait for 3000 milliseconds until it issues its command to give the Arduino time to reset itself.
+Naturally, for a serious data logger you can't use this because you would not want the device to reset on connecting.
+Alternatively you can use a different hardware serial port or USB to serial converter.
 
 If you have a DS1307 Real Time Clock connected you can query its current time:
 
-    $ date -d @`./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 21 -o Int32 -l 10`
+    $ date -d @`./arducom -t serial -d /dev/ttyACM0 -c 21 -o Int32 -l 10`
 
 The output should be something like:
 
@@ -81,7 +93,7 @@ The output should be something like:
 
 If the RTC has not yet been set you can use the following command to set it:
 
-    $ date +"%s" | ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 22 -i Int32 -r -l 10
+    $ date +"%s" | ./arducom -t serial -d /dev/ttyACM0 -c 22 -i Int32 -r -l 10
 
 You can experiment with the EEPROM (commands 1 - 10) and the RAM variables (commands 11 - 20). These commands allow you to read and set EEPROM and RAM space. Some of them take parameters that you can supply on the command line using -p xx with xx being a sequence of hexadecimal byte values. The following commands are defined:
 
@@ -112,19 +124,19 @@ Multi-byte values are transferred LSB first. I. e. a value of 0x12345678 would h
 
 For example, to read the 8 bytes at EEPROM address 0x0A issue the following command:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 7 -p 0A00
+    $ ./arducom -t serial -d /dev/ttyACM0 -c 7 -p 0A00
 
 To write four bytes into the (predefined) RAM array issue the following command:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 20 -p 000001020304
+    $ ./arducom -t serial -d /dev/ttyACM0 -c 20 -p 000001020304
 
 To read them out again use:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -b 57600 -c 19 -p 000004
+    $ ./arducom -t serial -d /dev/ttyACM0 -c 19 -p 000004
 
 If you have a FAT-formatted SD card connected you can access it using the arducom-ftp command:
 
-    $ ./arducom-ftp -t serial -d /dev/ttyACM0 -b 57600
+    $ ./arducom-ftp -t serial -d /dev/ttyACM0
 
 You should get an output similar to this:
 
@@ -132,12 +144,17 @@ You should get an output similar to this:
     />
 
 Use the "dir" or "ls" commands to list the current directory. Use "get _file_" to retrieve _file_. Use "cd _folder_" to descend into a folder and "cd .." to change one level up.
+Use "help" to display a list of supported commands.
 
 It is possible that you are getting errors like this:
 
     Error requesting data: Timeout reading from serial device
+	
+or:
 
-In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something from 3 to 10. You can also set a delay time which is applied after each command to give the device some time to prepare the reply, using the option -d _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. Be aware that this will slow down FTP file transfers because those use many requests. It is better to increase the number of retries.
+	No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)
+
+In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something around 3. You can also set a delay time which is applied after each command to give the device some time to prepare the reply, using the option -l _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. Be aware that this will slow down FTP file transfers because these use lots of requests. It is better to increase the number of retries.
 
 You can also set these options interactively in arducom-ftp by using "set retries _number_" and "set delay _delay_" respectively.
 
