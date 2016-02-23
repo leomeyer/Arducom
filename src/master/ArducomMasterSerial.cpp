@@ -85,6 +85,8 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	if (fd < 0) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
+	
+	sleep(3);
 
 	memset(&tty, 0, sizeof(tty));
 	if (tcgetattr(fd, &tty) != 0) {
@@ -147,7 +149,10 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	}
 
 	tty.c_cflag &= ~CRTSCTS;
+	
+	// cfmakeraw(&tty);
 
+	tcflush(fd, TCIFLUSH);
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
 		throw_system_error("Error setting serial device attributes (is the device valid?)");
 	}
@@ -173,6 +178,11 @@ repeat:
 				goto repeat;
 			}
 		}
+		if (this->parameters->debug) {
+			std::cout << "Byte sent: ";
+			ArducomMaster::printBuffer(&buffer[i], 1);
+			std::cout << std::endl;
+		}
 	}
 	fsync(this->fileHandle);
 }
@@ -187,15 +197,15 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 	} else 
 	if (bytesRead > 1) {
 		throw std::runtime_error("Big trouble! Read returned more than one byte");
-	} else {
-/*
-		std::cout << "Byte read: ";
+	}
+	
+	if (this->parameters->debug) {
+		std::cout << "Byte received: ";
 		ArducomMaster::printBuffer(buffer, 1);
 		std::cout << std::endl;
-*/
-		return *buffer;
 	}
-	return 0;
+	
+	return *buffer;
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {

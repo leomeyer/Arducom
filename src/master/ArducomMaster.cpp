@@ -403,7 +403,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 }
 
 void ArducomMaster::unlock(bool verbose) {
-	if (this->semkey <= 0)
+	if (this->semkey == 0)
 		return;
 	if (!this->hasLock)
 		return;
