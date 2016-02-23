@@ -234,10 +234,10 @@ std::string ArducomBaseParameters::getHelp() {
 	result.append("    For I2C, the name of an I2C bus device.\n");
 	result.append("    For TCP/IP, a host name or IP address.\n");
 	result.append("  -a <address>: Specifies the device address.\n");
-	result.append("    For I2C, the slave address number. Required.\n");
-	result.append("    For TCP/IP, the destination port number. Optional; default: 4156.\n");
+	result.append("    For I2C, the slave address number (2 - 127). Required.\n");
+	result.append("    For TCP/IP, the destination port number. Optional; default: 4152.\n");
 	result.append("    Not used for serial transport.\n");
-	result.append("  -b <baudrate>: Specifies the baud rate (serial only). Default: 9600.\n");
+	result.append("  -b <baudrate>: Specifies the baud rate (serial only). Default: 57600.\n");
 	result.append("  -n: Do not use checksums. Not recommended.\n");
 	result.append("  --initDelay <value>: Delay in milliseconds after transport init.\n");
 	result.append("    Only relevant for serial transport (e. g. for Arduino resets).\n");

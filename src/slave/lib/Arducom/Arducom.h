@@ -81,7 +81,7 @@
 class ArducomTransport {
 
 public:
-	enum Status {
+	enum Status: uint8_t {
 		NO_DATA
 		, TOO_MUCH_DATA
 		, HAS_DATA
@@ -487,6 +487,77 @@ public:
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
+};
+
+/***************************************
+* Predefined pin access commands
+****************************************/
+
+/** This class implements a command to set the pin direction of the port defined during creation.
+*   It expects two bytes: a mask byte, and a pin direction byte. Each bit corresponds to a pin
+*   of the port. If a bit is 0 the pin should be configured as input. If it is 1, the pin
+*   should be configured as output. Pins are only configured if their corresponding bit
+*   in the mask byte is set. The allowedMask specified which pins are allowed at all.
+*   Example: mask byte = 0x81 (10000001b), pin direction byte = 0x55 (01010101b)
+*     Sets the highest pin to input, the lowest pin to output, and does nothing to the rest.
+*/
+class ArducomSetPinDirection: public ArducomCommand {
+public:
+	ArducomSetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	volatile uint8_t* ddRegister;
+	uint8_t allowedMask;
+};
+
+/** This class implements a command to get the pin direction of the port defined during creation.
+*   It expects no input and returns a pin direction byte. Each bit corresponds to a pin
+*   of the port. If a bit is 0 the pin is configured as input. If it is 1, the pin
+*   is configured as output. The allowedMask specified which pins are allowed at all.
+*/
+class ArducomGetPinDirection: public ArducomCommand {
+public:
+	ArducomGetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	volatile uint8_t* ddRegister;
+	uint8_t allowedMask;
+};
+
+/** This class implements a command to set the pin state of the port defined during creation.
+*   It expects two bytes: a mask byte, and a pin state byte. Each bit corresponds to a pin
+*   of the port. If a bit is 0 the pin should be set low. If it is 1, the pin
+*   should be set high. Pins are only modified if their corresponding bit
+*   in the mask byte is set. The allowedMask specified which pins are allowed at all.
+*   Example: mask byte = 0x81 (10000001b), pin state byte = 0x55 (01010101b)
+*     Sets the highest pin to low, the lowest pin to high, and does nothing to the rest.
+*/
+class ArducomSetPinState: public ArducomCommand {
+public:
+	ArducomSetPinState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	volatile uint8_t* portRegister;
+	volatile uint8_t* pinRegister;
+	uint8_t allowedMask;
+};
+
+/** This class implements a command to get the pin state of the port defined during creation.
+*   It expects no input and returns a pin state byte. Each bit corresponds to a pin
+*   of the port. If a bit is 0 the pin is read low. If it is 1, the pin
+*   is read high. The allowedMask specified which pins are allowed at all.
+*/
+class ArducomGetPinState: public ArducomCommand {
+public:
+	ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	volatile uint8_t* pinRegister;
+	uint8_t allowedMask;
 };
 
 #endif

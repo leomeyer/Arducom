@@ -307,7 +307,13 @@ void setup()
 	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
 	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock));
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
-	
+/*	
+	// expose all of port D's pins through pin commands
+	arducom.addCommand(new ArducomGetPinDirection(30, &DDRD));
+	arducom.addCommand(new ArducomSetPinDirection(31, &DDRD));
+	arducom.addCommand(new ArducomGetPinState(32, &PIND));
+	arducom.addCommand(new ArducomSetPinState(33, &PORTD, &PIND));
+*/
 	#if USE_DS1307
 	// connect to RTC
 	Wire.begin();

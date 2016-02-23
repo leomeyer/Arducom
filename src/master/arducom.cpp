@@ -342,7 +342,7 @@ protected:
 		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
 		result.append("  -o: Output format of response payload. Default: Hex.\n");
 		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
-		result.append("  -s: Input and output separator character.\n");
+		result.append("  -s: Input and output separator character. Default: comma (,).\n");
 		result.append("  -si: Input separator character.\n");
 		result.append("  -so: Output separator character.\n");
 		result.append("  -p <payload>: Specifies the command payload.\n");

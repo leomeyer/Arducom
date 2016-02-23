@@ -551,3 +551,85 @@ int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, 
 	*dataSize = length;
 	return ARDUCOM_OK;
 }
+
+/***************************************
+* Predefined pin access commands
+****************************************/
+
+ArducomSetPinDirection::ArducomSetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+	this->ddRegister = ddRegister;
+	this->allowedMask = allowedMask;
+}
+	
+int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects two bytes
+	uint8_t mask = *((uint8_t*)dataBuffer[0]);
+	uint8_t dir = *((uint8_t*)dataBuffer[1]);
+	// get current direction values
+	uint8_t ddr = *this->ddRegister;
+	uint8_t actualMask = mask & this->allowedMask;
+	// zero out directions to be set
+	ddr &= ~actualMask;
+	// set the bits according to the new value
+	ddr |= dir & actualMask;
+	// set new directions
+	*this->ddRegister = ddr;
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+	
+ArducomGetPinDirection::ArducomGetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
+	this->ddRegister = ddRegister;
+	this->allowedMask = allowedMask;
+}
+
+int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects nothing
+	// get current direction values
+	uint8_t ddr = *this->ddRegister;
+	// zero out disallowed directions
+	ddr &= ~this->allowedMask;
+	destBuffer[0] = ddr;
+	*dataSize = 1;
+	return ARDUCOM_OK;
+}
+	
+ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+	this->portRegister = portRegister;
+	this->pinRegister = pinRegister;
+	this->allowedMask = allowedMask;
+}
+
+int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects two bytes
+	uint8_t mask = *((uint8_t*)dataBuffer[0]);
+	uint8_t state = *((uint8_t*)dataBuffer[1]);
+	// get current state values
+	uint8_t port = *this->pinRegister;
+	uint8_t actualMask = mask & this->allowedMask;
+	// zero out state to be set
+	port &= ~actualMask;
+	// set the bits according to the new value
+	port |= state & actualMask;
+	// set new directions
+	*this->portRegister = port;
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+	
+ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+	this->pinRegister = pinRegister;
+	this->allowedMask = allowedMask;
+}
+
+int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects nothing
+	// get current port values
+	uint8_t pins = *this->pinRegister;
+	// zero out disallowed pins
+	pins &= ~this->allowedMask;
+	destBuffer[0] = pins;
+	*dataSize = 1;
+	return ARDUCOM_OK;
+
+}
