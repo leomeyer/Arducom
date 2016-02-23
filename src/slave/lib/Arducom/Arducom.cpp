@@ -617,7 +617,7 @@ int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	return ARDUCOM_OK;
 }
 	
-ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
 	this->pinRegister = pinRegister;
 	this->allowedMask = allowedMask;
 }
