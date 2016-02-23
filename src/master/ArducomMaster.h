@@ -66,6 +66,7 @@ public:
 	int deviceAddress;
 	bool verbose;
 	bool debug;
+	long initDelayMs;
 	long delayMs;
 	long timeoutMs;
 	int retries;
@@ -78,7 +79,8 @@ public:
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
-		delayMs = 0;
+		initDelayMs = 0;
+		delayMs = 10;
 		timeoutMs = 1000;
 		retries = 0;
 		useChecksum = true;
@@ -111,6 +113,10 @@ public:
 
 	/** Display help text and exit. */
 	virtual void showHelp(void) = 0;
+	
+protected:
+	/** Returns the parameter help for this object. */
+	virtual std::string getHelp(void);
 };
 
 /** This class contains the functions to send and receive data over a transport.
@@ -170,7 +176,5 @@ protected:
 	/** Helper function. Throws an exception. */
 	virtual void invalidResponse(uint8_t commandByte);
 };
-
-
 
 #endif

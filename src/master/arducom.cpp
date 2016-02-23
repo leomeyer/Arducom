@@ -316,14 +316,66 @@ public:
 	};
 
 	void showVersion(void) override {
-		std::cout << "Version" << std::endl;
+		std::cout << this->getVersion();
 		exit(0);
 	};
 
 	 void showHelp(void) override {
-		std::cout << "Help" << std::endl;
+		std::cout << this->getHelp();
 		exit(0);
 	};
+
+protected:
+	/** Returns the parameter help for this object. */
+	virtual std::string getHelp(void) override {
+		std::string result;
+		result.append(this->getVersion());
+
+		result.append("\n");
+		result.append(ArducomBaseParameters::getHelp());
+		
+		result.append("\n");
+		result.append("Command tool parameters:\n");
+		result.append("  -c: Arducom command number between 0 and 127. Required.\n");
+		result.append("  -e: Number of expected response payload bytes. Default depends on transport.\n");
+		result.append("  -i: Input format of command payload. Default: Hex.\n");
+		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
+		result.append("  -o: Output format of response payload. Default: Hex.\n");
+		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
+		result.append("  -s: Input and output separator character.\n");
+		result.append("  -si: Input separator character.\n");
+		result.append("  -so: Output separator character.\n");
+		result.append("  -p <payload>: Specifies the command payload.\n");
+		result.append("  -r: Read command payload from standard input.\n");
+		result.append("    Must be in the specified input format.\n");
+ 		result.append("  --no-newline: No newline after output.\n");
+ 		result.append("  --no-interpret: No standard interpretation of command 0.\n");
+		result.append("\n");
+		result.append("Examples:\n");
+		result.append("\n");
+ 		result.append("./arducom -t serial -d /dev/ttyUSB0 -b 115200 -c 0\n");
+ 		result.append("  Send command 0 (status inquiry) to the Arduino at /dev/ttyUSB0.\n");
+ 		result.append("  If this command fails you perhaps need to add --initDelay 3000\n");
+ 		result.append("  to give the Arduino time to start up after the serial connect.\n");
+		result.append("\n");
+ 		result.append("./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0\n");
+ 		result.append("  Send command 0 (version inquiry) to the Arduino over I2C bus 1.\n");
+		result.append("\n");
+ 		result.append("./arducom -t i2c -d /dev/i2c-1 -a 5 -c 9 -p 000008 -o Int64\n");
+ 		result.append("  Send command 9 (read EEPROM) to the Arduino over I2C bus 1.\n");
+ 		result.append("  Retrieves 8 bytes from EEPROM offset 0000 and displays them\n");
+ 		result.append("  as a 64 bit integer value. Requires the hello-world sketch.\n");
+		
+		return result;
+	}
+	
+	virtual std::string getVersion(void) {
+		std::string result;
+		result.append("Arducom command line tool version 1.0\n");
+		result.append("Copyright (c) Leo Meyer 2015-16\n");
+		result.append("Build: " __DATE__ " " __TIME__ "\n");
+		return result;
+	}
 };
 
 //********************************************************************************

@@ -125,6 +125,18 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 			}
 		}
 	} else
+	if (args.at(*i) == "--initDelay") {
+		(*i)++;
+		if (args.size() == *i) {
+			throw std::invalid_argument("Expected initialization delay in milliseconds after argument --initDelay");
+		} else {
+			try {
+				initDelayMs = std::stol(args.at(*i));
+			} catch (std::exception& e) {
+				throw std::invalid_argument("Expected numeric initialization delay in milliseconds after argument --initDelay");
+			}
+		}
+	} else
 	if (args.at(*i) == "-l") {
 		(*i)++;
 		if (args.size() == *i) {
@@ -157,7 +169,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 			try {
 				semkey = std::stoi(args.at(*i));
 			} catch (std::exception& e) {
-				throw std::invalid_argument("Expected number after argument -k");
+				throw std::invalid_argument("Expected integer number after argument -k");
 			}
 		}
 	} else
@@ -206,6 +218,38 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 	}
 
 	return transport;
+}
+
+std::string ArducomBaseParameters::getHelp() {
+	std::string result;
+	result.append("Arducom base parameters:\n");
+	result.append("  --version: Display version information and exit.\n");
+	result.append("  -h or -?: Display help and exit.\n");
+	result.append("  -v: Verbose mode.\n");
+	result.append("  -vv: Extra verbose mode.\n");
+	result.append("  -t <transport>: Specifies the transport type. Required.\n");
+	result.append("    One of 'serial', 'i2c', or 'tcpip'.\n");
+	result.append("  -d <device>: Specifies the target device. Required.\n");
+	result.append("    For serial, the name of a serial device.\n");
+	result.append("    For I2C, the name of an I2C bus device.\n");
+	result.append("    For TCP/IP, a host name or IP address.\n");
+	result.append("  -a <address>: Specifies the device address.\n");
+	result.append("    For I2C, the slave address number. Required.\n");
+	result.append("    For TCP/IP, the destination port number. Optional; default: 4156.\n");
+	result.append("    Not used for serial transport.\n");
+	result.append("  -b <baudrate>: Specifies the baud rate (serial only). Default: 9600.\n");
+	result.append("  -n: Do not use checksums. Not recommended.\n");
+	result.append("  --initDelay <value>: Delay in milliseconds after transport init.\n");
+	result.append("    Only relevant for serial transport (e. g. for Arduino resets).\n");
+	result.append("  -u <value>: Timeout in milliseconds. Optional; default: 1000.\n");
+	result.append("  -l <value>: Delay in milliseconds between send and receive.\n");
+	result.append("    Optional; default: 10. Gives the device time to process.\n");
+	result.append("  -x <value>: Number of retries should sending or retrieving fail.\n");
+	result.append("    Optional; default: 0. A sensible value would be about 3.\n");
+	result.append("  -k <value>: The semaphore key used to synchronize between different\n");
+	result.append("    processes. A value of 0 disables semaphore synchronization.\n");
+	
+	return result;
 }
 
 /** ArducomMaster implementation */

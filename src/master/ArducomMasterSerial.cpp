@@ -86,8 +86,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 	
-	sleep(3);
-
+	// initialization delay specified?
+	if (this->parameters->initDelayMs > 0) {
+		// sleep for the specified time
+		usleep(this->parameters->initDelayMs * 1000);
+	}
+	
 	memset(&tty, 0, sizeof(tty));
 	if (tcgetattr(fd, &tty) != 0) {
 		throw_system_error("Error getting serial device attributes (is the device valid?)");
