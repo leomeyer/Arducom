@@ -75,7 +75,7 @@ public:
 
 	/** Standard constructor. Applies the default values. */
 	inline ArducomBaseParameters() {
-		baudrate = 9600;
+		baudrate = 57600;
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
