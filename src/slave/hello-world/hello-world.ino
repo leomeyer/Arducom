@@ -65,7 +65,7 @@
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
 #define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		115200
+#define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
 // #define I2C_SLAVE_ADDRESS	5
