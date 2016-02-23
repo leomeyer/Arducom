@@ -84,14 +84,53 @@ public:
 	};
 
 	void showVersion(void) override {
-		std::cout << "Version" << std::endl;
+		std::cout << this->getVersion();
 		exit(0);
 	};
 
-	void showHelp(void) override {
-		std::cout << "Help" << std::endl;
+	 void showHelp(void) override {
+		std::cout << this->getHelp();
 		exit(0);
 	};
+
+	/** Returns the parameter help for this object. */
+	virtual std::string getHelp(void) override {
+		std::string result;
+		result.append(this->getVersion());
+
+		result.append("\n");
+		result.append(ArducomBaseParameters::getHelp());
+		
+		result.append("\n");
+		result.append("FTP tool parameters:\n");
+ 		result.append("  --no-continue: Always overwrite existing files.\n");
+ 		result.append("  --allow-delete: Allow the (experimental) deletion of files.\n");
+		result.append("\n");
+		result.append("Examples:\n");
+		result.append("\n");
+ 		result.append("./arducom-ftp -t serial -d /dev/ttyUSB0 -b 115200\n");
+ 		result.append("  Connects to the Arduino at /dev/ttyUSB0.\n");
+ 		result.append("  If this command fails you perhaps need to add --initDelay 3000\n");
+ 		result.append("  to give the Arduino time to start up after the serial connect.\n");
+		result.append("\n");
+ 		result.append("./arducom-ftp -t i2c -d /dev/i2c-1 -a 5 -c 0\n");
+ 		result.append("  Connects to an Arduino at slave address 5 over I2C bus 1.\n");
+		result.append("\n");
+		result.append("Usage:\n");
+		result.append("\n");
+		result.append("  Enter ? to get help on how to use the FTP tool.");
+		result.append("\n");
+		
+		return result;
+	}
+	
+	virtual std::string getVersion(void) {
+		std::string result;
+		result.append("Arducom FTP tool version 1.0\n");
+		result.append("Copyright (c) Leo Meyer 2015-16\n");
+		result.append("Build: " __DATE__ " " __TIME__ "\n");
+		return result;
+	}
 };
 
 /********************************************************************************/
@@ -340,6 +379,39 @@ void setParameter(std::vector<std::string> parts, bool print = true) {
 		throw std::invalid_argument("Parameter name unknown: " + parts.at(1));
 }
 
+void printUsageHelp() {
+	std::string result;
+	result.append(parameters.getVersion());
+	
+	result.append("\n");
+	result.append("FTP tool commands:\n");
+	result.append("  'exit' or 'quit': Terminates the program.\n");
+	result.append("  'help' or '?': Displays tool command help.\n");
+	result.append("  'reset': Resets the FTP system on the device.\n");
+	result.append("  'dir' or 'ls': Retrieves a list of files from the device.\n");
+	result.append("  'cd <DIR>': Changes the directory. <DIR> may also be .. or /.\n");
+	result.append("  'get <FILE>': Retrieves the file <FILE> from the device.\n");
+	result.append("  'rm <FILE>' or 'del <FILE>': Deletes the file <FILE> from the device.\n");
+	result.append("    File deletion is experimental and may corrupt the file system on the device.\n");
+	result.append("  'set': Displays a list of variables and their values.\n");
+	result.append("  'set <VAR>': Displays the value of variable <VAR>.\n");
+	result.append("  'set <VAR> <VALUE>': Sets the variable <VAR> to <VALUE>.\n");
+	result.append("\n");
+	result.append("FTP tool variables:\n");
+	result.append("  'verbose': Output internal information. Corresponds to command setting -v.\n");
+	result.append("  'debug': Output technical information. Corresponds to command setting -vv.\n");
+	result.append("  'retries': Number of retries on error. Corresponds to command setting -x.\n");
+	result.append("  'delay': Command delay in milliseconds. Corresponds to command setting -l.\n");
+	result.append("  'allowdelete': If 'on', allows the experimental deletion of files.\n");
+	result.append("  'continue': If 'on', appends content to partially downloaded files.\n");
+	result.append("     If 'off', files are always overwritten completely.\n");
+	result.append("  'interactive': Specifies program behavior for batch or interactive mode.\n");
+	result.append("     This flag is set to 'on' if the program is started from a TTY, and to 'off'\n");
+	result.append("     if input is being piped to the program. Normally you should not change this.\n");
+
+	std::cout << result;
+}
+
 int main(int argc, char *argv[]) {
 
 	std::vector<std::string> args;
@@ -380,6 +452,9 @@ int main(int argc, char *argv[]) {
 
 				if (parts.size() == 0)
 					continue;
+				else
+				if ((parts.at(0) == "help") || (parts.at(0) == "?"))
+					printUsageHelp();
 				else
 				if ((parts.at(0) == "quit") || (parts.at(0) == "exit"))
 					break;
