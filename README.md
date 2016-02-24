@@ -84,7 +84,8 @@ Implementing your own commands
 Arducom makes it easy to implement your own commands. Each command is represented by
 a class that derives from the ArducomCommand class.
 
-See hello-world.ino for a simple example.
+See hello-world.ino for a simple example:
+https://github.com/leomeyer/Arducom/blob/master/src/slave/hello-world/hello-world.ino#L176
 
 Master implementation
 ---------------------
