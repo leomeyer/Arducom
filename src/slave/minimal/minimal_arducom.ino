@@ -24,7 +24,7 @@ Arducom arducom(&arducomTransport);
 void setup()
 {	
 	// initialize hardware
-	Serial.begin(9600);
+	Serial.begin(57600);
 
 	// setup Arducom system
 	arducom.addCommand(new ArducomVersionCommand("MinimalExample"));
