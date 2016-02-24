@@ -6,30 +6,38 @@ _Please note - this project is pretty much work in progress. Also, documentation
 Arducom simplifies interaction between Arduinos and Linux devices.
 It is designed to be versatile and easy to extend. It currently supports serial, I2C and TCP/IP connections.
 
-Supported functions:
+Currently supported functions:
 	
 	- Read and write data from and to EEPROM
 	- Read and write data from and to RAM
-	- Access a Real Time Clock (set and get time)
+	- Set and read a Real Time Clock (DS1307 is supported)
 	- "FTP-style" file access from SD card
 	- Access Arduino pins (read and set state)
 	- Serial port communication via RS232
 	- I2C via hardware I2C (or software I2C on almost arbitrary pins)
 	- TCP/IP (e. g. using an ESP8266 WLAN module)
 
+Arducom is useful for e. g.:
+
+	- Remote-controlling Arduinos
+	- Data acquisition and data logging
+	- Controlling relays
+	- Taking measurements
+	
 For example, you want to use an Arduino with an SD card as a low cost data logger. More often
 than not it is impractical to remove the SD card and insert it into a reader to
 extract the data logs because this means interrupting the data logging.
-Moreover, you may want to query the Arduino for current readings from elsewhere.
+Perhaps you may want to query the Arduino for current readings from elsewhere.
 Communicating over serial interfaces might not be possible because the
 Arduino already uses these for data acquisition. Software serial might also be
 impractical due to timing constraints.
 
 Arducom allows you to communicate with the Arduino under these circumstances and
-allows you to transfer files from the Arduino's SD card.
+enables you to transfer files from the Arduino's SD card during real-time operation.
 
 Arducom currently supports I2C, serial and TCP/IP communication. It also contains a software
-implementation of an I2C slave.
+implementation of an I2C slave. There is also an implementation of a versatile data logger
+that supports D0 lines, DHT22 temperature measurements, and an OBIS parser for metering data.
 
 Quick start
 -----------
@@ -38,6 +46,10 @@ For a quick introduction how to setup the hello-world demo and connect to it fro
 a Linux machine, see here:
 
 https://github.com/leomeyer/Arducom/tree/master/src/slave/hello-world
+
+For the bare necessities, have a look at:
+
+https://github.com/leomeyer/Arducom/blob/master/src/slave/minimal/minimal_arducom.ino
 
 Protocol description
 --------------------
