@@ -254,7 +254,7 @@ std::string ArducomBaseParameters::getHelp() {
 
 /** ArducomMaster implementation */
 
-ArducomMaster::ArducomMaster(ArducomMasterTransport* transport, bool verbose) {
+ArducomMaster::ArducomMaster(ArducomMasterTransport* transport) {
 	this->transport = transport;
 	this->lastCommand = 255;	// set to invalid command
 	this->lastError = 0;
