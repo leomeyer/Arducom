@@ -129,7 +129,7 @@ public:
 	* Codes lower than 128 are local. Codes greater than 127 come from the slave. */
 	uint8_t lastError;
 
-	ArducomMaster(ArducomMasterTransport* transport, bool verbose);
+	ArducomMaster(ArducomMasterTransport* transport);
 
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);

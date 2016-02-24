@@ -424,7 +424,7 @@ int main(int argc, char *argv[]) {
 		ArducomMasterTransport *transport = parameters.validate();
 
 		// initialize protocol
-		ArducomMaster master(transport, parameters.verbose);
+		ArducomMaster master(transport);
 
 		std::vector<uint8_t> payload;
 		std::vector<uint8_t> result;

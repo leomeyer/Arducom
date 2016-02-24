@@ -399,7 +399,7 @@ int main(int argc, char* argv[]) {
 		ArducomMasterTransport* transport = parameters.validate();
 
 		// initialize protocol
-		master = new ArducomMaster(transport, parameters.verbose);
+		master = new ArducomMaster(transport);
 		
 		uint8_t buffer[255];
 		uint8_t size = parameters.payload.size();
