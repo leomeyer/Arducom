@@ -113,25 +113,33 @@ arducom has a number of options:
     -p <parameters>: command parameters in the input format.
     -n: do not use a checksum on data packets (not recommended).
     --no-interpret: do not try to interpret the result of the version command 0 (display slave information).
-  
+
+For the most current parameter information, use
+
+	$ ./arducom -?
+		
 For input and output formats the following values are recognized:
-Hex, Raw, Byte, Int16, Int32, Int64.
+Hex, Raw, Bin, Byte, Int16, Int32, Int64.
 
 * Hex input/output consists of groups of two characters matching [0-9a-fA-F], optionally
-separated by the respective separator (default).
+separated by the respective separator. This is the default setting.
 
 * Raw input/output consists of raw bytes, i. e. strings. There is no separation.
-Byte input/output consists of a sequence of numeric values in range 0..255, optionally
+
+* Bin input/output consists of strings of length 8 made of 0s and 1s, 
+separated by the respective separator.
+
+* Byte input/output consists of a sequence of numeric values in range 0..255, 
 separated by the respective separator.
 
 * Int16 input/output consists of a sequence of numeric values in range -32768..32767, 
-optionally separated by the respective separator.
+separated by the respective separator.
 
 * Int32 input/output consists of a sequence of numeric values in range -2147483648..2147483647, 
-optionally separated by the respective separator.
+separated by the respective separator.
 
 * Int64 input/output consists of a sequence of numeric values in range -(2^63)..2^63-1, 
-optionally separated by the respective separator.
+separated by the respective separator.
 
 Examples:
 
@@ -158,7 +166,7 @@ Command 10, in case of the hello-world sketch, writes a block of data to the EEP
     date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
 Outputs the current datetime as Unix timestamp and sends it to arducom which reads the value
 from the command line and sends it via I2C to address 5 with command 22.
-Command 10, in case of the hello-world sketch, updates the current time of a Real Time Clock. It returns nothing.
+This command, in case of the hello-world sketch, updates the current time of a Real Time Clock. It returns nothing.
 
 FTP transfer
 ------------
@@ -169,7 +177,7 @@ file names and no uploads.
 
 arducom-ftp understands the following parameters:
 
-    -t <transport>: defines the transport layer. Currently "i2c" and "serial" are supported.
+    -t <transport>: defines the transport layer. Currently "i2c", "serial" and "tcpip" are supported.
     -d <device>: the device that is to be used for the transport, i. e. "/dev/i2c-1".
     -a <address>: the slave address. For I2C, a number between 2 and 127.
     -b <baudrate>: For serial devices, the baud rate to use.
@@ -178,9 +186,14 @@ arducom-ftp understands the following parameters:
     -x <retries>: the number of retries in case of errors.
     -n: do not use a checksum on data packets (not recommended).
 
+For the most current parameter information, use
+
+	$ ./arducom-ftp -?
+	
 Example:
 
     ./arducom-ftp -t serial -d /dev/ttyACM0 -x 3
+	
 This example connects to the slave using the serial device ttyACM0 specifying 3 retries.
 
 First, arducom-ftp will try to connect to the slave. If successful, a message will be displayed:
