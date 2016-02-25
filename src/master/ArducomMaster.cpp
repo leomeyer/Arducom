@@ -612,7 +612,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 		}
 		*size = i + 1;
 	}
-	if (verbose) {
+	if ((*size > 0) && verbose) {
 		std::cout << "Received payload: ";
 		this->printBuffer(destBuffer, *size);
 		std::cout << std::endl;
