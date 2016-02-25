@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <unistd.h>
 #include <cstring>
+#include <bitset>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
@@ -20,6 +21,7 @@
 enum Format {
 	HEX,
 	RAW,
+	BIN,
 	BYTE,
 	INT16,
 	INT32,
@@ -43,6 +45,9 @@ Format parseFormat(std::string arg, std::string argName) {
 	if (arg == "Raw")
 		return RAW;
 	else
+	if (arg == "Bin")
+		return BIN;
+	else
 	if (arg == "Byte")
 		return BYTE;
 	else
@@ -55,7 +60,7 @@ Format parseFormat(std::string arg, std::string argName) {
 	if (arg == "Int64")
 		return INT64;
 	else
-		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Byte, Int16, Int32, Int64");
+		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64");
 }
 
 /* Split string into parts at specified delimiter */
@@ -100,6 +105,9 @@ void parsePayload(std::string arg, Format format, char separator, std::vector<ui
 					params.push_back(arg.at(p));
 				}
 				break;
+			}
+			case BIN: {
+				throw std::invalid_argument("Binary input is not yet supported");
 			}
 			case BYTE: {
 				int value;
@@ -341,7 +349,7 @@ protected:
 		result.append("  -i: Input format of command payload. Default: Hex.\n");
 		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
 		result.append("  -o: Output format of response payload. Default: Hex.\n");
-		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
+		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64.\n");
 		result.append("  -s: Input and output separator character. Default: comma (,).\n");
 		result.append("  -si: Input separator character.\n");
 		result.append("  -so: Output separator character.\n");
@@ -431,6 +439,14 @@ int main(int argc, char* argv[]) {
 				switch (parameters.outputFormat) {
 				case HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
 				case RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
+				case BIN: {
+					for (uint8_t i = 0; i < size; i++) {
+						std::cout << std::bitset<8>(buffer[i]);
+						if ((i < size - 1) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
+					}
+					break;
+				}
 				case BYTE: {
 					for (uint8_t i = 0; i < size; i++) {
 						std::cout << (int)buffer[i];
