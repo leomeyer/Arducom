@@ -7,6 +7,10 @@ The simplest setup would be:
 
 ![Raspberry Pi - USB - Arduino Uno](../../../doc/Raspberry-USB-Arduino (Small).png)
 
+For additional features, use a data logging shield such as this:
+
+![Keyes Data Logging Shield](../../../doc/Keyes-Data-Logging-Shield.png)
+
 Installing the required software
 --------------------------------
 
