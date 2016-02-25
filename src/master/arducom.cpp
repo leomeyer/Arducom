@@ -35,7 +35,7 @@ uint8_t char2byte(char input) {
 		return input - 'A' + 10;
 	if ((input >= 'a') && (input <= 'f'))
 		return input - 'a' + 10;
-	throw std::invalid_argument(std::string("Invalid hex character in byte input string: ") + input);
+	throw std::invalid_argument(std::string("Invalid hex character in input: ") + input);
 }
 
 Format parseFormat(std::string arg, std::string argName) {
@@ -107,7 +107,19 @@ void parsePayload(std::string arg, Format format, char separator, std::vector<ui
 				break;
 			}
 			case BIN: {
-				throw std::invalid_argument("Binary input is not yet supported");
+				if (arg.size() != 8)
+					throw std::invalid_argument("Expected parameter string of length 8 for input format Bin");
+				const char *paramStr = arg.c_str();
+				uint8_t value = 0;
+				for (size_t p = 0; p < arg.size(); p += 1) {
+					if (paramStr[p] == '1')
+						value |= 1 << (7 - p);
+					else
+					if (paramStr[p] != '0')
+						throw std::invalid_argument(std::string("Invalid binary character in input (expected '0' or '1'): ") + paramStr);
+				}
+				params.push_back(value);
+				break;
 			}
 			case BYTE: {
 				int value;
@@ -347,7 +359,7 @@ protected:
 		result.append("  -c: Arducom command number between 0 and 127. Required.\n");
 		result.append("  -e: Number of expected response payload bytes. Default depends on transport.\n");
 		result.append("  -i: Input format of command payload. Default: Hex.\n");
-		result.append("    One of: Hex, Raw, Byte, Int16, Int32, Int64.\n");
+		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64.\n");
 		result.append("  -o: Output format of response payload. Default: Hex.\n");
 		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64.\n");
 		result.append("  -s: Input and output separator character. Default: comma (,).\n");
