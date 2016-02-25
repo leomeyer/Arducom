@@ -631,5 +631,4 @@ int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	destBuffer[0] = pins;
 	*dataSize = 1;
 	return ARDUCOM_OK;
-
 }

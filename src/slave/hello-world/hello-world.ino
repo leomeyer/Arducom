@@ -309,10 +309,11 @@ void setup()
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	
 	// expose all of port D's pins through pin commands
-	arducom.addCommand(new ArducomGetPinDirection(30, &DDRD));
-	arducom.addCommand(new ArducomSetPinDirection(31, &DDRD));
-	arducom.addCommand(new ArducomGetPinState(32, &PIND));
-	arducom.addCommand(new ArducomSetPinState(33, &PORTD, &PIND));
+	// except the two lower ones; these are used by RX and TX
+	arducom.addCommand(new ArducomGetPinDirection(30, &DDRD, ~3));
+	arducom.addCommand(new ArducomSetPinDirection(31, &DDRD, ~3));
+	arducom.addCommand(new ArducomGetPinState(32, &PIND, ~3));
+	arducom.addCommand(new ArducomSetPinState(33, &PORTD, &PIND, ~3));
 
 	#if USE_DS1307
 	// connect to RTC
