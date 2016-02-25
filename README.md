@@ -51,6 +51,10 @@ For the bare necessities, have a look at:
 
 https://github.com/leomeyer/Arducom/blob/master/src/slave/minimal/minimal_arducom.ino
 
+For a list of possible hardware setups, go to:
+
+https://github.com/leomeyer/Arducom/tree/master/doc/setups.md
+
 Protocol description
 --------------------
 

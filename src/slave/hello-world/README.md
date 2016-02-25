@@ -5,7 +5,7 @@ The recommended system for this sketch is an Arduino Uno with a DS 1307 Real Tim
 
 The simplest setup would be:
 
-![Raspberry Pi - USB - Arduino Uno](../../../doc/Raspberry-USB-Arduino (Small).png)
+![Raspberry Pi - USB - Arduino Uno](../../../doc/Raspberry-USB-Arduino.png)
 
 For additional features, use a data logging shield such as this:
 
