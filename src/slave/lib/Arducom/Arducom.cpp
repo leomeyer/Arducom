@@ -522,7 +522,7 @@ int8_t ArducomWriteBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer,
 	uint16_t offset = *((uint16_t*)dataBuffer);
 	// validate block boundary
 	if (offset + *dataSize - 2 > this->maxBlockSize) {
-		*errorInfo = maxBufferSize;
+		*errorInfo = maxBlockSize;
 		return ARDUCOM_BUFFER_OVERRUN;
 	}
 	// write remaining data to the RAM
