@@ -563,8 +563,8 @@ ArducomSetPinDirection::ArducomSetPinDirection(uint8_t commandCode, volatile uin
 	
 int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
-	uint8_t mask = *((uint8_t*)dataBuffer[0]);
-	uint8_t dir = *((uint8_t*)dataBuffer[1]);
+	uint8_t mask = dataBuffer[0];
+	uint8_t dir = dataBuffer[1];
 	// get current direction values
 	uint8_t ddr = *this->ddRegister;
 	uint8_t actualMask = mask & this->allowedMask;
@@ -602,8 +602,8 @@ ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, volatile uint8_t* po
 
 int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
-	uint8_t mask = *((uint8_t*)dataBuffer[0]);
-	uint8_t state = *((uint8_t*)dataBuffer[1]);
+	uint8_t mask = dataBuffer[0];
+	uint8_t state = dataBuffer[1];
 	// get current state values
 	uint8_t port = *this->pinRegister;
 	uint8_t actualMask = mask & this->allowedMask;
