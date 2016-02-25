@@ -495,11 +495,12 @@ protected:
 
 /** This class implements a command to set the pin direction of the port defined during creation.
 *   It expects two bytes: a mask byte, and a pin direction byte. Each bit corresponds to a pin
-*   of the port. If a bit is 0 the pin should be configured as input. If it is 1, the pin
-*   should be configured as output. Pins are only configured if their corresponding bit
+*   of the port. If a bit is 0 the pin will be configured as input. If it is 1, the pin
+*   will be configured as output. Pins are only configured if their corresponding bit
 *   in the mask byte is set. The allowedMask specified which pins are allowed at all.
 *   Example: mask byte = 0x81 (10000001b), pin direction byte = 0x55 (01010101b)
-*     Sets the highest pin to input, the lowest pin to output, and does nothing to the rest.
+*   Sets the highest pin to input, the lowest pin to output, and does nothing to the rest.
+*   Returns the current value of the direction port; masks out disallowed pins.
 */
 class ArducomSetPinDirection: public ArducomCommand {
 public:
@@ -528,11 +529,12 @@ protected:
 
 /** This class implements a command to set the pin state of the port defined during creation.
 *   It expects two bytes: a mask byte, and a pin state byte. Each bit corresponds to a pin
-*   of the port. If a bit is 0 the pin should be set low. If it is 1, the pin
-*   should be set high. Pins are only modified if their corresponding bit
+*   of the port. If a bit is 0 the pin will be set low. If it is 1, the pin
+*   will be set high. Pins are only modified if their corresponding bit
 *   in the mask byte is set. The allowedMask specified which pins are allowed at all.
 *   Example: mask byte = 0x81 (10000001b), pin state byte = 0x55 (01010101b)
-*     Sets the highest pin to low, the lowest pin to high, and does nothing to the rest.
+*   Sets the highest pin to low, the lowest pin to high, and does nothing to the rest.
+*   Returns the current value of the input port; masks out disallowed pins.
 */
 class ArducomSetPinState: public ArducomCommand {
 public:

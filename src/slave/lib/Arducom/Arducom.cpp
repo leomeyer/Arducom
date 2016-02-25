@@ -574,7 +574,9 @@ int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBu
 	ddr |= dir & actualMask;
 	// set new directions
 	*this->ddRegister = ddr;
-	*dataSize = 0;	// no return value
+	// return the directions of the port pins that the master may know about
+	*dataSize = 1;
+	destBuffer[0] = *this->ddRegister & this->allowedMask;
 	return ARDUCOM_OK;
 }
 	
@@ -588,7 +590,7 @@ int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBu
 	// get current direction values
 	uint8_t ddr = *this->ddRegister;
 	// zero out disallowed directions
-	ddr &= ~this->allowedMask;
+	ddr &= this->allowedMask;
 	destBuffer[0] = ddr;
 	*dataSize = 1;
 	return ARDUCOM_OK;
@@ -613,7 +615,9 @@ int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	port |= state & actualMask;
 	// set new directions
 	*this->portRegister = port;
-	*dataSize = 0;	// no return value
+	// return the states of the port pins that the master may know about
+	*dataSize = 1;
+	destBuffer[0] = *this->pinRegister & this->allowedMask;
 	return ARDUCOM_OK;
 }
 	
@@ -627,7 +631,7 @@ int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	// get current port values
 	uint8_t pins = *this->pinRegister;
 	// zero out disallowed pins
-	pins &= ~this->allowedMask;
+	pins &= this->allowedMask;
 	destBuffer[0] = pins;
 	*dataSize = 1;
 	return ARDUCOM_OK;
