@@ -180,6 +180,9 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 	if (delayMs < 0)
 		throw std::invalid_argument("Delay must not be negative (argument -l)");
 
+	if (initDelayMs < 0)
+		throw std::invalid_argument("Init delay must not be negative (argument --initDelay)");
+
 	if (retries < 0)
 		throw std::invalid_argument("Number of retries must not be negative (argument -x)");
 
