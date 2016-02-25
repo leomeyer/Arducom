@@ -60,4 +60,4 @@ For additional features, use a data logging shield such as this:
 ![Keyes Data Logging Shield](Keyes-Data-Logging-Shield.png)
 
 If you connect to this shield from a Raspberry Pi via standard hardware I2C you have to remove the two I2C pullup resistors.
-Not doing so can damage your Raspberry's IO ports!
+Not doing so can damage your Raspberry's IO ports! To avoid this problem you can use software I2C on two different pins.

@@ -11,7 +11,7 @@ Currently supported functions:
 	- Read and write data from and to EEPROM
 	- Read and write data from and to RAM
 	- Set and read a Real Time Clock (DS1307 is supported)
-	- "FTP-style" file access from SD card
+	- "FTP-style" SD card file access
 	- Access Arduino pins (read and set state)
 	- Serial port communication via RS232
 	- I2C via hardware I2C (or software I2C on almost arbitrary pins)
@@ -21,13 +21,13 @@ Arducom is useful for e. g.:
 
 	- Remote-controlling Arduinos
 	- Data acquisition and data logging
-	- Controlling relays
+	- Controlling relays or other actors
 	- Taking measurements
 	
-For example, you want to use an Arduino with an SD card as a low cost data logger. More often
+For example, you may want to use an Arduino with an SD card as a low cost data logger. More often
 than not it is impractical to remove the SD card and insert it into a reader to
 extract the data logs because this means interrupting the data logging.
-Perhaps you may want to query the Arduino for current readings from elsewhere.
+Perhaps you may as well want to query the Arduino for current readings from elsewhere.
 Communicating over serial interfaces might not be possible because the
 Arduino already uses these for data acquisition. Software serial might also be
 impractical due to timing constraints.
@@ -36,8 +36,11 @@ Arducom allows you to communicate with the Arduino under these circumstances and
 enables you to transfer files from the Arduino's SD card during real-time operation.
 
 Arducom currently supports I2C, serial and TCP/IP communication. It also contains a software
-implementation of an I2C slave. There is also an implementation of a versatile data logger
-that supports D0 lines, DHT22 temperature measurements, and an OBIS parser for metering data.
+implementation of an I2C slave for Arduinos. There is also an implementation of a versatile data logger
+that supports up to four S0 lines, DHT22 temperature sensors, and an OBIS parser for metering data (D0).
+
+The library provides command line tools for simple testing and integration as well as a C++ API
+for use in your own programs.
 
 Quick start
 -----------
@@ -63,8 +66,7 @@ The Arduino running the Arducom library code is called the slave. The device cal
 Arducom operates using a block oriented protocol, i. e. data is transferred in packets.
 The maximum length of a packet is defined by the underlying transport layer;
 for example, I2C supports up to 32 bytes. This is also the recommended packet size.
-Bigger packets increase the RAM demand on the Arduino because of the required buffers
-and are not recommended.
+Bigger packets increase the RAM demand on the Arduino and are not recommended.
 
 The Arduino acting as a slave listens to commands from the master. It replies to each
 command with either an error code or an acknowledge code, followed by optional data.
@@ -78,7 +80,7 @@ tries to find an implementation for this command code which is executed when fou
 The implementation can examine the payload and send data back. In case of errors, 
 or if no matching command can be found, an error message is returned. 
 Error messages consist of three bytes: the error token 0xFF, the error code, and an
-implementation defined info byte.
+error specific info byte.
 The checksum byte is optional. The system verifies the checksum if the highest bit of the
 payload length byte is set. Using a checksum makes communication a tiny bit slower but more secure.
 
