@@ -71,9 +71,10 @@ This is a setup using software I2C on the Arduino:
 
 ![Raspberry Pi - Software I2C - Arduino Uno](Raspberry-Software-I2C-Arduino.png)
 
-If you cannot or don't want to use the Arduino's built-in I2C hardware you can alternatively use
-the software I2C slave implementation. This will work (relatively) reliably up to a baud rate
-of 40000 Hz. Please see the web on how to set the baud rate on your system. Check it with:
+Use this if you cannot or don't want to use the Arduino's built-in I2C hardware, for example if you have
+other devices on the Arduino's hardware I2C that require pullup resistors to more than 3.3 volts.
+It will work (relatively) reliably up to a baud rate of 40000 Hz. 
+Please see the web on how to set the baud rate on your system. Check it with:
 
 	$ sudo cat /sys/module/i2c_bcm2708/parameters/baudrate
 
@@ -93,7 +94,7 @@ The hello-world sketch needs to be modified to use this setup.
 
 The hello-world sketch uses the default software I2C pins A0 and A1 (without enabling pullup resistors).
 	
-WLAN connection (using an ESP8266)
+WLAN connection (using an ESP8266-01)
 ----------------------------------
 
 ![ESP8266 - Arduino Uno](ESP8266-Arduino.png)
@@ -103,6 +104,9 @@ Do not use the Arduino's 3.3 volts for powering the WLAN module but an external 
 If you need to program the ESP8266 you can add a programming switch that you have to close during startup.
 By loading the "BareMinimum" sketch to the Arduino you can then program the ESP8266 via the Arduino's USB port.
 You can power the Arduino via the USB port or using an external power source.
+
+For other versions of the ESP8266 or special breakout boards please check the documentation about how to connect them.
+The most important thing is to somehow connect ESP8266-RXD to Arduino-TXD and Arduino-RXD to ESP8266-TXD.
 
 Arducom provides a test sketch in the esp8266 folder (TODO).
 This test sketch works with the standard ESP8266 firmware (using AT commands).
