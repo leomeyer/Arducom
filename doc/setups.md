@@ -10,7 +10,7 @@ The simplest setup would be:
 
 Of course, you can also use a normal PC or laptop instead of a Raspberry Pi.
 
-This setup is recommended for getting started.
+This setup is recommended for getting started. The hello-world test sketch works with this setup by default.
 
 Direct serial connection
 ------------------------
@@ -23,7 +23,7 @@ On a Raspberry Pi with Raspbian, this serial port is the device /dev/ttyAMA0. De
 you will have to prevent the system from occupying this port at startup.
 For an example how to do this see here: https://www.raspberrypi.org/forums/viewtopic.php?f=44&t=15683
 
-The hello-world test sketch uses this setup by default.
+The hello-world test sketch works with this setup by default.
 
 I2C connection
 --------------
@@ -52,13 +52,14 @@ For best results, check that the baud rate is set to 100000 Hz (this is also the
 	$ sudo cat /sys/module/i2c_bcm2708/parameters/baudrate
 
 The hello-world sketch needs to be modified to use this setup.
+
 1. Disable the serial transport method by commenting SERIAL_STREAM:
 
 	// #define SERIAL_STREAM                Serial
 	
 2. Define an I2C slave address (make sure it is unique on the I2C bus):
 
-	#define I2C_SLAVE_ADDRESS       5
+	\#define I2C_SLAVE_ADDRESS       5
 
 3. Make sure that you use hardware I2C by commenting SOFTWARE_I2C:
 
@@ -66,7 +67,7 @@ The hello-world sketch needs to be modified to use this setup.
 
 ### Software I2C ###
 
-This is the setup using hardware I2C on the Arduino:
+This is a setup using software I2C on the Arduino:
 
 ![Raspberry Pi - Software I2C - Arduino Uno](Raspberry-Software-I2C-Arduino.png)
 
@@ -77,17 +78,18 @@ of 40000 Hz. Please see the web on how to set the baud rate on your system. Chec
 	$ sudo cat /sys/module/i2c_bcm2708/parameters/baudrate
 
 The hello-world sketch needs to be modified to use this setup.
+
 1. Disable the serial transport method by commenting SERIAL_STREAM:
 
 	// #define SERIAL_STREAM                Serial
 	
 2. Define an I2C slave address (make sure it is unique on the I2C bus):
 
-	#define I2C_SLAVE_ADDRESS       5
+	\#define I2C_SLAVE_ADDRESS       5
 
 3. Make sure that you use software I2C by uncommenting SOFTWARE_I2C:
 
-	#define SOFTWARE_I2C         1
+	\#define SOFTWARE_I2C         1
 
 The hello-world sketch uses the default software I2C pins A0 and A1 (without enabling pullup resistors).
 	
