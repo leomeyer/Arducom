@@ -227,9 +227,9 @@ or:
 	No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)
 
 This may be due to SD card operations requiring more time than expected.
-In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something around 3. 
+In these cases try to increase the number of retries using the command line option -x _number_ with _number_ being something around 3 (default). 
 You can also set a delay time which is applied after each command to give the device some time to prepare the reply, 
-using the option -l _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. 
+using the option -l _delay_ with _delay_ in milliseconds. Sensible values are from 10 to 50. The default is 25.
 Be aware that this will slow down FTP file transfers because these use lots of requests. It is better to increase the number of retries.
 
 You can also set these options interactively in arducom-ftp by using "set retries _number_" and "set delay _delay_" respectively.
