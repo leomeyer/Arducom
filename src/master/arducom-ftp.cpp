@@ -66,6 +66,11 @@ public:
 		commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 		continueFile = true;
 		allowDelete = false;
+		
+		// increase the default command delay because SD card operations may be slow
+		delayMs = 25;
+		// set default number of retries
+		retries = 3;
 	}
 
 	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
