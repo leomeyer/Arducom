@@ -67,6 +67,7 @@ public:
 	bool verbose;
 	bool debug;
 	long initDelayMs;
+	bool initDelaySetManually;
 	long delayMs;
 	long timeoutMs;
 	int retries;
@@ -79,7 +80,8 @@ public:
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
-		initDelayMs = 2000;
+		initDelayMs = 0;
+		initDelaySetManually = false;
 		delayMs = 10;
 		timeoutMs = 3000;
 		retries = 0;

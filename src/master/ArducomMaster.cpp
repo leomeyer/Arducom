@@ -133,6 +133,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 		} else {
 			try {
 				initDelayMs = std::stol(args.at(*i));
+				initDelaySetManually = true;
 			} catch (std::exception& e) {
 				throw std::invalid_argument("Expected numeric initialization delay in milliseconds after argument --initDelay");
 			}
@@ -250,7 +251,7 @@ std::string ArducomBaseParameters::toString() {
 	result << "; ";
 	result << "Command delay: ";
 	result << this->delayMs;
-	result << "; ";
+	result << " ms; ";
 	result << "Use checksum: ";
 	result << (this->useChecksum ? "yes" : "no");
 

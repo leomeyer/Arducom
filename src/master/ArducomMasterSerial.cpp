@@ -73,6 +73,17 @@ ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename,
 void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
 	
+	// Special case for devices that use USB over serial:
+	// To account for resets of the Arduino that might occur because of the
+	// usage of the DTR line the --initDelay is set to 2000 if it has not been
+	// set manually.
+	if (!parameters->initDelaySetManually) {
+		if ((this->filename.find("ttyUSB") != std::string::npos)
+			|| (this->filename.find("ttyACM") != std::string::npos)) {
+			parameters->initDelayMs = 2000;
+		}
+	}
+	
 	// default protocol: 8N1
 	uint8_t byteSize = 8;
 	uint8_t parity = 0;
