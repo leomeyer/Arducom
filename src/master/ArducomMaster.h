@@ -79,9 +79,9 @@ public:
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
-		initDelayMs = 0;
+		initDelayMs = 2000;
 		delayMs = 10;
-		timeoutMs = 1000;
+		timeoutMs = 3000;
 		retries = 0;
 		useChecksum = true;
 		semkey = -1;
@@ -107,6 +107,9 @@ public:
 	/** Throws an exception if the parameters cannot be validated. 
 	 * Returns an initialized ArducomTransport object if everything is ok. */
 	virtual ArducomMasterTransport* validate();
+
+	/** Returns a string representation of the parameters. */
+	virtual std::string toString(void);
 
 	/** Display version information and exit. */
 	virtual void showVersion(void) = 0;

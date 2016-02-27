@@ -64,11 +64,11 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-#define SERIAL_STREAM		Serial
+// #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // If you want to use I2C communications, define a slave address.
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	6
 
 // To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
 // #define SOFTWARE_I2C		1
@@ -136,7 +136,7 @@
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-// #define DEBUG_OUTPUT		Serial
+#define DEBUG_OUTPUT		Serial
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -148,7 +148,7 @@
 // If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use
 // this during normal operation.
-// #define USE_ARDUCOM_DEBUG	1
+#define USE_ARDUCOM_DEBUG	1
 
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.

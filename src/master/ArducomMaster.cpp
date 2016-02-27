@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <string.h>
+#include <sstream>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMaster.h"
@@ -223,6 +224,39 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 	return transport;
 }
 
+std::string ArducomBaseParameters::toString() {
+
+	std::stringstream result;
+	result << "Transport: ";
+	result << this->transportType;
+	result << "; ";
+	result << "Device/IP: ";
+	result << this->device;
+	result << "; ";
+	result << "Address/Port: ";
+	result << this->deviceAddress;
+	result << "; ";
+	result << "Baud rate: ";
+	result << this->baudrate;
+	result << "; ";
+	result << "Timeout: ";
+	result << this->timeoutMs;
+	result << " ms; ";
+	result << "Init delay: ";
+	result << this->initDelayMs;
+	result << " ms; ";
+	result << "Retries: ";
+	result << this->retries;
+	result << "; ";
+	result << "Command delay: ";
+	result << this->delayMs;
+	result << "; ";
+	result << "Use checksum: ";
+	result << (this->useChecksum ? "yes" : "no");
+
+	return result.str();
+}
+
 std::string ArducomBaseParameters::getHelp() {
 	std::string result;
 	result.append("Arducom base parameters:\n");
@@ -244,7 +278,7 @@ std::string ArducomBaseParameters::getHelp() {
 	result.append("  -n: Do not use checksums. Not recommended.\n");
 	result.append("  --initDelay <value>: Delay in milliseconds after transport init.\n");
 	result.append("    Only relevant for serial transport (e. g. for Arduino resets).\n");
-	result.append("  -u <value>: Timeout in milliseconds. Optional; default: 1000.\n");
+	result.append("  -u <value>: Timeout in milliseconds. Optional; default: 3000.\n");
 	result.append("  -l <value>: Delay in milliseconds between send and receive.\n");
 	result.append("    Optional; default: 10. Gives the device time to process.\n");
 	result.append("  -x <value>: Number of retries should sending or retrieving fail.\n");
@@ -296,6 +330,9 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	// always set errorInfo to 0 (if it is not null). For errors of type ARDUCOM_FUNCTION_ERROR
 	// errorInfo contains the error code as supplied by the device. This gives the caller
 	// the ability to react to device specific function errors.
+
+	if (parameters.debug)
+	std::cout << parameters.toString() << std::endl;
 	
 	// determine the semaphore key to use
 	// If the parameters specify a value < 0 (default), use the transport's semaphore key.
