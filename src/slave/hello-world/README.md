@@ -95,16 +95,11 @@ arducom will try to interpret the reply. The correct output is something like:
 
     Arducom slave version: 1; Uptime: 175696 ms; Flags: 0 (debug off); Free RAM: 289 bytes; Info: HelloWorld
 
-If you only receive error messages of type "No data" you may have a problem that occurs with some serial over USB drivers.
-These drivers use the DTR line when opening the serial port, and this causes the Arduino to reset. The command will then be lost.
-Unfortunately there is no easy software fix for this. You can either disable the reset in hardware, but this also prevents
-automatically uploading new code. Or you can use the Arducom parameter "--initDelay 3000" with each command.
-Arducom will then wait for 3000 milliseconds until it issues its command to give the Arduino time to reset itself.
-Naturally, for a serious data logger you can't use this because you would not want the device to reset on connecting.
-Alternatively you can try a different hardware serial port or USB to serial converter.
-
 Some Arduinos exhibit flaky behavior over their serial USB connection resulting in dropped or corrupted bytes.
 If it doesn't work right away try again several times and it might eventually work.
+
+To see what is going on under the hood you can switch to verbose mode using '-v',
+or to extra verbose mode using '-vv'.
 
 Accessing a Real Time Clock
 ---------------------------
@@ -243,5 +238,17 @@ Help can be obtained by starting arducom or arducom-ftp with parameter '-h' or '
 
 arducom-ftp supports a 'help' command.
 
-To see what is going on under the hood you can switch both programs to verbose mode using '-v',
-or to extra verbose mode using '-vv'.
+Some serial over USB drivers use the DTR line when opening the serial port, and this causes the Arduino to reset.
+If arducom sends too early the command will be lost and you will receive error messages of type "No data".
+Unfortunately there is no easy software fix for this. You can either disable the reset in hardware, but this also disables
+automatic uploading of new code. The behavior is driver specific: an Arduino connected to one PC may exhibit this
+problem while connected to a different machine it may not.
+
+Arducom attempts to detect these devices by checking for the strings "ttyACM" and "ttyUSB" and if found, sets an
+initialization delay of 2000 milliseconds which can be overridden using the parameter "--initDelay <milliseconds>".
+Arducom will then wait for the specified time until it issues its command to give the Arduino time to reset itself.
+Naturally, for a serious data logger you can't use this because you would not want the device to reset on connecting.
+Alternatively you can try a hardware serial port or a different USB to serial converter.
+
+You can find out whether the Arduino resets by checking whether the reported uptime of command 0 does not increase from call to call.
+If it does not reset you can safely disable the initialization delay by specifying "--initDelay 0".
