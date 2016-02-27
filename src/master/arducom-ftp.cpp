@@ -66,6 +66,7 @@ public:
 		commandBase = ARDUCOM_FTP_DEFAULT_COMMANDBASE;
 		continueFile = true;
 		allowDelete = false;
+		retries = 3;
 	}
 
 	void evaluateArgument(std::vector<std::string>& args, size_t* i) override {
