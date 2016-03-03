@@ -81,7 +81,12 @@
 class ArducomTransport {
 
 public:
-	enum Status: uint8_t {
+	enum Status
+// avoid warnings about typed enums if C++11 is not supported
+#if __cplusplus >= 201103L
+: uint8_t 
+#endif
+{
 		NO_DATA
 		, TOO_MUCH_DATA
 		, HAS_DATA
