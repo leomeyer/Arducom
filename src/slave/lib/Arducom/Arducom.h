@@ -62,6 +62,9 @@
 #define ARDUCOM_FLAG_INFINITELOOP		0x40
 #define ARDUCOM_FLAG_SOFTRESET			0x80
 
+// Interpreted by command 0; calls the shudown hook if provided
+#define ARDUCOM_SHUTDOWN			0xff
+
 #ifdef ARDUINO
 
 /******************************************************************************************	
@@ -220,6 +223,8 @@ protected:
 *   Bit 6 of the flags causes an infinite loop (to test a watchdog).
 *   Bit 7 of the flags causes a software restart (using the watchdog).
 *   These two bytes have to be specified together.
+*   If both bytes are 0xff, and there is a shutdownHook function provided, this function is called.
+*   This indicates that the system should halt, but this function takes no further action in this regard.
 *   It returns the following info:
 *	Byte 0: Arducom version number
 *   Bytes 1 - 4: result of the millis() function, LSB first; roughly speaking, the uptime of the slave
@@ -228,15 +233,18 @@ protected:
 *   Bytes 8 - n: character data (for example, the slave name)
 */
 class ArducomVersionCommand: public ArducomCommand {
+typedef void (*shutdownHook_t)();
 public:
 	/** Initialize the command with a null-terminated data string. */
-	ArducomVersionCommand(const char* data) : ArducomCommand(0) {
+	ArducomVersionCommand(const char* data, shutdownHook_t shutdownHook = NULL) : ArducomCommand(0) {
 		this->data = data;
+		this->shutdownHook = shutdownHook;
 	}
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
 	const char *data;
+	shutdownHook_t shutdownHook;
 };
 
 /***************************************

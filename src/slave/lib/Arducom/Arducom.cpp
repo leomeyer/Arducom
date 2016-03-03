@@ -255,6 +255,7 @@ uint8_t Arducom::getFlags(void) {
 /******************************************************************************************	
 * Arducom command implementations
 ******************************************************************************************/
+
 // for calculation of free RAM
 extern int __heap_start, *__brkval; 
 
@@ -266,7 +267,11 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 	if (*dataSize >= 2) {
 		uint8_t mask = dataBuffer[0];
 		uint8_t flags = dataBuffer[1];
-		arducom->setFlags(mask, flags);
+		
+		if ((mask == ARDUCOM_SHUTDOWN) && (flags == ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
+			(this->shutdownHook)();
+		else
+			arducom->setFlags(mask, flags);
 	}
 	
 	uint8_t pos = 0;

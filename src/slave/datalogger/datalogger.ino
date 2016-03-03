@@ -56,6 +56,7 @@
 // The program attempts to detect whether the last start was due to a watchdog reset. If yes, the S0 values in memory
 // are not overwritten from EEPROM to minimize data loss.
 // In the event of a requested shutdown (shutdown button pressed) the S0 values are stored in EEPROM, too.
+// Also, you can send 0xFFFF as payload to the version command 0 to initiate the shutdown.
 //
 // Transmitting large data blocks via software I2C may cause S0 timing to become inaccurate. This may affect devices 
 // that send impulses very fast, approaching the 30 ms per impulse limit. This is unlikely to occur in practice.
@@ -880,6 +881,7 @@ uint8_t sdCardOK;
 uint32_t lastWriteMs;
 uint32_t lastOKDateFromRTC;
 bool rtcOK;
+bool initiateShutdown;		// set to true by callback to command 0
 
 // DHT sensor 
 dht DHT;
@@ -1144,6 +1146,10 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 	}	
 }
 
+void shutdownHook() {
+	initiateShutdown = true;
+}
+
 /*******************************************************
 * Setup
 *******************************************************/
@@ -1305,10 +1311,12 @@ void setup() {
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 	#endif
 	
-	// reserved version command (it's recommended to leave this in
-	// except if you really have to save flash/RAM)
-	// it can also test the watchdog and perform a software reset
-	arducom.addCommand(new ArducomVersionCommand("Logger"));
+	// Reserved version command (it's recommended to leave this in
+	// except if you really have to save flash/RAM).
+	// It can also test the watchdog and perform a software reset.
+	// Sending 0xffff to this command will cause the shutdownHook to initiate the shutdown
+	// which will store current values in EEPROM and halt the system.
+	arducom.addCommand(new ArducomVersionCommand("Logger", &shutdownHook));
 
 	// EEPROM access commands
 	// due to RAM constraints we have to expose the whole EEPROM as a block
@@ -1670,12 +1678,13 @@ void loop() {
 	
 	wdt_reset();
 
-	// shutdown requested or EEPROM transfer interval reached?
+	// shutdown requested or EEPROM transfer interval reached or shutdown command sent?
 	if (
 	#ifdef SHUTDOWN_BUTTON
 		(digitalRead(SHUTDOWN_BUTTON) == LOW) ||
 	#endif
-		(millis() / 1000 - lastEEPROMWrite > EEPROM_INTERVAL_S)) {
+		(millis() / 1000 - lastEEPROMWrite > EEPROM_INTERVAL_S)
+		|| initiateShutdown) {
 		
 		// write S0 values to EEPROM
 		eeprom_update_block((const void*)&readings[S0_A_VALUE], (void*)EEPROM_S0COUNTER_A, EEPROM_S0COUNTER_LEN);
@@ -1690,7 +1699,7 @@ void loop() {
 
 	// shutdown requested?
 	#ifdef SHUTDOWN_BUTTON
-	if (digitalRead(SHUTDOWN_BUTTON) == LOW) {
+	if ((digitalRead(SHUTDOWN_BUTTON) == LOW) || initiateShutdown) {
 		log(F("Shutdown requested"));
 		wdt_disable();
 		
