@@ -7,6 +7,8 @@ The simplest setup would be:
 
 ![Raspberry Pi - USB - Arduino Uno](../../../doc/Raspberry-USB-Arduino.png)
 
+Of course, you can also use a PC or laptop instead of a Raspberry Pi.
+
 For additional features, use a data logging shield such as this:
 
 ![Keyes Data Logging Shield](../../../doc/Keyes-Data-Logging-Shield.png)
@@ -113,7 +115,8 @@ If it is not installed, install it:
 	$ sudo apt-get install g++
 	
 It is possible that you don't have a g++ version that supports C++11 (i. e., a version number below 4.8). In this case you may have to install
-g++ 4.8 or newer on your operation system. You may also have to change make.sh and make-ftp.sh to use your specific compiler version.
+g++ 4.8 or newer on your operation system. Please check the web on how to do this.
+You may also have to change make.sh and make-ftp.sh to use your specific compiler version.
 
 To successfully compile you may also have to install libssl-dev:
 
@@ -150,6 +153,10 @@ The output should be something like:
 If the RTC has not yet been set you can use the following command to set it:
 
     $ date +"%s" | ./arducom -t serial -d /dev/ttyACM0 -c 22 -i Int32 -r
+	
+This command transfers the current Unix timestamp (UTC) to the Arduino and sets the RTC time from it.
+This means that the RTC runs on UTC, not the local time of your machine as set by the time zone.
+When querying the date it is automatically converted back by the date command.
 
 Accessing EEPROM and RAM
 ------------------------
@@ -202,7 +209,7 @@ also be written as:
 
     $ ./arducom -t serial -d /dev/ttyACM0 -c 19 -i Int16 -p 2 -i Byte -p 4
 	
-This causes arducom to construct a payload of three bytes length: first the 16-bit value of 2 and the byte value 4.
+This causes arducom to construct a payload of three bytes length: first a 16-bit value of 2 (0002 hex) and a byte value of 4 (04 hex).
 	
 Accessing Arduino pins
 ----------------------
