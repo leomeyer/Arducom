@@ -61,26 +61,61 @@ Build the sketch:
     $ cd Arducom/src/slave/hello-world
     $ make
 
+You may get a message saying that make is not yet installed. Install it:
+
+	$ sudo apt-get install make
+	
+If you get an error message saying that make can't find the command "ard-parse-boards", your Arduino.mk is too old. This can happen with older Linux distributions.
+Perform the following steps:
+
+	$ sudo su
+	$ cd /usr/share/arduino
+	$ mv Arduino.mk Arduino.mk_old
+	$ wget https://raw.githubusercontent.com/sudar/Arduino-Makefile/master/Common.mk
+	$ wget https://raw.githubusercontent.com/sudar/Arduino-Makefile/master/Arduino.mk
+	$ mkdir bin
+	$ cd bin
+	$ wget https://raw.githubusercontent.com/sudar/Arduino-Makefile/master/bin/ard-reset-arduino
+	$ chmod +x ard-reset-arduino
+	$ apt-get install python-pip
+	$ pip install pyserial
+	$ exit
+	
 The make command should now produce output similar to this:
 
     ...
 
-	Program:   22886 bytes (69.8% Full)
+	Program:   25272 bytes (77.1% Full)
 	(.text + .data + .bootloader)
 
-	Data:       1277 bytes (62.4% Full)
+	Data:       1441 bytes (70.4% Full)
 	(.data + .bss + .noinit)
 
-Check that the Arduino's serial port is correctly set in the Makefile.
+Check that the Arduino's serial port is correctly set in the Makefile. If you are using a USB connection, this will be something like /dev/ttyUSB* or /dev/ttyACM*.
 Upload the compiled sketch to your Arduino:
 
     $ make upload
+
+In case of errors try 
+
+	$ sudo make upload
 
 The default hello-world sketch uses serial communication at 57600 baud. To test the sketch go to the folder ~/Arducom/src/master. Build the programs:
 
     $ ./make.sh && ./make-ftp.sh
 
-These programs require C++11. On Linux, use GCC 4.8 or newer. You may have to install libssl-dev:
+These programs require C++11. On Linux, use GCC 4.8 or newer. Check which version of g++ is installed:
+
+	$ g++ --version
+
+If it is not installed, install it:
+
+	$ sudo apt-get install g++
+	
+It is possible that you don't have a g++ version that supports C++11 (i. e., a version number below 4.8). In this case you may have to install
+g++ 4.8 or newer on your operation system. You may also have to change make.sh and make-ftp.sh to use your specific compiler version.
+
+To successfully compile you may also have to install libssl-dev:
 
 	$ sudo apt-get install libssl-dev
 	
