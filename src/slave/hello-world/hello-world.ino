@@ -2,11 +2,13 @@
 // by Leo Meyer <leo@leomeyer.de>
 
 // Demonstrates the use of the Arducom library.
-// Supports serial or I2C transport methods, with I2C
-// being implemented in either hardware or software.
+// Supports serial or I2C transport methods, either
+// being implemented in hardware or software.
 // Supports the Arducom status inquiry command.
 // Implements basic EEPROM access commands.
 // Implements basic RAM access commands (to expose variables).
+// Exposes the upper six pins of port D for reading and writing.
+// Exposes the analog pins for reading.
 // If an SD card is present, implements basic FTP support
 // using the arducom-ftp master.
 // If a DS1307 RTC is connected, supports getting and
@@ -15,6 +17,7 @@
 // This example code is in the public domain.
 
 #include <SPI.h>
+#include <SoftwareSerial.h>
 
 // use SdFat:
 // https://github.com/greiman/SdFat
@@ -34,7 +37,6 @@
 // https://learn.adafruit.com/adafruit-data-logger-shield 
 
 // Feel free to play with different settings (see comments for the defines).
-
 
 // LED pin; define this if you want to use the LED as a status indicator.
 // Note that using the LED will greatly slow down operations like FTP which use
@@ -64,8 +66,16 @@
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
+// For a hardware UART connection, use:
 #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
+
+// For a software serial connection (for example with a Bluetooth module), use:
+// #define SOFTSERIAL_RX_PIN	8
+// #define SOFTSERIAL_TX_PIN	9
+// SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+// #define SERIAL_STREAM		softSerial
+// #define SERIAL_BAUDRATE		9600
 
 // If you want to use I2C communications, define a slave address.
 // #define I2C_SLAVE_ADDRESS	5
@@ -75,7 +85,7 @@
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
-#ifdef SOFTWARE_I2C
+#if defined SOFTWARE_I2C && defined I2C_SLAVE_ADDRESS
 
 	// The buffer size in bytes for the send and receive buffer
 	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
@@ -138,6 +148,7 @@
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
 // #define DEBUG_OUTPUT		Serial
+// #define DEBUG_BAUDRATE		57600
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -161,14 +172,14 @@
 * setting of RTC time)
 *******************************************************/
 
-#if USE_DS1307
+#ifdef USE_DS1307
+
 // use RTClib from Adafruit
 // https://github.com/adafruit/RTClib
 #include <WSWire.h>
 #include <RTClib.h>
 
 RTC_DS1307 RTC;  // define the Real Time Clock object
-#endif  // USE_DS1307
 
 // RTC time is externally represented as a UNIX timestamp
 // (32 bit integer). These two command classes implement
@@ -202,6 +213,8 @@ public:
 		return ARDUCOM_OK;
 	}
 };
+
+#endif		// USE_DS1307
 
 /*******************************************************
 * Variables
@@ -275,7 +288,7 @@ void setup()
 #endif
 	
 #ifdef DEBUG_OUTPUT
-	DEBUG_OUTPUT.begin(SERIAL_BAUDRATE);
+	DEBUG_OUTPUT.begin(DEBUG_BAUDRATE);
 	while (!DEBUG_OUTPUT) {}  // Wait for Leonardo.
 #endif
 
@@ -315,6 +328,9 @@ void setup()
 	arducom.addCommand(new ArducomSetPinDirection(31, &DDRD, ~3));
 	arducom.addCommand(new ArducomGetPinState(32, &PIND, ~3));
 	arducom.addCommand(new ArducomSetPinState(33, &PORTD, &PIND, ~3));
+	
+	// expose the analog ports
+	arducom.addCommand(new ArducomGetAnalogPin(35));
 
 	#if USE_DS1307
 	// connect to RTC
@@ -398,5 +414,3 @@ void loop()
 	}
 #endif
 }
-
-

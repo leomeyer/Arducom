@@ -41,7 +41,8 @@ int8_t ArducomTransportStream::doWork(void) {
 		this->size = 0;
 	// read incoming data
 	while (stream->available()) {
-		this->data[this->size++] = stream->read();
+		this->data[this->size] = stream->read();
+		this->size++;
 		if (this->size > ARDUCOM_BUFFERSIZE) {
 			this->status = TOO_MUCH_DATA;
 			return ARDUCOM_OVERFLOW;
