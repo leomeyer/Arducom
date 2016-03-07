@@ -42,16 +42,16 @@ To enable software serial in the hello-world sketch, follow these steps:
 
 1. Disable hardware serial support:
 
-	// #define SERIAL_STREAM                Serial
-	// #define SERIAL_BAUDRATE              57600
+		// #define SERIAL_STREAM                Serial
+		// #define SERIAL_BAUDRATE              57600
 
 2. Enable software serial support:
 
-	\#define SOFTSERIAL_RX_PIN       8
-	\#define SOFTSERIAL_TX_PIN       9
-	SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
-	\#define SERIAL_STREAM           softSerial
-	\#define SERIAL_BAUDRATE         9600
+		#define SOFTSERIAL_RX_PIN       8
+		#define SOFTSERIAL_TX_PIN       9
+		SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+		#define SERIAL_STREAM           softSerial
+		#define SERIAL_BAUDRATE         9600
 	
 Getting a Linux machine to connect to the HC-05 is a topic that is outside the scope of this document.
 You can find a lot of information on the web, please see for example here:
@@ -89,15 +89,15 @@ The hello-world sketch needs to be modified to use this setup.
 
 1. Disable the serial transport method by commenting SERIAL_STREAM:
 
-	// #define SERIAL_STREAM                Serial
+		// #define SERIAL_STREAM                Serial
 	
 2. Define an I2C slave address (make sure it is unique on the I2C bus):
 
-	\#define I2C_SLAVE_ADDRESS       5
+		#define I2C_SLAVE_ADDRESS       5
 
 3. Make sure that you use hardware I2C by commenting SOFTWARE_I2C:
 
-	// #define SOFTWARE_I2C         1
+		// #define SOFTWARE_I2C         1
 
 ### Software I2C ###
 
@@ -116,15 +116,15 @@ The hello-world sketch needs to be modified to use this setup.
 
 1. Disable the serial transport method by commenting SERIAL_STREAM:
 
-	// #define SERIAL_STREAM                Serial
+		// #define SERIAL_STREAM                Serial
 	
 2. Define an I2C slave address (make sure it is unique on the I2C bus):
 
-	\#define I2C_SLAVE_ADDRESS       5
+		#define I2C_SLAVE_ADDRESS       5
 
 3. Make sure that you use software I2C by uncommenting SOFTWARE_I2C:
 
-	\#define SOFTWARE_I2C         1
+		#define SOFTWARE_I2C         1
 
 The hello-world sketch uses the default software I2C pins A0 and A1 (without enabling pullup resistors).
 	
