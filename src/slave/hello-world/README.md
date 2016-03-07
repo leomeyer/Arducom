@@ -13,6 +13,8 @@ For additional features, use a data logging shield such as this:
 
 ![Keyes Data Logging Shield](../../../doc/Keyes-Data-Logging-Shield.png)
 
+For more setups, see https://github.com/leomeyer/Arducom/tree/master/doc/setups.md
+
 Installing the required software
 --------------------------------
 
@@ -239,6 +241,11 @@ This command will respond with the current directional state. To query this stat
 	$  ./arducom -t serial -d /dev/ttyACM0 -c 30 -o Bin
 	
 To set or query the state of the pins use commands 33 and 32 in a similar fashion.
+
+To read the value of an analog pin you can use command 35. It expects the channel number (one byte) and returns
+an Int16 containing a 10-bit value. Example (reads channel 2):
+
+	$  ./arducom -t serial -d /dev/ttyACM0 -c 35 -p 02 -o Int16
 	
 Accessing files on an SD card
 -----------------------------

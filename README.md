@@ -12,8 +12,9 @@ Currently supported functions:
 	- Read and write data from and to RAM
 	- Set and read a Real Time Clock (DS1307 is supported)
 	- "FTP-style" SD card file access
-	- Access Arduino pins (read and set state)
-	- Serial port communication via RS232
+	- Access Arduino digital pins (read and set state)
+	- Read the values of analog pins
+	- Serial port communication via RS232 (or via Bluetooth module)
 	- I2C via hardware I2C (or software I2C on almost arbitrary pins)
 	- TCP/IP (e. g. using an ESP8266 WLAN module)
 

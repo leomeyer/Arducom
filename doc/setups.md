@@ -11,6 +11,7 @@ The simplest setup would be:
 Of course, you can also use a normal PC or laptop instead of a Raspberry Pi.
 
 This setup is recommended for getting started. The hello-world test sketch works with this setup by default.
+The serial device on the Raspberry Pi would be something like /dev/ttyUSB0 or /dev/ttyACM0.
 
 Direct serial connection
 ------------------------
@@ -24,6 +25,39 @@ you will have to prevent the system from occupying this port at startup.
 For an example how to do this see here: https://www.raspberrypi.org/forums/viewtopic.php?f=44&t=15683
 
 The hello-world test sketch works with this setup by default.
+
+Serial Bluetooth connection
+---------------------------
+
+![HC-05 Bluetooth Module - Arduino Uno](HC-05-Arduino.png)
+
+This example shows how to connect a serial Bluetooth module of type HC-05.
+If you use a different one, please check that you use the correct voltages on your module's pins.
+
+This example uses software serial port emulation on the Arduino. The default baud rate of the HC-05 is
+9600 baud which is quite slow but works for a test. If you change the baud rate be aware that software
+serial stops working well from 115200 baud onwards on 16 MHz devices; possible less on slower ones.
+
+To enable software serial in the hello-world sketch, follow these steps:
+
+1. Disable hardware serial support:
+
+	// #define SERIAL_STREAM                Serial
+	// #define SERIAL_BAUDRATE              57600
+
+2. Enable software serial support:
+
+	\#define SOFTSERIAL_RX_PIN       8
+	\#define SOFTSERIAL_TX_PIN       9
+	SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+	\#define SERIAL_STREAM           softSerial
+	\#define SERIAL_BAUDRATE         9600
+	
+Getting a Linux machine to connect to the HC-05 is a topic that is outside the scope of this document.
+You can find a lot of information on the web, please see for example here:
+https://myraspberryandme.wordpress.com/2013/11/20/bluetooth-serial-communication-with-hc-05/
+
+Once setup correctly, the serial device on the Raspberry Pi would be something like /dev/rfcomm0.
 
 I2C connection
 --------------
