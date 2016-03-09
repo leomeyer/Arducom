@@ -85,7 +85,7 @@
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
-#if defined SOFTWARE_I2C && defined I2C_SLAVE_ADDRESS
+#if defined I2C_SLAVE_ADDRESS && defined SOFTWARE_I2C
 
 	// The buffer size in bytes for the send and receive buffer
 	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
