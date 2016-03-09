@@ -160,7 +160,7 @@
 // 1 (TX): used for programmer, do not use
 // 2: Software Serial RX on Uno (unused if using Software I2C)
 // 3: Software Serial TX on Uno (unused if using Software I2C) 
-// 4 - 7: S0 inputs (attention: 4 is Chip Select for some data logger shields)
+// 4 - 7: S0 inputs (attention: 4 is SD card chip select for some data logger shields)
 // 8: data pin for DHT22 A
 // 9: data pin for DHT22 B
 // 10: Chip Select for SD card on Keyes Data Logger Shield
