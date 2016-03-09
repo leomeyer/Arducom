@@ -319,6 +319,7 @@ raw_upload_hex:
 #include <Arduino.h>
 
 #include <SPI.h>
+#include <SoftwareSerial.h>
 #include <WSWire.h>
 
 // use RTClib from Adafruit
@@ -348,22 +349,30 @@ raw_upload_hex:
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
-// #define SERIAL_STREAM	Serial
+// For a hardware UART connection, use:
+#define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
+// For a software serial connection (for example with a Bluetooth module), use:
+// #define SOFTSERIAL_RX_PIN	2
+// #define SOFTSERIAL_TX_PIN	3
+// SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+// #define SERIAL_STREAM		softSerial
+// #define SERIAL_BAUDRATE		9600
+
 // If you want to use I2C communications, define a slave address.
-#define I2C_SLAVE_ADDRESS	5
+// #define I2C_SLAVE_ADDRESS	5
 
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
 #endif
 
 // To use software I2C for Arducom, define SOFTWARE_I2C. If undefined, hardware I2C is used.
-#define SOFTWARE_I2C		1
+// #define SOFTWARE_I2C		1
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
-#ifdef SOFTWARE_I2C
+#if defined SOFTWARE_I2C && defined I2C_SLAVE_ADDRESS
 
 	// The buffer size in bytes for the send and receive buffer
 	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
@@ -1175,7 +1184,7 @@ void setup() {
 		OBIS_STREAM.begin(OBIS_BAUDRATE, OBIS_PROTOCOL);
 		#else
 		OBIS_STREAM.begin(OBIS_BAUDRATE);
-		#warning Trying to set OBIS serial configuration directly
+		#warning Trying to set OBIS serial configuration directly; this may work or not depending on your system
 		#if defined(__AVR_ATmega8__)
 		UCSRC = (1 << URSEL) | OBIS_PROTOCOL;	// select UCSRC (shared with UBRRH)
 		#else
