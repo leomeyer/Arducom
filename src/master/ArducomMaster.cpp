@@ -146,6 +146,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 		} else {
 			try {
 				delayMs = std::stol(args.at(*i));
+				delaySetManually = true;
 			} catch (std::exception& e) {
 				throw std::invalid_argument("Expected numeric delay in milliseconds after argument -l");
 			}
@@ -187,6 +188,17 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 
 	if (retries < 0)
 		throw std::invalid_argument("Number of retries must not be negative (argument -x)");
+		
+	if ((transportType == "") && (device != "")) {
+		// try to figure out transport type from device name
+		if ((device.find("/dev/tty") == 0)
+			|| (device.find("/dev/rfcomm") == 0)) {
+			transportType = "serial";
+		} else
+		if (device.find("/dev/i2c") == 0) {
+			transportType = "i2c";
+		}
+	}
 
 	ArducomMasterTransport *transport;
 
@@ -214,7 +226,14 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 
 		transport = new ArducomMasterTransportTCPIP(device, deviceAddress);
 	} else
-		throw std::invalid_argument("Transport type not supplied or unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
+	if (transportType != "")
+		throw std::invalid_argument("Transport type unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
+	else {
+		if (device != "")
+			throw std::invalid_argument("Transport type could not be determined, use 'i2c', 'serial', or 'tcpip' (argument -t)");
+		else
+			throw std::invalid_argument("Expected a device name (argument -d)");
+	}		
 
 	try {
 		transport->init(this);
