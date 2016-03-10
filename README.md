@@ -92,7 +92,7 @@ Arducom makes it easy to implement your own commands. Each command is represente
 a class that derives from the ArducomCommand class.
 
 See hello-world.ino for a simple example:
-https://github.com/leomeyer/Arducom/blob/master/src/slave/hello-world/hello-world.ino#L176
+https://github.com/leomeyer/Arducom/blob/master/src/slave/hello-world/hello-world.ino#L188
 
 Master implementation
 ---------------------

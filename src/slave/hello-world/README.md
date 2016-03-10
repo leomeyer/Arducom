@@ -116,7 +116,7 @@ If it is not installed, install it:
 
 	$ sudo apt-get install g++
 	
-It is possible that you don't have a g++ version that supports C++11 (i. e., a version number below 4.8). In this case you may have to install
+It is possible that you have a g++ version that doesn't support C++11 (i. e., a version number below 4.8). In this case you may have to install
 g++ 4.8 or newer on your operation system. Please check the web on how to do this.
 You may also have to change make.sh and make-ftp.sh to use your specific compiler version.
 

@@ -36,7 +36,7 @@ If you use a different one, please check that you use the correct voltages on yo
 
 This example uses software serial port emulation on the Arduino. The default baud rate of the HC-05 is
 9600 baud which is quite slow but works for a test. If you change the baud rate be aware that software
-serial stops working well from 115200 baud onwards on 16 MHz devices; possible less on slower ones.
+serial stops working well from 115200 baud onwards on 16 MHz devices; possibly less on slower ones.
 
 To enable software serial in the hello-world sketch, follow these steps:
 
