@@ -33,6 +33,12 @@ ArducomMasterTransportI2C::~ArducomMasterTransportI2C() {
 
 void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
+
+	// Special case for devices that use I2C:
+	// Set the command delay if it has not been set manually.
+	if (!parameters->delaySetManually) {
+		parameters->delayMs = 10;
+	}
 }
 
 void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries) {

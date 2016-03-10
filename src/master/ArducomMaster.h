@@ -69,6 +69,7 @@ public:
 	long initDelayMs;
 	bool initDelaySetManually;
 	long delayMs;
+	bool delaySetManually;
 	long timeoutMs;
 	int retries;
 	bool useChecksum;
@@ -82,7 +83,8 @@ public:
 		debug = false;
 		initDelayMs = 0;
 		initDelaySetManually = false;
-		delayMs = 10;
+		delayMs = 0;
+		delaySetManually = false;
 		timeoutMs = 3000;
 		retries = 0;
 		useChecksum = true;
