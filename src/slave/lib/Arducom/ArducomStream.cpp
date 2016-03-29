@@ -28,7 +28,7 @@ ArducomTransportStream::ArducomTransportStream(Stream* stream): ArducomTransport
 	this->stream = stream;
 }
 
-int8_t ArducomTransportStream::send(uint8_t* buffer, uint8_t count) {
+int8_t ArducomTransportStream::send(Arducom* arducom, uint8_t* buffer, uint8_t count) {
 	this->stream->write((const uint8_t *)buffer, count);
 	this->stream->flush();
 	this->status = SENT;
@@ -36,7 +36,7 @@ int8_t ArducomTransportStream::send(uint8_t* buffer, uint8_t count) {
 	return ARDUCOM_OK;
 }
 
-int8_t ArducomTransportStream::doWork(void) {
+int8_t ArducomTransportStream::doWork(Arducom* arducom) {
 	if (this->status != HAS_DATA)
 		this->size = 0;
 	// read incoming data

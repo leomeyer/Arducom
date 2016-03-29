@@ -35,11 +35,11 @@ ArducomHardwareI2C::ArducomHardwareI2C(uint8_t slaveAddress): ArducomTransport()
 	Wire.onRequest(requestEvent); 
 }
 
-int8_t ArducomHardwareI2C::doWork(void) {
+int8_t ArducomHardwareI2C::doWork(Arducom* arducom) {
 	return ARDUCOM_OK;
 }
 
-int8_t ArducomHardwareI2C::send(uint8_t* buffer, uint8_t count) {
+int8_t ArducomHardwareI2C::send(Arducom* arducom, uint8_t* buffer, uint8_t count) {
 	this->status = READY_TO_SEND;
 	if (count > ARDUCOM_BUFFERSIZE) {
 		this->data[0] = ARDUCOM_ERROR_CODE;
@@ -111,11 +111,11 @@ ArducomSoftwareI2C::ArducomSoftwareI2C(I2CSlaveInit i2cInit, I2CSlaveSend i2cSen
 	i2cInit(&ArducomSoftwareI2C::I2CReceive);		
 }
 	
-int8_t ArducomSoftwareI2C::doWork(void) {
+int8_t ArducomSoftwareI2C::doWork(Arducom* arducom) {
 	return ARDUCOM_OK;
 }
 	
-int8_t ArducomSoftwareI2C::send(uint8_t* buffer, uint8_t count) {
+int8_t ArducomSoftwareI2C::send(Arducom* arducom, uint8_t* buffer, uint8_t count) {
 	this->status = READY_TO_SEND;
 	if (count > ARDUCOM_BUFFERSIZE) {
 		this->data[0] = ARDUCOM_ERROR_CODE;

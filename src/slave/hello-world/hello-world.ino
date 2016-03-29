@@ -26,6 +26,7 @@
 
 #include <Arducom.h>
 #include <ArducomI2C.h>
+#include <ArducomESP8266.h>
 #include <ArducomStream.h>
 #include <ArducomFTP.h>
 
@@ -62,7 +63,7 @@
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-#define USE_DS1307			1
+#define USE_DS1307
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
@@ -77,11 +78,17 @@
 // #define SERIAL_STREAM		softSerial
 // #define SERIAL_BAUDRATE		9600
 
+// If you are using an ESP8266 module connected to the port defined by SERIAL_STREAM,
+// specify the TCP port to use for the server. You also have to define SSID and password.
+#define ESP8266_PORT		ARDUCOM_TCP_DEFAULT_PORT
+#define ESP8266_SSID		"TestSSID"
+#define ESP8266_PASSWORD	"testPasswd"
+
 // If you want to use I2C communications, define a slave address.
 // #define I2C_SLAVE_ADDRESS	5
 
 // To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
-// #define SOFTWARE_I2C		1
+// #define SOFTWARE_I2C
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
@@ -148,7 +155,7 @@
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
 // #define DEBUG_OUTPUT		Serial
-// #define DEBUG_BAUDRATE		57600
+#define DEBUG_BAUDRATE		57600
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -160,7 +167,7 @@
 // If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use
 // this during normal operation.
-// #define USE_ARDUCOM_DEBUG	1
+// #define USE_ARDUCOM_DEBUG
 
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
@@ -221,7 +228,13 @@ public:
 *******************************************************/
 
 #ifdef SERIAL_STREAM
-ArducomTransportStream arducomTransport(&SERIAL_STREAM);
+	#ifdef ESP8266_PORT
+	// serial connection over an ESP8266 WLAN module
+	ArducomTransportESP8266 arducomTransport(&SERIAL_STREAM, ESP8266_SSID, ESP8266_PASSWORD, ESP8266_PORT);
+	#else
+	// plain serial connection
+	ArducomTransportStream arducomTransport(&SERIAL_STREAM);
+	#endif
 #elif defined I2C_SLAVE_ADDRESS
 	// I2C may be either software or hardware
 	#ifdef SOFTWARE_I2C
@@ -297,8 +310,8 @@ void setup()
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
-
 	// EEPROM access commands
+#ifndef ESP8266_PORT	
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
 	arducom.addCommand(new ArducomWriteEEPROMByte(2));
 	arducom.addCommand(new ArducomReadEEPROMInt16(3));
@@ -307,10 +320,14 @@ void setup()
 	arducom.addCommand(new ArducomWriteEEPROMInt32(6));
 	arducom.addCommand(new ArducomReadEEPROMInt64(7));
 	arducom.addCommand(new ArducomWriteEEPROMInt64(8));
+#else
+	#warning Omitting Arducom commands 1 - 8 due to excessive ESP8266 flash memory usage
+#endif	
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 	
 	// expose RAM test variables
+#ifndef ESP8266_PORT	
 	arducom.addCommand(new ArducomReadByte(11, &testByte));
 	arducom.addCommand(new ArducomWriteByte(12, &testByte));
 	arducom.addCommand(new ArducomReadInt16(13, &testInt16));
@@ -319,6 +336,9 @@ void setup()
 	arducom.addCommand(new ArducomWriteInt32(16, &testInt32));
 	arducom.addCommand(new ArducomReadInt64(17, &testInt64));
 	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
+#else
+	#warning Omitting Arducom commands 11 - 18 due to excessive ESP8266 flash memory usage
+#endif	
 	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock));
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	
@@ -332,7 +352,7 @@ void setup()
 	// expose the analog ports
 	arducom.addCommand(new ArducomGetAnalogPin(35));
 
-	#if USE_DS1307
+	#ifdef USE_DS1307
 	// connect to RTC
 	Wire.begin();
 	if (!RTC.isrunning()) {

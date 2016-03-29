@@ -40,6 +40,8 @@
 #define ARDUCOM_INVALID_RESPONSE		11
 #define ARDUCOM_PAYLOAD_TOO_LONG		12
 #define ARDUCOM_TRANSPORT_ERROR			13
+#define ARDUCOM_HARDWARE_ERROR			14
+#define ARDUCOM_NETWORK_ERROR			15
 
 // Arducom error codes that are being sent back to the master
 #define ARDUCOM_NO_DATA					128
@@ -65,7 +67,11 @@
 // Interpreted by command 0; calls the shudown hook if provided
 #define ARDUCOM_SHUTDOWN			0xff
 
+#define ARDUCOM_TCP_DEFAULT_PORT	4152
+
 #ifdef ARDUINO
+
+class Arducom;
 
 /******************************************************************************************	
 * Arducom transport base class definition
@@ -115,13 +121,11 @@ public:
 	virtual int8_t hasData(void);
 	
 	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
-	virtual int8_t send(uint8_t* buffer, uint8_t count) = 0;
+	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count) = 0;
 	
 	/** Performs regular housekeeping; called from the Arducom main class; returns -1 in case of errors. */
-	virtual int8_t doWork(void) = 0;
+	virtual int8_t doWork(Arducom* arducom) = 0;
 };
-
-class Arducom;
 
 /** This class is the base class for command handlers. If the command code and the number of expected bytes
 * matches its definition its handle() method is called. This method can inspect the supplied data and send
@@ -173,14 +177,14 @@ public:
 	/** The timezone offset maintained by this instance. It can be queried or set with the version command (0). */
 	int16_t timezoneOffsetSeconds;
 	
-	/** Debug Print instance as supplied in the constructor. If this value is != 0 it means that debugging
+	/** Debug Print instance as supplied in the constructor. If this value is != NULL it means that debugging
 	* is enabled for this Ardudom instance. */
 	Print* debug;
 
 	/** Initializes the Arducom system with the specified transport.
 	* Default receive timeout is zero (wait forever). If specified, a complete command must be received
 	* within this time window. Otherwise, the transport is being reset which will discard the incomplete command. */
-	Arducom(ArducomTransport* transport, Print* debugPrint = 0, uint16_t receiveTimeout = 0);
+	Arducom(ArducomTransport* transport, Print* debugPrint = NULL, uint16_t receiveTimeout = 0);
 
 	/** Adds the specified command to the internal list. When the command is
 	* received from the master, its handle() method is executed. 

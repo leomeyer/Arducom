@@ -41,7 +41,7 @@ void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
 	
 	if (this->port == 0)
-		this->port = DEFAULT_PORT;
+		this->port = ARDUCOM_TCP_DEFAULT_PORT;
 }
 
 void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retries) {

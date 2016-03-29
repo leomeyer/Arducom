@@ -33,9 +33,9 @@ class ArducomHardwareI2C: public ArducomTransport {
 public:
 	ArducomHardwareI2C(uint8_t slaveAddress);
 
-	virtual int8_t doWork(void);
+	virtual int8_t doWork(Arducom* arducom);
 
-	virtual int8_t send(uint8_t* buffer, uint8_t count);
+	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count);
 
 protected:
 	static void requestEvent(void);
@@ -58,9 +58,9 @@ class ArducomSoftwareI2C: public ArducomTransport {
 public:
 	ArducomSoftwareI2C(I2CSlaveInit i2cInit, I2CSlaveSend i2cSend, uint8_t *i2cBuffer);
 
-	virtual int8_t doWork(void);
+	virtual int8_t doWork(Arducom* arducom);
 
-	virtual int8_t send(uint8_t* buffer, uint8_t count);
+	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count);
 
 	static void I2CReceive(uint8_t length);
 	

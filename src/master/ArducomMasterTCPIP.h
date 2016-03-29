@@ -3,7 +3,6 @@
 #include "ArducomMaster.h"
 
 #define TCPIP_BLOCKSIZE_LIMIT	32
-#define DEFAULT_PORT			4152
 
 class ArducomMasterTransportTCPIP: public ArducomMasterTransport {
 public:

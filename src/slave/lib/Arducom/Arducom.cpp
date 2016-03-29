@@ -87,7 +87,7 @@ uint8_t Arducom::addCommand(ArducomCommand* cmd) {
 	
 uint8_t Arducom::doWork(void) {
 	// transport data handling
-	uint8_t result = this->transport->doWork();
+	uint8_t result = this->transport->doWork(this);
 	if (result != ARDUCOM_OK)
 		return result;
 
@@ -188,7 +188,7 @@ uint8_t Arducom::doWork(void) {
 			destBuffer[1] = result;
 			destBuffer[2] = errorInfo;
 			// error codes are not checksummed
-			this->transport->send(destBuffer, 3);
+			this->transport->send(this, destBuffer, 3);
 			return ARDUCOM_COMMAND_ERROR;
 		}
 		// the command has been handled, send data back
@@ -204,7 +204,7 @@ uint8_t Arducom::doWork(void) {
 			destBuffer[2] = calculateChecksum(destBuffer[0], destBuffer[1], &destBuffer[3], dataSize);
 		}
 		
-		this->transport->send(destBuffer, (checksum ? 3 : 2) + dataSize);
+		this->transport->send(this, destBuffer, (checksum ? 3 : 2) + dataSize);
 		return ARDUCOM_COMMAND_HANDLED;
 	} else {
 		// new data is not available
