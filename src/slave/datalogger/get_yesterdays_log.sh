@@ -8,11 +8,16 @@ TRANSPORT=i2c
 DEVICE=/dev/i2c-1
 ADDRESS=5
 BAUDRATE=57600
-DELAY=20
+DELAY=30
 RETRIES=10
 
 # mail settings (mail address must be passed as a parameter)
 MAILRECEIVER=$1
+DOWNLOADDATE=$2
+
+if [[ -z "$DOWNLOADDATE" ]]; then
+	DOWNLOADDATE="yesterday"
+fi
 
 # target folder, must contain a trailing slash
 TARGETDIR=~/Logfiles/
@@ -65,7 +70,7 @@ function send_mail {
 # cd to tempfs to reduce SD card wear
 cd /var/tmp
 
-FILENAME=`date --date="yesterday" +"%Y%m%d"`.log
+FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.log
 
 download 1 $FILENAME
 
