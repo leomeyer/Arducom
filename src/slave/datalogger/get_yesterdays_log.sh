@@ -2,6 +2,9 @@
 
 # This script can be used to download yesterday's log file from the logger.
 
+# global number of retries (not Arducom connection retries)
+FAILOVER_RETRIES=3
+
 # Arducom connection settings
 ARDUCOM_PATH=~/Arducom/src/master
 TRANSPORT=i2c
@@ -29,6 +32,11 @@ VALIDPATTERN='^\(-*[0-9]*;\)\{11\}$'
 REMOTE=leo@fileserver
 REMOTEDIR='~/extdata1/Data/opdidsrv1/Datalogger'
 
+# determine target filename
+FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.log
+# determine debug output filename
+OUTPUT_FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.out
+
 # download using arducom-ftp
 # parameters:
 # $1: remaining number of retries
@@ -38,7 +46,7 @@ function download {
 	# check retries
 	if (( $1 > 0 )); then
 		# download file
-		echo "get $TARGETFILE" | $ARDUCOM_PATH/arducom-ftp -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l $DELAY -x $RETRIES
+		echo "get $TARGETFILE" | $ARDUCOM_PATH/arducom-ftp -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l $DELAY -x $RETRIES >>$OUTPUT_FILENAME 2>&1
 		CODE=$?
 		# if an error occurred, or the file is empty, retry recursively
 		if (( $CODE == 0 )); then
@@ -49,6 +57,7 @@ function download {
 			fi	
 		fi
 		retries=`expr $1 - 1`
+		sleep 1
 
 		download $retries $2
 	fi
@@ -62,7 +71,7 @@ function send_mail {
 	echo "Sending mail: $1"
 	echo $2
 	
-	echo "$2" | mail -s "$1" $MAILRECEIVER
+	echo "$2" | cat - $OUTPUT_FILENAME | mail -s "$1" $MAILRECEIVER
 }
 
 # main program
@@ -70,9 +79,10 @@ function send_mail {
 # cd to tempfs to reduce SD card wear
 cd /var/tmp
 
-FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.log
+# remove potentially existing debug output
+rm -f $OUTPUT_FILENAME
 
-download 1 $FILENAME
+download $FAILOVER_RETRIES $FILENAME
 
 FILE=$TARGETDIR$FILENAME
 
