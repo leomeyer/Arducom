@@ -1,3 +1,10 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
 #ifndef __ARDUCOMMASTER_H
 #define __ARDUCOMMASTER_H
 
@@ -9,7 +16,7 @@
 
 class TimeoutException: public std::runtime_error {
 public:
-	TimeoutException(const char *what) : std::runtime_error(what) {}
+	TimeoutException(const char* what) : std::runtime_error(what) {}
 };
 
 /** Helper function that throws an error message with system error information */
@@ -76,7 +83,7 @@ public:
 	int semkey;		// semaphore key; usually determined from transport but can be specified in case of conflict
 
 	/** Standard constructor. Applies the default values. */
-	inline ArducomBaseParameters() {
+	ArducomBaseParameters() {
 		baudrate = 57600;
 		deviceAddress = 0;
 		verbose = false;
@@ -92,7 +99,7 @@ public:
 	}
 
 	/** Helper function to convert char* array to vector */
-	static inline void convertCmdLineArgs(int argc, char* argv[], std::vector<std::string>& args) {
+	static void convertCmdLineArgs(int argc, char* argv[], std::vector<std::string>& args) {
 		args.reserve(argc);
 		for (int i = 0; i < argc; i++) {
 			char* targ = argv[i];

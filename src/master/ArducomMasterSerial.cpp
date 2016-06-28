@@ -1,3 +1,12 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
+#include "ArducomMasterSerial.h"
+
 #include <exception>
 #include <stdexcept>
 #include <stdio.h>
@@ -13,7 +22,6 @@
 #include <cstring>
 #include <openssl/sha.h>
 
-#include "ArducomMasterSerial.h"
 #include "../slave/lib/Arducom/Arducom.h"
 
 struct baud_mapping {
@@ -55,7 +63,7 @@ static speed_t serial_baud_lookup(long baud)
   throw std::invalid_argument("Unsupported baud rate");
 }
 
-ArducomMasterTransportSerial::ArducomMasterTransportSerial(std::string filename, int baudrate) {
+ArducomMasterTransportSerial::ArducomMasterTransportSerial(const std::string& filename, int baudrate) {
 	this->filename = filename;
 	this->baudrate = baudrate;
 	this->pos = -1;

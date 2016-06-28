@@ -1,3 +1,12 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
+#include "ArducomMaster.h"
+
 #include <exception>
 #include <stdexcept>
 #include <iostream>
@@ -6,7 +15,6 @@
 #include <sstream>
 
 #include "../slave/lib/Arducom/Arducom.h"
-#include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
 #include "ArducomMasterTCPIP.h"
@@ -200,7 +208,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		}
 	}
 
-	ArducomMasterTransport *transport;
+	ArducomMasterTransport* transport;
 
 	if (transportType == "i2c") {
 		if (device == "")

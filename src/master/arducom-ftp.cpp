@@ -1,4 +1,10 @@
-// Arducom FTP master
+// arducom-ftp
+// Arducom file transfer ("FTP") master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
 
 #include <iostream>
 #include <string>
@@ -22,30 +28,30 @@
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "../slave/lib/Arducom/ArducomFTP.h"
+
 #include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
 
-
 /* Trim from start */
-static inline std::string &ltrim(std::string &s) {
+static inline std::string& ltrim(std::string& s) {
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
         return s;
 }
 
 /* Trim from end */
-static inline std::string &rtrim(std::string &s) {
+static inline std::string& rtrim(std::string& s) {
         s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
         return s;
 }
 
 /* Trim from both ends */
-static inline std::string &trim(std::string &s) {
+static inline std::string& trim(std::string& s) {
         return ltrim(rtrim(s));
 }
 
 /* Split string into parts at specified delimiter */
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+std::vector<std::string>& split(const std::string& s, char delim, std::vector<std::string>& elems) {
     std::stringstream ss(s);
     std::string item;
     while (std::getline(ss, item, delim)) {
@@ -207,12 +213,13 @@ void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& paylo
 }
 
 void printPathComponents(void) {
-	std::vector<std::string>::const_iterator it = pathComponents.begin();
-	while (it != pathComponents.end()) {
+	std::vector<std::string>::const_iterator it = pathComponents.cbegin();
+	std::vector<std::string>::const_iterator ite = pathComponents.cend();
+	while (it != ite) {
 		std::cout << *it;
 		std::vector<std::string>::const_iterator prev_it = it;
-		it++;
-		if ((*prev_it != "/") && (it != pathComponents.end()))
+		++it;
+		if (*prev_it != "/")
 			std::cout << "/";
 	}
 }
@@ -222,7 +229,7 @@ void prompt(void) {
 	std::cout << "> ";
 }
 
-void initSlaveFAT(ArducomMaster &master, ArducomMasterTransport *transport) {
+void initSlaveFAT(ArducomMaster& master, ArducomMasterTransport* transport) {
 	std::vector<uint8_t> payload;
 	std::vector<uint8_t> result;
 
@@ -425,7 +432,7 @@ int main(int argc, char *argv[]) {
 		interactive = isatty(fileno(stdin));
 		parameters.setFromArguments(args);
 
-		ArducomMasterTransport *transport = parameters.validate();
+		ArducomMasterTransport* transport = parameters.validate();
 
 		// initialize protocol
 		ArducomMaster master(transport);
@@ -508,7 +515,8 @@ int main(int argc, char *argv[]) {
 
 					// display file infos
 					std::vector<FileInfo>::iterator it = fileInfos.begin();
-					while (it != fileInfos.end()) {
+					std::vector<FileInfo>::iterator ite = fileInfos.end();
+					while (it != ite) {
 						fileInfo = *it;
 						fileInfo.name[12] = '\0';	// make sure there's no garbage
 						std::cout << std::setfill(' ') << std::setw(16) << std::left << fileInfo.name;
@@ -563,7 +571,7 @@ int main(int argc, char *argv[]) {
 						std::cout <<    ":" << std::setfill('0') << std::setw(2) << second;
 						std::cout << " " << timezoneName << std::endl;
 
-						it++;
+						++it;
 					}
 					std::cout << std::setfill(' ') << std::endl;
 					std::cout << std::setw(8) << std::right << totalFiles << " file(s),";

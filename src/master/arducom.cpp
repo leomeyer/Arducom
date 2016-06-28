@@ -1,4 +1,10 @@
-// Main program
+// arducom
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
 
 #include <iostream>
 #include <string>
@@ -13,6 +19,7 @@
 #include <bitset>
 
 #include "../slave/lib/Arducom/Arducom.h"
+
 #include "ArducomMaster.h"
 #include "ArducomMasterI2C.h"
 #include "ArducomMasterSerial.h"
@@ -28,7 +35,7 @@ enum Format {
 	INT64
 };
 
-uint8_t char2byte(char input) {
+uint8_t char2byte(const char input) {
 	if ((input >= '0') && (input <= '9'))
 		return input - '0';
 	if ((input >= 'A') && (input <= 'F'))
@@ -38,7 +45,7 @@ uint8_t char2byte(char input) {
 	throw std::invalid_argument(std::string("Invalid hex character in input: ") + input);
 }
 
-Format parseFormat(std::string arg, std::string argName) {
+Format parseFormat(const std::string& arg, const std::string& argName) {
 	if (arg == "Hex")
 		return HEX;
 	else
@@ -64,7 +71,7 @@ Format parseFormat(std::string arg, std::string argName) {
 }
 
 /* Split string into parts at specified delimiter */
-std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+std::vector<std::string>& split(const std::string& s, char delim, std::vector<std::string>& elems) {
     std::stringstream ss(s);
     std::string item;
     while (std::getline(ss, item, delim)) {
@@ -74,18 +81,19 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 }
 
 /* Parse parameter and add to payload; convert depending on specified format */
-void parsePayload(std::string arg, Format format, char separator, std::vector<uint8_t> &params) {
+void parsePayload(const std::string& arg, Format format, char separator, std::vector<uint8_t>& params) {
 	// for all formats but raw: does the string contain the separator?
 	if ((format != RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
 		// split along the separators
 		std::vector<std::string> parts;
 		split(arg, separator, parts);
 		// parse each part
-		std::vector<std::string>::const_iterator it = parts.begin();
-		while (it != parts.end()) {
+		std::vector<std::string>::const_iterator it = parts.cbegin();
+		std::vector<std::string>::const_iterator ite = parts.cend();
+		while (it != ite) {
 			// pass empty separator to avoid searching a second time
 			parsePayload(*it, format, '\0', params);
-			it++;
+			++it;
 		}
 	}
 	else {
@@ -94,7 +102,7 @@ void parsePayload(std::string arg, Format format, char separator, std::vector<ui
 			case HEX: {
 				if (arg.size() % 2 == 1)
 					throw std::invalid_argument("Expected parameter string of even length for input format Hex");
-				const char *paramStr = arg.c_str();
+				const char* paramStr = arg.c_str();
 				for (size_t p = 0; p < arg.size() - 1; p += 2) {
 					params.push_back(char2byte(paramStr[p]) * 16 + char2byte(paramStr[p + 1]));
 				}
@@ -109,7 +117,7 @@ void parsePayload(std::string arg, Format format, char separator, std::vector<ui
 			case BIN: {
 				if (arg.size() != 8)
 					throw std::invalid_argument("Expected parameter string of length 8 for input format Bin");
-				const char *paramStr = arg.c_str();
+				const char* paramStr = arg.c_str();
 				uint8_t value = 0;
 				for (size_t p = 0; p < arg.size(); p += 1) {
 					if (paramStr[p] == '1')
