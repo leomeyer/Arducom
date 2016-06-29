@@ -29,18 +29,15 @@ For example, you may want to use an Arduino with an SD card as a low cost data l
 than not it is impractical to remove the SD card and insert it into a reader to
 extract the data logs because this means interrupting the data logging.
 Perhaps you may as well want to query the Arduino for current readings from elsewhere.
-Communicating over serial interfaces might not be possible because the
-Arduino already uses these for data acquisition. Software serial might also be
-impractical due to timing constraints.
 
-Arducom allows you to communicate with the Arduino under these circumstances and
-enables you to transfer files from the Arduino's SD card during real-time operation.
+Arducom allows you to communicate with the Arduino and can transfer files from the Arduino's SD card 
+without interrupting real-time operation.
 
 Arducom currently supports I2C, serial and TCP/IP communication. It also contains a software
 implementation of an I2C slave for Arduinos. There is also an implementation of a versatile data logger
 that supports up to four S0 lines, DHT22 temperature sensors, and an OBIS parser for metering data (D0).
 
-The library provides command line tools for simple testing and integration as well as a C++ API
+The library provides command line tools for testing and integration as well as a C++ API
 for use in your own programs.
 
 Quick start
@@ -62,7 +59,7 @@ https://github.com/leomeyer/Arducom/tree/master/doc/setups.md
 Protocol description
 --------------------
 
-The Arduino running the Arducom library code is called the slave. The device calling the Arduino is dubbed the master.
+The Arduino running the Arducom library code is called the "slave". The device calling the Arduino is dubbed the "master".
 
 Arducom operates using a block oriented protocol, i. e. data is transferred in packets.
 The maximum length of a packet is defined by the underlying transport layer;
@@ -73,15 +70,15 @@ The Arduino acting as a slave listens to commands from the master. It replies to
 command with either an error code or an acknowledge code, followed by optional data.
 The command codes can be freely chosen from the range of 1 - 126. The meaning of the
 command codes can be defined by the implementation. There is a number of pre-defined
-commands that can be used to support e. g. reading from and writing to the EEPROM.
+command implementations that can be used to support e. g. reading from and writing to the EEPROM;
+you can freely choose the command code numbers you want to assign to these functions.
 
 Commands and replies consist of at least two bytes, the command code, a payload length byte, 
 an optional checksum byte, and an optional payload. After receiving a command, the slave
-tries to find an implementation for this command code which is executed when found.
+tries to find an implementation for the command code which is executed when found.
 The implementation can examine the payload and send data back. In case of errors, 
 or if no matching command can be found, an error message is returned. 
-Error messages consist of three bytes: the error token 0xFF, the error code, and an
-error specific info byte.
+Error messages consist of three bytes: the error token 0xFF, the error code, and an error specific info byte.
 The checksum byte is optional. The system verifies the checksum if the highest bit of the
 payload length byte is set. Using a checksum makes communication a tiny bit slower but more secure.
 
@@ -107,6 +104,7 @@ arducom has a number of options:
     -a <address>: the slave address. For I2C, a number between 2 and 127.
     -b <baudrate>: For serial devices, the baud rate to use. Default is 57600.
     -c <commandcode>: the numeric command code that is to be sent to the slave, between 0 and 127.
+    -p <parameters>: command parameters in the input format.
     -l <delay>: the delay in milliseconds between sending and requesting data.
     -x <retries>: the number of retries in case of errors.
     -i <format>: the input format for command parameters.
@@ -115,9 +113,9 @@ arducom has a number of options:
     -si <separator>: sets the input separator to <separator>.
     -so <separator>: sets the output separator to <separator>.
     -v: verbose mode.
+    -vv: extra verbose mode.
     --no-newline: omit newline character(s) after outputting the payload.
     -r: read input from stdin. Cannot be used together with -p.
-    -p <parameters>: command parameters in the input format.
     -n: do not use a checksum on data packets (not recommended).
     --no-interpret: do not try to interpret the result of the version command 0 (display slave information).
 
@@ -145,14 +143,15 @@ separated by the respective separator.
 * Int32 input/output consists of a sequence of numeric values in range -2147483648..2147483647, 
 separated by the respective separator.
 
-* Int64 input/output consists of a sequence of numeric values in range -(2^63)..2^63-1, 
+* Int64 input/output consists of a sequence of numeric values in range -2^63..2^63-1, 
 separated by the respective separator.
 
 Examples:
 
     ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0
-Sends the command number 0 (version command) via I2C to address 5. By default arducom interprets
-the result of this command and may output something like:
+Sends the command number 0 (version command) via I2C to address 5. The test implementations on the Arduino
+recognize this special command and send back slave information. By default arducom interprets this response 
+and outputs something like:
 
 	Arducom slave version: 1; Uptime: 2413668 ms; Flags: 0 (debug off); Free RAM: 292 bytes; Info: HelloWorld
 
@@ -187,9 +186,10 @@ arducom-ftp understands the following parameters:
     -t <transport>: defines the transport layer. Currently "i2c", "serial" and "tcpip" are supported.
     -d <device>: the device that is to be used for the transport, i. e. "/dev/i2c-1".
     -a <address>: the slave address. For I2C, a number between 2 and 127.
-    -b <baudrate>: For serial devices, the baud rate to use.
+    -b <baudrate>: For serial devices, the baud rate to use. Default: 56700
     -l <delay>: the delay in milliseconds between sending and requesting data.
     -v: verbose mode.
+    -vv: extra verbose mode.
     -x <retries>: the number of retries in case of errors.
     -n: do not use a checksum on data packets (not recommended).
 
@@ -207,15 +207,15 @@ First, arducom-ftp will try to connect to the slave. If successful, a message wi
 
     Connected. SD card type: SD1  FAT16 Size: 127 MB
 
-You can list files and directories using "dir" or "ls". To change a directory, use "cd". You can specify only
-one directory level at at time. To change a directory up, use "cd ..". To change to root, use "cd /" or
-"reset".
+You can list files and directories using "dir" or "ls". To change the current folder, use "cd _folder_". 
+You can specify only one directory level at at time. To change a directory up, use "cd ..". 
+To change to root, use "cd /" or "reset".
 
-To retrieve files, use "get &lt;filename&gt;". If a file with the same name already exists on the master and
-the variable "continue" is on (default), the file content is appended. If you use "set continue off" files
-are always overwritten.
+To retrieve files, use "get _file_". If a file with the same name already exists on the master and
+the variable "continue" is on (default), the download starts after the last position if possible and the 
+downloaded content is appended to the existing file. If you use "set continue off" files are always overwritten.
 
-To change the number of retries, use "set retries &lt;n&gt;".
-To change the command delay, use "set delay &lt;n&gt;" with n in milliseconds.
+To change the number of retries, use "set retries _n_".
+To change the command delay, use "set delay _n_" with n in milliseconds.
 
 "help" displays a list of commands and some more information.
