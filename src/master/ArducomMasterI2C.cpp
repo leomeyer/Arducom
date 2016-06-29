@@ -1,3 +1,12 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
+#include "ArducomMasterI2C.h"
+
 #include <exception>
 #include <stdexcept>
 #include <stdio.h>
@@ -11,9 +20,7 @@
 #include <iostream>
 #include <openssl/sha.h>
 
-#include "ArducomMasterI2C.h"
-
-ArducomMasterTransportI2C::ArducomMasterTransportI2C(std::string filename, int slaveAddress) {
+ArducomMasterTransportI2C::ArducomMasterTransportI2C(const std::string& filename, int slaveAddress) {
 	this->filename = filename;
 	this->slaveAddress = slaveAddress;
 

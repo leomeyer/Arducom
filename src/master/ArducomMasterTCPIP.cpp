@@ -1,3 +1,12 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
+#include "ArducomMasterTCPIP.h"
+
 #include <exception>
 #include <stdexcept>
 #include <stdio.h>
@@ -15,10 +24,9 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-#include "ArducomMasterTCPIP.h"
 #include "../slave/lib/Arducom/Arducom.h"
 
-ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP(std::string host, int port) {
+ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP(const std::string& host, int port) {
 	this->host = host;
 	this->port = port;
 	this->pos = -1;

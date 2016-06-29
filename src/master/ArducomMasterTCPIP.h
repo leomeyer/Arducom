@@ -1,3 +1,10 @@
+// Arducom master implementation
+//
+// Copyright (c) 2016 Leo Meyer, leo@leomeyer.de
+// Arduino communications library
+// Project page: https://github.com/leomeyer/Arducom
+// License: MIT License. For details see the project page.
+
 #include <string>
 
 #include "ArducomMaster.h"
@@ -7,7 +14,7 @@
 class ArducomMasterTransportTCPIP: public ArducomMasterTransport {
 public:
 
-	ArducomMasterTransportTCPIP(std::string host, int port);
+	ArducomMasterTransportTCPIP(const std::string& host, int port);
 
 	virtual void init(ArducomBaseParameters* parameters);
 
