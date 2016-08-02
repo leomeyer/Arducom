@@ -11,12 +11,20 @@ TRANSPORT=i2c
 DEVICE=/dev/i2c-1
 ADDRESS=5
 BAUDRATE=57600
-DELAY=30
+DELAY=40
 RETRIES=10
 
 # mail settings (mail address must be passed as a parameter)
 MAILRECEIVER=$1
 DOWNLOADDATE=$2
+
+# validate email
+echo $MAILRECEIVER | egrep '^[A-Za-z0-9](([_\.\-]?[a-zA-Z0-9]+)*)@([A-Za-z0-9]+)(([\.\-]?[a-zA-Z0-9]+)*)\.([A-Za-z]{2,})$'
+
+if (( $? > 0 )); then
+	echo "Invalid mail address. Usage: $0 <mail_address> [<file-date>]"
+	exit
+fi
 
 if [[ -z "$DOWNLOADDATE" ]]; then
 	DOWNLOADDATE="yesterday"
@@ -34,6 +42,11 @@ REMOTEDIR='~/extdata1/Data/opdidsrv1/Datalogger'
 
 # determine target filename
 FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.log
+if (( $? > 0 )); then
+	echo "Invalid date. Usage: $0 <mail_address> [<file-date>]"
+	exit
+fi
+
 # determine debug output filename
 OUTPUT_FILENAME=`date -d "$DOWNLOADDATE" +"%Y%m%d"`.out
 
@@ -54,7 +67,7 @@ function download {
 				# move file
 				mv $TARGETFILE $TARGETDIR
 				return
-			fi	
+			fi
 		fi
 		retries=`expr $1 - 1`
 		sleep 1
@@ -70,7 +83,7 @@ function download {
 function send_mail {
 	echo "Sending mail: $1"
 	echo $2
-	
+
 	echo "$2" | cat - $OUTPUT_FILENAME | mail -s "$1" $MAILRECEIVER
 }
 
@@ -91,15 +104,15 @@ if [ -s $FILE ]; then
 
 	# correct newlines (DOS to UNIX)
 	sed -i -e's/\r//' $FILE
-					
+
 	# validate file
 	grep -i -v $VALIDPATTERN $FILE
-	
+
 	# pattern found (invalid due to inversion)?
 	if [ "$?" == "0" ]; then
 		send_mail "Data logger file invalid" "The file $FILENAME is corrupt! Please check the SD card."
 		exit
-	fi		
+	fi
 
 else
 	# file not downloaded (logger or connection problem)
