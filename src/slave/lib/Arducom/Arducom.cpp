@@ -538,8 +538,9 @@ int8_t ArducomWriteBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer,
 	return ARDUCOM_OK;
 }
 
-ArducomReadBlock::ArducomReadBlock(uint8_t commandCode, uint8_t* address) : ArducomCommand(commandCode, 3) {
+ArducomReadBlock::ArducomReadBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize) : ArducomCommand(commandCode, 3) {
 	this->address = address;
+	this->maxBlockSize = maxBlockSize;
 }
 	
 int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
@@ -550,6 +551,8 @@ int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, 
 		*errorInfo = maxBufferSize;
 		return ARDUCOM_BUFFER_OVERRUN;
 	}
+	if ((this->maxBlockSize) > 0 && (offset + length > this->maxBlockSize))
+		return ARDUCOM_BUFFER_OVERRUN;
 	for (uint8_t i = 0; i < length; i++) {
 		destBuffer[i] = this->address[offset + i];
 	}

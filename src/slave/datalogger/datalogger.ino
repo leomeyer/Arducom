@@ -32,6 +32,19 @@
 // 
 // The logger can write history data to an SD card; this data can be downloaded using an FTP-like client.
 
+// ********* Arducom command codes *********
+// 
+// This sketch exposes the following Arducom commands:
+//
+//  0: Default Arducom version/status command
+//  9: Read EEPROM block
+// 10: Write EEPROM block
+// 20: Read RAM (see RAM layout below)
+// 21: Get time from RTC (if RTC is present)
+// 22: Set time to RTC and EEPROM (if RTC is present)
+// 30: Write RAM (see RAM layout below)
+// 60+: FTP commands (if SD card is present)
+
 // ********* S0 **********
 //
 // An S0 line is an impulse based interface to devices like water, gas or electricity meters.
@@ -1334,8 +1347,10 @@ void setup() {
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 
 	// expose variables
-	// due to RAM constraints we have to expose the whole variable RAM as one read-only block
-	arducom.addCommand(new ArducomReadBlock(20, &readings[0]));
+	// due to RAM constraints we have to expose the whole variable RAM as one block
+	arducom.addCommand(new ArducomReadBlock(20, &readings[0], VAR_TOTAL_SIZE));
+	// the RAM block can be written (S0 initialization access)
+	arducom.addCommand(new ArducomWriteBlock(30, &readings[0], VAR_TOTAL_SIZE));
 
 	if (rtcOK) {
 		// register RTC commands

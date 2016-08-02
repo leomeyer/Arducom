@@ -496,14 +496,16 @@ protected:
 *   It expects a two-byte offset, LSB first, plus one byte containing the number of bytes to read.
 *   It returns the following info:
 *   Bytes 0 - n: the data read from the block
+*   Read accesses that exceed the maxBlockSize cause an error if maxBlockSize > 0.
 */
 class ArducomReadBlock: public ArducomCommand {
 public:
-	ArducomReadBlock(uint8_t commandCode, uint8_t* address);
+	ArducomReadBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize = 0);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
+	uint16_t maxBlockSize;
 };
 
 /***************************************
