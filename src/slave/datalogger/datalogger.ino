@@ -25,7 +25,7 @@
 // This data logger supports:
 // - up to four S0 lines, counting impulses as 64 bit values stored in EEPROM
 // - one D0 OBIS data input (requires the RX pin and one output for the optical transistor supply voltage)
-// - up to two DHT22 temperature/humidity sensors
+// - up to two DHT22 temperature/humidity sensors with 0.1 °C resolution (multiplied by 10 and stored as 16-bit integers)
 //
 // All readings are accessible via Arducom via memory block read (command 20). See "RAM layout" below for details.
 // The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
@@ -149,6 +149,7 @@
 // If you query after this point and the value has not been re-set yet, you will read an invalid value. 
 // What exactly this invalid value is depends on the type of sensor.
 // For OBIS (D0) data, the invalid value is -1. For DHT22 data, the invalid value is -9999.
+// DHT22 temperature data is read as a double, multiplied by 10 and stored as a 16 bit integer.
 // If you read an invalid value you should retry after a few seconds (depending on the sensor update interval).
 // If the value is still invalid you can assume a defective sensor or broken communication.
 
@@ -238,9 +239,9 @@ raw_upload_hex:
 #define TOTAL_KWH			16		// 0x0010, length 8, total energy consumption
 
 // DHT22 sensors
-#define DHT22_A_TEMP		24		// 0x0018, length 2
+#define DHT22_A_TEMP		24		// 0x0018, length 2 (divide value by 10 to get a resolution of 0.1 °C)
 #define DHT22_A_HUMID		26		// 0x001A, length 2
-#define DHT22_B_TEMP		28		// 0x001C, length 2
+#define DHT22_B_TEMP		28		// 0x001C, length 2 (divide value by 10 to get a resolution of 0.1 °C)
 #define DHT22_B_HUMID		30		// 0x001E, length 2
 
 // S0 values
@@ -1433,7 +1434,7 @@ void loop() {
 			int chk = DHT.read22(DHT22_A_PIN);
 			if (chk == DHTLIB_OK) {
 				*(int16_t*)&readings[DHT22_A_HUMID] = DHT.humidity;
-				*(int16_t*)&readings[DHT22_A_TEMP] = DHT.temperature;
+				*(int16_t*)&readings[DHT22_A_TEMP] = DHT.temperature * 10.0;
 			} else {
 				*(int16_t*)&readings[DHT22_A_HUMID] = DHT22_INVALID;
 				*(int16_t*)&readings[DHT22_A_TEMP] = DHT22_INVALID;
@@ -1445,7 +1446,7 @@ void loop() {
 			int chk = DHT.read22(DHT22_B_PIN);
 			if (chk == DHTLIB_OK) {
 				*(uint16_t*)&readings[DHT22_B_HUMID] = DHT.humidity;
-				*(uint16_t*)&readings[DHT22_B_TEMP] = DHT.temperature;
+				*(uint16_t*)&readings[DHT22_B_TEMP] = DHT.temperature * 10.0;
 			} else {
 				*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
 				*(int16_t*)&readings[DHT22_B_TEMP] = DHT22_INVALID;
