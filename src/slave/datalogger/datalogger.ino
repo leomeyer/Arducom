@@ -1,5 +1,5 @@
 // Arducom based data logger
-// Copyright (c) 2015 Leo Meyer, leo@leomeyer.de
+// Copyright (c) 2015-2016 Leo Meyer, leo@leomeyer.de
 //
 // This code is in the public domain.
 
@@ -13,6 +13,12 @@
 // For interoperation with a Raspberry Pi it is recommended to use the software I2C slave
 // implementation instead of a multi-master setup (if using other peripherals like an RTC).
 // Software I2C supports a maximum baud rate of about 40 kHz.
+//
+// This sketch can also be used without RTC and SD card for testing purposes.
+// In this case, the respective Arducom commands will not be present.
+// Startup time will also be *much* longer. If using a serial connection you will have to
+// set the Arducom --initDelay parameter to about 7000 (ms) to get a response if your driver
+// resets the Arduino during the serial connect.
 // 
 // This file is best viewed with a monospace font and tab width 4.
 
@@ -50,18 +56,12 @@
 // An S0 line is an impulse based interface to devices like water, gas or electricity meters.
 // An S0 impulse is specified to be at least 30 ms long. This logger counts the impulses as 64 bit values.
 // The S0 lines are queried about once a millisecond using software debouncing using the timer 2.
-// The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPUs might require adjustments.
+// The timer interrupt is configured for the ATMEGA328 with a clock speed of 16 MHz. Other CPU speeds might require adjustments.
 // Each S0 line uses eight bytes of EEPROM. At program start the EEPROM values are read into RAM variables.
 // S0 EEPROM range starts at 0 (eight bytes S0_A, eight bytes S0_B, eight bytes S0_C, eight bytes S0_D).
 // The S0 EEPROM values can be adjusted ("primed") via Arducom to set the current meter readings (make sure to 
 // take the impulse factor of the respective device into consideration).
 // Each detected S0 impulse increments its RAM variable by 1. These variables are written to the log file.
-// There are also delta RAM variables that are reset after each log interval. These delta variables are of type uint16_t
-// which allows a log interval of 65535 imp / 32 imp/s = 2114 seconds maximum before overflow
-// at a presumed worst case impulse duration of 30 ms with 1 ms pause.
-// After each log interval the delta values are copied to the last values storage. These values represent the
-// accumulated impulses during the log interval and can be interpreted as the momentaneous value with respect to the
-// log interval (in other words, integrated over the log interval).
 // S0 values are stored in EEPROM in a configurable interval. The interval is a compromise between EEPROM cell life
 // and the amount of data loss in case of a catastrophic failure.
 // If the values are written once per hour, with an expected EEPROM cell life of 100k writes the EEPROM can be expected
@@ -263,19 +263,7 @@ raw_upload_hex:
 #define S0_C_VALUE			48		// 0x0030, length 8
 #define S0_D_VALUE			56		// 0x0038, length 8
 
-// S0 deltas since last writing of log file
-#define S0_A_DELTA			64		// 0x0040, length 2
-#define S0_B_DELTA			66		// 0x0042, length 2
-#define S0_C_DELTA			68		// 0x0044, length 2
-#define S0_D_DELTA			70		// 0x0046, length 2
-
-// S0 deltas of the last interval
-#define S0_A_LAST			72		// 0x0048, length 2
-#define S0_B_LAST			74 		// 0x004A, length 2
-#define S0_C_LAST			76 		// 0x004C, length 2
-#define S0_D_LAST			78		// 0x004E, length 2
-
-#define VAR_TOTAL_SIZE		80		// sum of the above lengths
+#define VAR_TOTAL_SIZE		64		// sum of the above lengths
 
 // ********* EEPROM layout *********
 // 
@@ -359,7 +347,7 @@ raw_upload_hex:
 *******************************************************/
 
 // The chipselect pin depends on the type of SD card shield.
-#define SDCARD_CHIPSELECT	10	
+#define SDCARD_CHIPSELECT	10
 
 // Define the Arducom transport method. You can use either serial or I2C
 // communication but not both.
@@ -461,7 +449,7 @@ raw_upload_hex:
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for this sketch only. To debug Arducom itself,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
-//#define DEBUG_OUTPUT		Serial
+// #define DEBUG_OUTPUT		Serial
 
 // If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use
@@ -481,12 +469,13 @@ raw_upload_hex:
 // invalid value (set if sensor is not used or there is a sensor problem)
 #define DHT22_INVALID				-9999
 
+// Define OBIS_IR_POWER_PIN if you want to use the OBIS parser.
 // This pin is switched High after program start. It is intended to provide power to a
 // serial data detection circuit (optical transistor or similar) that feeds its output into RX (pin 0).
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-#define OBIS_IR_POWER_PIN	A2
+// #define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM			Serial
 #define OBIS_BAUDRATE		9600
@@ -500,7 +489,7 @@ raw_upload_hex:
 
 // Define this macro for OBIS debugging. This will generate a lot of output (sent to DEBUG_OUTPUT)
 // which may interfere with programming.
-// Use it only if you encounter problems parsing the OBIS data.
+// Use it only if you encounter problems parsing OBIS data.
 // #define OBIS_DEBUG			1
 
 // file log interval (milliseconds)
@@ -1108,12 +1097,6 @@ void resetReadings() {
 	*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
 	
 	// do not reset S0 values; these are set from EEPROM at program start
-
-	// reset S0 deltas
-	*(uint16_t*)&readings[S0_A_DELTA] = 0;
-	*(uint16_t*)&readings[S0_B_DELTA] = 0;
-	*(uint16_t*)&readings[S0_C_DELTA] = 0;
-	*(uint16_t*)&readings[S0_D_DELTA] = 0;
 }
 
 DateTime utcToLocal(DateTime utc) {
@@ -1252,10 +1235,14 @@ void setup() {
 	
 	if (!rtcOK)
 		log(F("RTC not present"));
+	else
+		log(F("RTC OK"));
 
 	#ifdef SDCARD_CHIPSELECT
 	if (!sdCardOK)
 		log(F("SD card not present"));
+	else
+		log(F("SD card OK"));
 	#endif
 	
 	// **** Initialize memory for readings ****
@@ -1490,7 +1477,6 @@ void loop() {
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_A_VALUE] += incr;
-		*(uint16_t*)&readings[S0_A_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_B_PIN
@@ -1502,7 +1488,6 @@ void loop() {
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_B_VALUE] += incr;
-		*(uint16_t*)&readings[S0_B_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_C_PIN
@@ -1514,7 +1499,6 @@ void loop() {
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_C_VALUE] += incr;
-		*(uint16_t*)&readings[S0_C_DELTA] += incr;
 	}
 	#endif	
 	#ifdef S0_D_PIN
@@ -1526,7 +1510,6 @@ void loop() {
 		
 		// add increment to values
 		*(uint64_t*)&readings[S0_D_VALUE] += incr;
-		*(uint16_t*)&readings[S0_D_DELTA] += incr;
 	}
 	#endif	
 
@@ -1699,12 +1682,6 @@ void loop() {
 			}
 		}	// if (dateOK)
 		
-		// transfer D0 delta values to last interval values
-		*(uint16_t*)&readings[S0_A_LAST] = *(uint16_t*)&readings[S0_A_DELTA];
-		*(uint16_t*)&readings[S0_B_LAST] = *(uint16_t*)&readings[S0_B_DELTA];
-		*(uint16_t*)&readings[S0_C_LAST] = *(uint16_t*)&readings[S0_C_DELTA];
-		*(uint16_t*)&readings[S0_D_LAST] = *(uint16_t*)&readings[S0_D_DELTA];
-	
 		// Periodically reset readings. This allows to detect sensor or communication failures.
 		resetReadings();
 	}
