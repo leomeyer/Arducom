@@ -83,12 +83,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	
 	// Special case for devices that use USB over serial:
 	// To account for resets of the Arduino that might occur because of the
-	// usage of the DTR line the --initDelay is set to 2000 if it has not been
+	// usage of the DTR line the --initDelay is set if it has not been
 	// set manually.
 	if (!parameters->initDelaySetManually) {
 		if ((this->filename.find("ttyUSB") != std::string::npos)
 			|| (this->filename.find("ttyACM") != std::string::npos)) {
-			parameters->initDelayMs = 2000;
+			parameters->initDelayMs = DEFAULT_INIT_DELAY;
 		}
 	}
 	
@@ -103,14 +103,6 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	int fd = open(this->filename.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd < 0) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
-	}
-	
-	// initialization delay specified?
-	if (this->parameters->initDelayMs > 0) {
-		if (this->parameters->debug)
-			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
-		// sleep for the specified time
-		usleep(this->parameters->initDelayMs * 1000);
 	}
 	
 	memset(&tty, 0, sizeof(tty));
@@ -177,11 +169,22 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	
 	cfmakeraw(&tty);
 
-	tcflush(fd, TCIFLUSH);
+	// initialization delay specified?
+	if (this->parameters->initDelayMs > 0) {
+		if (this->parameters->debug)
+			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
+		// sleep for the specified time
+		usleep(this->parameters->initDelayMs * 1000);
+	}
 	
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
 		throw_system_error("Error setting serial device attributes (is the device valid?)");
 	}
+	
+	tcflush(fd, TCIOFLUSH);
+	// clear input buffer (TCIOFLUSH doesn't seem to work)
+	uint8_t buffer;
+	while (read(fd, &buffer, 1) >= 0) {}
 
 	this->fileHandle = fd;
 }

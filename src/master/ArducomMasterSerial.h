@@ -10,6 +10,7 @@
 #include "ArducomMaster.h"
 
 #define SERIAL_BLOCKSIZE_LIMIT	32
+#define DEFAULT_INIT_DELAY		3000
 
 class ArducomMasterTransportSerial: public ArducomMasterTransport {
 public:

@@ -446,6 +446,10 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 				throw std::runtime_error((std::string("Checksum error (") + resultStr + "); calculated checksum: " + errInfoStr).c_str());
 			}
 
+			case ARDUCOM_LIMIT_EXCEEDED: {
+				throw std::runtime_error((std::string("Limit exceeded (") + resultStr + "); limit is: " + errInfoStr).c_str());
+			}
+
 			case ARDUCOM_FUNCTION_ERROR:
 				// set errorInfo and throw an exception to signal the caller that a function error occurred
 				if (errorInfo != nullptr)
