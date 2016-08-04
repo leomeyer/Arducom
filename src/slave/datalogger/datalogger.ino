@@ -384,6 +384,13 @@ raw_upload_hex:
 // To use software I2C for Arducom, define SOFTWARE_I2C. If undefined, hardware I2C is used.
 // #define SOFTWARE_I2C		1
 
+// If this macro is defined the internal I2C pullups on SDA and SCL are activated.
+// This will cause those lines to have a voltage of 5 V which may damage connected equipment
+// that runs on less than 5 V (e. g. a Raspberry Pi).
+// Normally it is not necessary to define this macro because external I2C hardware should
+// contain hardware pullup resistors. 
+// #define	I2C_PULLUPS			1
+
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
 #if defined SOFTWARE_I2C && defined I2C_SLAVE_ADDRESS
@@ -1212,10 +1219,11 @@ void setup() {
 	// initialize I2C
 	Wire.begin();
 
+	#if defined I2C_PULLUPS
 	// activate internal pullups for I2C
-	// this is not necessary if the peripherals have pullup resistors themselves
 	digitalWrite(SDA, 1);
 	digitalWrite(SCL, 1);
+	#endif
 
 	#ifdef SDCARD_CHIPSELECT
 	// initialize SD system
