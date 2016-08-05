@@ -88,7 +88,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	if (!parameters->initDelaySetManually) {
 		if ((this->filename.find("ttyUSB") != std::string::npos)
 			|| (this->filename.find("ttyACM") != std::string::npos)) {
-			parameters->initDelayMs = DEFAULT_INIT_DELAY;
+			parameters->initDelayMs = DEFAULT_INIT_DELAY_MS;
 		}
 	}
 	

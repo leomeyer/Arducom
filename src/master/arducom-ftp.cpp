@@ -128,7 +128,7 @@ public:
 		result.append("\n");
 		result.append("Usage:\n");
 		result.append("\n");
-		result.append("  Enter ? to get help on how to use the FTP tool.");
+		result.append("  Enter ? on the FTP tool prompt to get help.");
 		result.append("\n");
 		
 		return result;
