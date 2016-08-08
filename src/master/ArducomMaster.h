@@ -14,6 +14,14 @@
 #include <sstream>
 #include <string>
 
+#define DEFAULT_DELAY_MS	10
+#define DEFAULT_TIMEOUT_MS	3000
+#define DEFAULT_BAUDRATE		57600
+#define DEFAULT_INIT_DELAY_MS	3000
+
+#define Q(str)				#str
+#define QUOTE(str)			Q(str)
+
 class TimeoutException: public std::runtime_error {
 public:
 	TimeoutException(const char* what) : std::runtime_error(what) {}
@@ -84,15 +92,15 @@ public:
 
 	/** Standard constructor. Applies the default values. */
 	ArducomBaseParameters() {
-		baudrate = 57600;
+		baudrate = DEFAULT_BAUDRATE;
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
-		initDelayMs = 0;
+		initDelayMs = 0;	// set by the transport (only really required for serial)
 		initDelaySetManually = false;
-		delayMs = 0;
+		delayMs = DEFAULT_DELAY_MS;
 		delaySetManually = false;
-		timeoutMs = 3000;
+		timeoutMs = DEFAULT_TIMEOUT_MS;
 		retries = 0;
 		useChecksum = true;
 		semkey = -1;

@@ -63,8 +63,10 @@ int8_t ArducomTransport::hasData(void) {
 
 Arducom::Arducom(ArducomTransport* transport, Print* debugPrint, uint16_t receiveTimeout) {
 	this->transport = transport;
+	#if ARDUCOM_DEBUG_SUPPORT == 1
 	this->debug = debugPrint;
 	this->origDebug = debugPrint;	// remember original pointer (debug is switched off by NULLing debug)
+	#endif
 	this->lastDataSize = -1;
 	this->receiveTimeout = receiveTimeout;
 	this->lastReceiveTime = 0;
@@ -152,21 +154,25 @@ uint8_t Arducom::doWork(void) {
 						}
 					}
 					
+					#if ARDUCOM_DEBUG_SUPPORT == 1
 					if (this->debug) {
 						this->debug->print(F("Cmd: "));
 						this->debug->print((int)commandByte);
 						this->debug->print(F(" Params: "));
 						this->debug->println((int)dataSize);
 					}
+					#endif
 					// let the command do the work
 					result = command->handle(this, &this->transport->data[(checksum ? 3 : 2)], &dataSize, 
 						&destBuffer[(checksum ? 3 : 2)], ARDUCOM_BUFFERSIZE - (checksum ? 3 : 2), &errorInfo);
+					#if ARDUCOM_DEBUG_SUPPORT == 1
 					if (this->debug) {
 						this->debug->print(F("Ret: "));
 						this->debug->print((int)result);
 						this->debug->print(F(" Params: "));
 						this->debug->println((int)dataSize);
 					}
+					#endif
 				}
 				break;
 			}
@@ -177,12 +183,14 @@ uint8_t Arducom::doWork(void) {
 		// check result code
 		if (result != ARDUCOM_OK) {
 			// an error has occurred; send it back to the master
+			#if ARDUCOM_DEBUG_SUPPORT == 1
 			if (this->debug) {
 				this->debug->print(F("Error: "));
 				this->debug->print((int)result);
 				this->debug->print(F(" Info: "));
 				this->debug->println((int)errorInfo);
 			}
+			#endif
 			// send error code back
 			destBuffer[0] = ARDUCOM_ERROR_CODE;
 			destBuffer[1] = result;
@@ -221,6 +229,7 @@ uint8_t Arducom::doWork(void) {
 }
 
 void Arducom::setFlags(uint8_t mask, uint8_t flags) {
+	#if ARDUCOM_DEBUG_SUPPORT == 1
 	if ((mask & ARDUCOM_FLAG_ENABLEDEBUG) == ARDUCOM_FLAG_ENABLEDEBUG) {
 		if ((flags & ARDUCOM_FLAG_ENABLEDEBUG) == ARDUCOM_FLAG_ENABLEDEBUG) {
 			this->debug = this->origDebug;
@@ -228,6 +237,7 @@ void Arducom::setFlags(uint8_t mask, uint8_t flags) {
 			this->debug = 0;
 		}
 	}
+	#endif
 	if ((mask & ARDUCOM_FLAG_INFINITELOOP) == ARDUCOM_FLAG_INFINITELOOP) {
 		if ((flags & ARDUCOM_FLAG_INFINITELOOP) == ARDUCOM_FLAG_INFINITELOOP) {
 			// go into an infinite loop (to test a watchdog)
@@ -245,10 +255,11 @@ void Arducom::setFlags(uint8_t mask, uint8_t flags) {
 	
 uint8_t Arducom::getFlags(void) {
 	uint8_t result = 0;
+	#if ARDUCOM_DEBUG_SUPPORT == 1
 	// debug output currently active?
 	if (this->debug != 0)
 		result |= ARDUCOM_FLAG_ENABLEDEBUG;
-	
+	#endif
 	return result;
 }
 	

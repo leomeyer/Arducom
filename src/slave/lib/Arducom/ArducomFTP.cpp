@@ -333,10 +333,12 @@ int8_t ArducomFTPReadFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	
 	uint32_t position = *((uint32_t*)dataBuffer);
 	
+	#if ARDUCOM_DEBUG_SUPPORT == 1
 	if (_arducomFTP->arducom->debug) {
 		_arducomFTP->arducom->debug->print(F("Read pos: "));
 		_arducomFTP->arducom->debug->println(position);
 	}
+	#endif
 
 	if (!_arducomFTP->openFile.seekSet(position)) {
 		*errorInfo = ARDUCOM_FTP_POSITION_INVALID;
