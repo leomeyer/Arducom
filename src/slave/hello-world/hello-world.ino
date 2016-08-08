@@ -39,59 +39,28 @@
 
 // Feel free to play with different settings (see comments for the defines).
 
-// LED pin; define this if you want to use the LED as a status indicator.
-// Note that using the LED will greatly slow down operations like FTP which use
-// lots of commands. Also, if you are using an SD card you won't probably see the
-// blinking of the status LED due to its inference with the SPI ports.
-// For these reasons it's recommended to use the LED for debugging purposes only.
-// #define LED					13
-
-// Define this macro if you are using an SD card.
-// The chipselect pin depends on the type of SD card shield.
-// Requires the SdFat library:
-// https://github.com/greiman/SdFat
-#define SDCARD_CHIPSELECT	10
-
-// If an SD card is present, periodically appends simulated log data to the file
-// specified in this macro.
-// It is important to specify the full path for this file. Otherwise, if you connect 
-// using the FTP master and change the working directory, the file would be created
-// in this directory, so you'd possibly end up with multiple files across the SD card.
-// Do not use this if you leave the Arduino running for a longer time because of the
-// wear imposed on your SD card.
-// #define GENERATE_LOGFILE	"/TESTFILE.TXT"
-
-// Specifies whether the DS1307 Real Time Clock should be used.
-// If you don't have a DS1307 connected (via I2C), comment this define.
-// #define USE_DS1307
-
 // Define the Arducom transport method. You can use:
-// 1. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
-// 2. Hardware Serial: Define SERIAL_STREAM and SERIAL_BAUDRATE.
-// 3. Software Serial: Initialize a SoftwareSerial instance and assign it to SERIAL_STREAM.
-// 4. Hardware I2C: Define I2C_SLAVE_ADDRESS.
-// 5. Software I2C: Define I2C_SLAVE_ADDRESS and SOFTWARE_I2C.
+// 1. Hardware Serial: Define SERIAL_STREAM and SERIAL_BAUDRATE.
+// 2. Software Serial: Initialize a SoftwareSerial instance and assign it to SERIAL_STREAM.
+// 3. Hardware I2C: Define I2C_SLAVE_ADDRESS.
+// 4. Software I2C: Define I2C_SLAVE_ADDRESS and SOFTWARE_I2C.
+// 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
-// 1. Ethernet
-#define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-#define ETHERNET_IP				192, 168, 0, 177
+// 1. Hardware Serial
+#define SERIAL_STREAM		Serial
+#define SERIAL_BAUDRATE		57600
 
-// 2. Hardware Serial
-// #define SERIAL_STREAM		Serial
-// #define SERIAL_BAUDRATE		57600
-
-// 3. Software serial connection (for example with a Bluetooth module)
+// 2. Software serial connection (for example with a Bluetooth module)
 // #define SOFTSERIAL_RX_PIN	8
 // #define SOFTSERIAL_TX_PIN	9
 // SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
 // #define SERIAL_STREAM		softSerial
 // #define SERIAL_BAUDRATE		9600
 
-// 4. Hardware I2C communication: define a slave address
+// 3. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
 
-// 5. Software I2C, additionally define SOFTWARE_I2C
+// 4. Software I2C, additionally define SOFTWARE_I2C
 // #define SOFTWARE_I2C
 
 // If using software I2C specify the configuration here
@@ -150,6 +119,37 @@
 	
 #endif	// SOFTWARE_I2C
 
+// 5. Ethernet
+// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+// #define ETHERNET_IP				192, 168, 0, 177
+
+// LED pin; define this if you want to use the LED as a status indicator.
+// Note that using the LED will greatly slow down operations like FTP which use
+// lots of commands. Also, if you are using an SD card you won't probably see the
+// blinking of the status LED due to its inference with the SPI ports.
+// For these reasons it's recommended to use the LED for debugging purposes only.
+// #define LED					13
+
+// Define this macro if you are using an SD card.
+// The chipselect pin depends on the type of SD card shield.
+// Requires the SdFat library:
+// https://github.com/greiman/SdFat
+#define SDCARD_CHIPSELECT	10
+
+// If an SD card is present, periodically appends simulated log data to the file
+// specified in this macro.
+// It is important to specify the full path for this file. Otherwise, if you connect 
+// using the FTP master and change the working directory, the file would be created
+// in this directory, so you'd possibly end up with multiple files across the SD card.
+// Do not use this if you leave the Arduino running for a longer time because of the
+// wear imposed on your SD card.
+// #define GENERATE_LOGFILE	"/TESTFILE.TXT"
+
+// Specifies whether the DS1307 Real Time Clock should be used.
+// If you don't have a DS1307 connected (via I2C), comment this define.
+// #define USE_DS1307
+
 // Specifies a Print object to use for the debug output.
 // Undefine this if you don't want to use debugging.
 // You cannot use the same Print object for Arducom serial communication
@@ -158,8 +158,8 @@
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
-#define DEBUG_OUTPUT		Serial
-#define DEBUG_BAUDRATE		57600
+// #define DEBUG_OUTPUT		Serial
+// #define DEBUG_BAUDRATE		57600
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
@@ -176,6 +176,7 @@
 // #define USE_ARDUCOM_DEBUG
 #endif
 
+// validate setup
 #if defined ETHERNET_PORT && defined SERIAL_STREAM
 #error You cannot use Ethernet and serial communication at the same time.
 #endif
@@ -241,9 +242,7 @@ public:
 * Variables
 *******************************************************/
 
-#ifdef ETHERNET_PORT
-	ArducomTransportEthernet arducomTransport(ETHERNET_PORT);
-#elif defined SERIAL_STREAM
+#ifdef SERIAL_STREAM
 	// plain serial connection
 	ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 #elif defined I2C_SLAVE_ADDRESS
@@ -253,8 +252,13 @@ public:
 	#else
 	ArducomHardwareI2C arducomTransport(I2C_SLAVE_ADDRESS);
 	#endif
+#elif defined ETHERNET_PORT
+	// Ethernet settings
+	byte eth_mac[] = { ETHERNET_MAC};
+	IPAddress eth_ip(ETHERNET_IP);
+	ArducomTransportEthernet arducomTransport(ETHERNET_PORT);
 #else
-#error You have to define a transport method (ETHERNET_PORT, SERIAL_STREAM or I2C_SLAVE_ADDRESS).
+#error You have to define a transport method (SERIAL_STREAM, I2C_SLAVE_ADDRESS or ETHERNET_PORT).
 #endif
 
 Arducom arducom(&arducomTransport
@@ -262,11 +266,6 @@ Arducom arducom(&arducomTransport
 , &DEBUG_OUTPUT
 #endif
 );
-
-#ifdef ETHERNET_PORT
-byte eth_mac[] = { ETHERNET_MAC};
-IPAddress eth_ip(ETHERNET_IP);
-#endif
 
 #ifdef SDCARD_CHIPSELECT
 // FTP works only if there is an SD card
@@ -325,7 +324,8 @@ void setup()
 	
 #ifdef ETHERNET_PORT
 	// initialize LAN
-	// To use your specific network settings see the Ethernet library documentation
+	// To use different network settings see the Ethernet library documentation:
+	// https://www.arduino.cc/en/Reference/Ethernet
 	Ethernet.begin(eth_mac, eth_ip);
 #endif
 

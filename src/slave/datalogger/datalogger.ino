@@ -223,6 +223,8 @@ raw_upload_hex:
 // OBIS data you can use the serial interface for the Arducom data transfer. If you use OBIS data or the RX pin is
 // otherwise in use you can use I2C to connect your host (e. g. a Raspberry Pi).
 // You can download data files using the "arducom-ftp" tool.
+// If you are using USB serial communication make sure that your serial USB driver does not reset the Arduino
+// while connecting.
 //
 // When doing I2C with a Raspberry Pi it is recommended to use the software I2C library to avoid
 // bus conflicts with the RTC as the Raspberry Pi does not support multi-master setups. Please see the example
@@ -346,42 +348,33 @@ raw_upload_hex:
 * Configuration
 *******************************************************/
 
-// The chipselect pin depends on the type of SD card shield.
-#define SDCARD_CHIPSELECT	10
+// Define the Arducom transport method. You can use:
+// 1. Hardware Serial: Define SERIAL_STREAM and SERIAL_BAUDRATE.
+// 2. Software Serial: Initialize a SoftwareSerial instance and assign it to SERIAL_STREAM.
+// 3. Hardware I2C: Define I2C_SLAVE_ADDRESS.
+// 4. Software I2C: Define I2C_SLAVE_ADDRESS and SOFTWARE_I2C.
+// 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
-// Define the Arducom transport method. You can use either serial or I2C
-// communication but not both.
-// For a hardware UART connection, use:
+// 1. Hardware Serial
 #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
-// For a software serial connection (for example with a Bluetooth module), use:
-// #define SOFTSERIAL_RX_PIN	2
-// #define SOFTSERIAL_TX_PIN	3
+// 2. Software serial connection (for example with a Bluetooth module)
+// #define SOFTSERIAL_RX_PIN	8
+// #define SOFTSERIAL_TX_PIN	9
 // SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
 // #define SERIAL_STREAM		softSerial
 // #define SERIAL_BAUDRATE		9600
 
-// If you want to use I2C communications, define a slave address.
+// 3. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
 
-#if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
-#error You cannot use serial and I2C communication at the same time.
-#endif
-
-// To use software I2C for Arducom, define SOFTWARE_I2C. If undefined, hardware I2C is used.
-// #define SOFTWARE_I2C		1
-
-// If this macro is defined the internal I2C pullups on SDA and SCL are activated.
-// This will cause those lines to have a voltage of 5 V which may damage connected equipment
-// that runs on less than 5 V (e. g. a Raspberry Pi).
-// Normally it is not necessary to define this macro because external I2C hardware should
-// contain hardware pullup resistors. 
-// #define	I2C_PULLUPS			1
+// 4. Software I2C, additionally define SOFTWARE_I2C
+// #define SOFTWARE_I2C
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
-#if defined SOFTWARE_I2C && defined I2C_SLAVE_ADDRESS
+#if defined I2C_SLAVE_ADDRESS && defined SOFTWARE_I2C
 
 	// The buffer size in bytes for the send and receive buffer
 	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
@@ -389,9 +382,9 @@ raw_upload_hex:
 	// The numbers of the Arduino pins to use (in this example, A0 and A1)
 	// Pins 0 - 7 are on PIND
 	// Pins 8 - 13 are on PINB
-	// Pins 14 - 19 (or A0 - A5) are on PINC
-	#define I2C_SLAVE_SCL_PIN		A1
-	#define I2C_SLAVE_SDA_PIN		A0
+	// Pins 14 - 19 are on PINC
+	#define I2C_SLAVE_SCL_PIN		14
+	#define I2C_SLAVE_SDA_PIN		15
 
 	// The pin read command (input port register)
 	// Subsequent definitions mainly depend on this setting.
@@ -404,10 +397,10 @@ raw_upload_hex:
 	#define I2C_SLAVE_DDR_PINS		DDRC
 
 	// The corresponding bits of the pins on the input and data direction registers
-	#define I2C_SLAVE_SCL_BIT		1
-	#define I2C_SLAVE_SDA_BIT		0
+	#define I2C_SLAVE_SCL_BIT		0
+	#define I2C_SLAVE_SDA_BIT		1
 
-	// The pin change interrupt vector corresponding to the input port
+	// The pin change interrupt vector corresponding to the input port.
 	// For PINB, use PCINT0_vect
 	// For PINC, use PCINT1_vect
 	// For PIND, use PCINT2_vect
@@ -435,6 +428,11 @@ raw_upload_hex:
 	
 #endif	// SOFTWARE_I2C
 
+// 5. Ethernet
+// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+// #define ETHERNET_IP				192, 168, 0, 177
+
 // If you use software serial output for debugging, specify its pins here.
 // Note that you cannot use software serial and software I2C at the same time!
 #define SOFTWARESERIAL_RX	2
@@ -455,6 +453,9 @@ raw_upload_hex:
 // This will greatly slow down communication, so don't use
 // this during normal operation.
 // #define USE_ARDUCOM_DEBUG	1
+
+// The chipselect pin depends on the type of SD card shield.
+#define SDCARD_CHIPSELECT	10
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
 #define S0_A_PIN			4
@@ -648,7 +649,7 @@ private:
 		uint8_t D;
 		uint8_t E;
 		uint8_t F;
-		int vartype;
+		uint8_t vartype;
 		void* ptr;
 		OBISVariable* next;
 	};
@@ -691,7 +692,7 @@ public:
 		this->varHead = 0;
 	}
 	
-	void addVariable(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E, uint8_t F, int vartype, void* ptr) {
+	void addVariable(uint8_t A, uint8_t B, uint8_t C, uint8_t D, uint8_t E, uint8_t F, uint8_t vartype, void* ptr) {
 		OBISVariable* var = new OBISVariable();
 		var->A = A;
 		var->B = B;
