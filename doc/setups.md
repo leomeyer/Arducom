@@ -66,7 +66,7 @@ I2C needs to be enabled on your Raspberry Pi. How to do this depends on your Ras
 and your operating system. Please check the web on how to do this for your particular situation.
 
 On older Raspberries such as Model A and Model B, the I2C port is accessible as device /dev/i2c-0.
-On more recent Raspberries the device is /dev/i2c-1. Please check which one applies to your setup.
+On more recent Raspberries the device is /dev/i2c-1 (as of 2016). Please check which one applies to your setup.
 
 I2C communication might fail if your Raspberry tries to access other devices on the I2C bus during Arducom commands
 (for example, an RTC). If you experience problems try to disable these functions.
@@ -127,7 +127,36 @@ The hello-world sketch needs to be modified to use this setup.
 		#define SOFTWARE_I2C         1
 
 The hello-world sketch uses the default software I2C pins A0 and A1 (without enabling pullup resistors).
+
+Ethernet
+--------
+
+![Ethernet Shield W5100 for Arduino](Ethernet-Shield-W5100.png)
+
+You can plug this shield on top of an Arduino and connect a LAN cable. 
+
+The hello-world sketch needs to be modified to use this setup.
+
+1. Define ETHERNET_PORT. You can use the default value ARDUCOM_TCP_DEFAULT_PORT:
+
+		#define ETHERNET_PORT           ARDUCOM_TCP_DEFAULT_PORT
 	
+2. Define a MAC address (or use the default):
+
+		#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+
+3. Define an IP address:
+
+		#define ETHERNET_IP				192, 168, 0, 177
+
+You have to disable SERIAL_STREAM and I2C_SLAVE_ADDRESS for Ethernet support to work.
+Ethernet is being initialized with the supplied parameters. It uses a default gateway and
+netmask. If you need to change these please consult the Arduino Ethernet library documentation
+at https://www.arduino.cc/en/Reference/Ethernet
+
+This shield also contains an SD card slot that you can use for data logging.
+
+<!---
 WLAN connection (using an ESP8266-01)
 ----------------------------------
 
@@ -145,6 +174,7 @@ The most important thing is to somehow connect ESP8266-RXD to Arduino-TXD and Ar
 Arducom provides a test sketch in the esp8266 folder (TODO).
 This test sketch works with the standard ESP8266 firmware (using AT commands).
 Please modify the test sketch by setting your WLAN SSID and password for the ESP8266 to connect.
+-->
 
 Real Time Clock and SD card
 ---------------------------
