@@ -3,7 +3,7 @@
 
 // Demonstrates the use of the Arducom library.
 // Supports serial or I2C transport methods, either
-// being implemented in hardware or software.
+// being implemented in hardware or software, and Ethernet.
 // Supports the Arducom status inquiry command.
 // Implements basic EEPROM access commands.
 // Implements basic RAM access commands (to expose variables).
@@ -26,7 +26,7 @@
 
 #include <Arducom.h>
 #include <ArducomI2C.h>
-#include <ArducomESP8266.h>
+#include <ArducomEthernet.h>
 #include <ArducomStream.h>
 #include <ArducomFTP.h>
 
@@ -63,31 +63,35 @@
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-#define USE_DS1307
+// #define USE_DS1307
 
-// Define the Arducom transport method. You can use either serial or I2C
-// communication but not both.
-// For a hardware UART connection, use:
-#define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		57600
+// Define the Arducom transport method. You can use:
+// 1. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
+// 2. Hardware Serial: Define SERIAL_STREAM and SERIAL_BAUDRATE.
+// 3. Software Serial: Initialize a SoftwareSerial instance and assign it to SERIAL_STREAM.
+// 4. Hardware I2C: Define I2C_SLAVE_ADDRESS.
+// 5. Software I2C: Define I2C_SLAVE_ADDRESS and SOFTWARE_I2C.
 
-// For a software serial connection (for example with a Bluetooth module), use:
+// 1. Ethernet
+#define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+#define ETHERNET_IP				192, 168, 0, 177
+
+// 2. Hardware Serial
+// #define SERIAL_STREAM		Serial
+// #define SERIAL_BAUDRATE		57600
+
+// 3. Software serial connection (for example with a Bluetooth module)
 // #define SOFTSERIAL_RX_PIN	8
 // #define SOFTSERIAL_TX_PIN	9
 // SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
 // #define SERIAL_STREAM		softSerial
 // #define SERIAL_BAUDRATE		9600
 
-// If you are using an ESP8266 module connected to the port defined by SERIAL_STREAM,
-// specify the TCP port to use for the server. You also have to define SSID and password.
-#define ESP8266_PORT		ARDUCOM_TCP_DEFAULT_PORT
-#define ESP8266_SSID		"TestSSID"
-#define ESP8266_PASSWORD	"testPasswd"
-
-// If you want to use I2C communications, define a slave address.
+// 4. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
 
-// To use software I2C, define SOFTWARE_I2C. Otherwise, hardware I2C is used.
+// 5. Software I2C, additionally define SOFTWARE_I2C
 // #define SOFTWARE_I2C
 
 // If using software I2C specify the configuration here
@@ -154,7 +158,7 @@
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
-// #define DEBUG_OUTPUT		Serial
+#define DEBUG_OUTPUT		Serial
 #define DEBUG_BAUDRATE		57600
 
 // Macro for debug output
@@ -164,15 +168,25 @@
 #define DEBUG(x) /* x */
 #endif
 
-// If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
-// This will greatly slow down communication, so don't use
-// this during normal operation.
+// If USE_ARDUCOM_DEBUG is defined Arducom will output debug messages on DEBUG_OUTPUT.
+// This will greatly slow down communication, so don't use this during normal operation.
+// Requires Arducom to be compiled with debug support. To disable debug support
+// set ARDUCOM_DEBUG_SUPPORT to 0 in Arducom.h.
+#if ARDUCOM_DEBUG_SUPPORT == 1
 // #define USE_ARDUCOM_DEBUG
+#endif
+
+#if defined ETHERNET_PORT && defined SERIAL_STREAM
+#error You cannot use Ethernet and serial communication at the same time.
+#endif
+
+#if defined ETHERNET_PORT && defined I2C_SLAVE_ADDRESS
+#error You cannot use Ethernet and I2C communication at the same time.
+#endif
 
 #if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
 #error You cannot use serial and I2C communication at the same time.
 #endif
-
 
 /*******************************************************
 * RTC access command implementation (for getting and
@@ -227,14 +241,11 @@ public:
 * Variables
 *******************************************************/
 
-#ifdef SERIAL_STREAM
-	#ifdef ESP8266_PORT
-	// serial connection over an ESP8266 WLAN module
-	ArducomTransportESP8266 arducomTransport(&SERIAL_STREAM, ESP8266_SSID, ESP8266_PASSWORD, ESP8266_PORT);
-	#else
+#ifdef ETHERNET_PORT
+	ArducomTransportEthernet arducomTransport(ETHERNET_PORT);
+#elif defined SERIAL_STREAM
 	// plain serial connection
 	ArducomTransportStream arducomTransport(&SERIAL_STREAM);
-	#endif
 #elif defined I2C_SLAVE_ADDRESS
 	// I2C may be either software or hardware
 	#ifdef SOFTWARE_I2C
@@ -243,7 +254,7 @@ public:
 	ArducomHardwareI2C arducomTransport(I2C_SLAVE_ADDRESS);
 	#endif
 #else
-#error You have to define a transport method (SERIAL_STREAM or I2C_SLAVE_ADDRESS).
+#error You have to define a transport method (ETHERNET_PORT, SERIAL_STREAM or I2C_SLAVE_ADDRESS).
 #endif
 
 Arducom arducom(&arducomTransport
@@ -251,6 +262,11 @@ Arducom arducom(&arducomTransport
 , &DEBUG_OUTPUT
 #endif
 );
+
+#ifdef ETHERNET_PORT
+byte eth_mac[] = { ETHERNET_MAC};
+IPAddress eth_ip(ETHERNET_IP);
+#endif
 
 #ifdef SDCARD_CHIPSELECT
 // FTP works only if there is an SD card
@@ -306,12 +322,20 @@ void setup()
 #endif
 
 	DEBUG(println(F("HelloWorld starting...")));
+	
+#ifdef ETHERNET_PORT
+	// initialize LAN
+	// To use your specific network settings see the Ethernet library documentation
+	Ethernet.begin(eth_mac, eth_ip);
+#endif
 
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
 	// EEPROM access commands
-#ifndef ESP8266_PORT	
+#ifdef ESP8266_PORT	
+	#warning Omitting Arducom commands 1 - 8 due to excessive ESP8266 flash memory usage
+#else
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
 	arducom.addCommand(new ArducomWriteEEPROMByte(2));
 	arducom.addCommand(new ArducomReadEEPROMInt16(3));
@@ -320,14 +344,14 @@ void setup()
 	arducom.addCommand(new ArducomWriteEEPROMInt32(6));
 	arducom.addCommand(new ArducomReadEEPROMInt64(7));
 	arducom.addCommand(new ArducomWriteEEPROMInt64(8));
-#else
-	#warning Omitting Arducom commands 1 - 8 due to excessive ESP8266 flash memory usage
 #endif	
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 	
 	// expose RAM test variables
-#ifndef ESP8266_PORT	
+#ifdef ESP8266_PORT	
+	#warning Omitting Arducom commands 11 - 18 due to excessive ESP8266 flash memory usage
+#else
 	arducom.addCommand(new ArducomReadByte(11, &testByte));
 	arducom.addCommand(new ArducomWriteByte(12, &testByte));
 	arducom.addCommand(new ArducomReadInt16(13, &testInt16));
@@ -336,8 +360,6 @@ void setup()
 	arducom.addCommand(new ArducomWriteInt32(16, &testInt32));
 	arducom.addCommand(new ArducomReadInt64(17, &testInt64));
 	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
-#else
-	#warning Omitting Arducom commands 11 - 18 due to excessive ESP8266 flash memory usage
 #endif	
 	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock));
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
