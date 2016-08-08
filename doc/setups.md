@@ -137,22 +137,25 @@ You can plug this shield on top of an Arduino and connect a LAN cable.
 
 The hello-world sketch needs to be modified to use this setup.
 
-1. Define ETHERNET_PORT. You can use the default value ARDUCOM_TCP_DEFAULT_PORT:
+1. Disable the serial transport method by commenting SERIAL_STREAM:
+
+		// #define SERIAL_STREAM                Serial
+	
+2. Define ETHERNET_PORT. You can use the default value ARDUCOM_TCP_DEFAULT_PORT:
 
 		#define ETHERNET_PORT           ARDUCOM_TCP_DEFAULT_PORT
 	
-2. Define a MAC address (or use the default):
+3. Define a MAC address (or use the default):
 
 		#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 
-3. Define an IP address:
+4. Define an IP address:
 
 		#define ETHERNET_IP				192, 168, 0, 177
 
-You have to disable SERIAL_STREAM and I2C_SLAVE_ADDRESS for Ethernet support to work.
 Ethernet is being initialized with the supplied parameters. It uses a default gateway and
 netmask. If you need to change these please consult the Arduino Ethernet library documentation
-at https://www.arduino.cc/en/Reference/Ethernet
+at: https://www.arduino.cc/en/Reference/Ethernet
 
 This shield also contains an SD card slot that you can use for data logging.
 
