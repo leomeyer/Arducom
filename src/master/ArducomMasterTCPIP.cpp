@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h> 
 
 #include "../slave/lib/Arducom/Arducom.h"
@@ -81,6 +82,11 @@ void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retrie
 			if (setsockopt(this->sockfd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
 				throw_system_error("Error setting TCP send timeout");		
 		}
+		
+		// disable nagling
+		int flag = 1;
+		if (setsockopt(this->sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int)) < 0)
+			throw_system_error("Error disabling TCP nagling");
 		
 		bzero((char*)&serv_addr, sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
