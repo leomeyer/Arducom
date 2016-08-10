@@ -30,6 +30,7 @@ ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP(const std::string& host
 	this->host = host;
 	this->port = port;
 	this->pos = -1;
+	this->sockfd = -1;
 	
 	// calculate SHA1 hash of host:port
 	std::stringstream fullNameSS;
@@ -55,38 +56,41 @@ void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
 void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > TCPIP_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds TCP/IP block size limit");
-
-	struct sockaddr_in serv_addr;
-	struct hostent *server;
 		
-	server = gethostbyname(this->host.c_str());
-	if (server == NULL)
-		throw std::runtime_error(std::string("Host not found: " + this->host).c_str());
+	if (this->sockfd < 0) {
 
-	this->sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (this->sockfd < 0) 
-		throw_system_error("Failed to open TCP/IP socket");
-
-	if (this->parameters->timeoutMs > 0) {
-		struct timeval timeout;      
-		timeout.tv_sec = this->parameters->timeoutMs / 1000;
-		timeout.tv_usec = 0;
-
-		if (setsockopt(this->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
-			throw_system_error("Error setting TCP receive timeout");
-
-		if (setsockopt(this->sockfd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
-			throw_system_error("Error setting TCP send timeout");		
+		struct sockaddr_in serv_addr;
+		struct hostent *server;
+			
+		server = gethostbyname(this->host.c_str());
+		if (server == NULL)
+			throw std::runtime_error(std::string("Host not found: " + this->host).c_str());
+	
+		this->sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		if (this->sockfd < 0) 
+			throw_system_error("Failed to open TCP/IP socket");
+	
+		if (this->parameters->timeoutMs > 0) {
+			struct timeval timeout;      
+			timeout.tv_sec = this->parameters->timeoutMs / 1000;
+			timeout.tv_usec = 0;
+	
+			if (setsockopt(this->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+				throw_system_error("Error setting TCP receive timeout");
+	
+			if (setsockopt(this->sockfd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout)) < 0)
+				throw_system_error("Error setting TCP send timeout");		
+		}
+		
+		bzero((char*)&serv_addr, sizeof(serv_addr));
+		serv_addr.sin_family = AF_INET;
+		bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
+		serv_addr.sin_port = htons(this->port);
+		
+		if (connect(this->sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+			throw_system_error("Could not connect to host", this->host.c_str());
 	}
 	
-	bzero((char*)&serv_addr, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
-	serv_addr.sin_port = htons(this->port);
-	
-	if (connect(this->sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-		throw_system_error("Could not connect to host", this->host.c_str());
-
 	for (uint8_t i = 0; i < size; i++) {
 		int my_retries = retries;
 repeat:
