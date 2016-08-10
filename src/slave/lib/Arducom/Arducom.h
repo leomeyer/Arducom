@@ -26,9 +26,9 @@
 #include <stdint.h>
 
 // If ARDUCOM_DEBUG_SUPPORT is 1 Arducom compiles with support for debug messages.
-// Comment this to reduce code size or set it to 0 in your sketch before including this file.
+// Comment this or set it to 0 to reduce code size.
 #ifndef ARDUCOM_DEBUG_SUPPORT
-#define ARDUCOM_DEBUG_SUPPORT			1
+#define ARDUCOM_DEBUG_SUPPORT			0
 #endif
 
 // Arducom status codes that are used internally
