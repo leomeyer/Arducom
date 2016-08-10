@@ -357,6 +357,7 @@ raw_upload_hex:
 // 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
 // 1. Hardware Serial
+
 #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
@@ -372,6 +373,13 @@ raw_upload_hex:
 
 // 4. Software I2C, additionally define SOFTWARE_I2C
 // #define SOFTWARE_I2C
+
+// If this macro is defined the internal I2C pullups on SDA and SCL are activated.
+// This will cause those lines to have a voltage of 5 V which may damage connected equipment
+// that runs on less than 5 V (e. g. a Raspberry Pi).
+// Normally it is not necessary to define this macro because external I2C hardware should
+// contain hardware pullup resistors. 
+// #define	I2C_PULLUPS			1
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
@@ -486,7 +494,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-// #define OBIS_IR_POWER_PIN	A2
+#define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM			Serial
 #define OBIS_BAUDRATE		9600
@@ -683,6 +691,7 @@ private:
 	
 	static const uint8_t UNDEF = 0xff;
 	Stream* inputStream;
+
 	// current parser state
 	uint8_t parsePos;
 	uint64_t parseVal;
