@@ -195,6 +195,10 @@ void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& paylo
 				case ARDUCOM_FTP_CANNOT_DELETE: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Cannot delete this file or folder (long file name?)").c_str());
 				default: throw std::runtime_error((std::string("FTP error ") + errorInfoStr + ": Unknown error").c_str());
 				}
+			} else {
+				if (master.lastError == ARDUCOM_COMMAND_UNKNOWN) {
+					throw std::runtime_error("FTP is not supported by the slave");
+				}
 			}
 			
 			if (canRetry && (retries > 0)) {
