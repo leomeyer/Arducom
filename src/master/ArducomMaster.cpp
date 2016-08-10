@@ -398,7 +398,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 
 			// try to retrieve the result
 			*size = 0;
-			uint8_t result = receive(expected, destBuffer, size, &errInfo, parameters.verbose);
+			uint8_t result = receive(expected, parameters.useChecksum, destBuffer, size, &errInfo, parameters.verbose);
 
 			// no error?
 			if (result == ARDUCOM_OK) {
@@ -565,7 +565,7 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 	this->lastCommand = command;
 }
 
-uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose) {
+uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose) {
 	this->lastError = ARDUCOM_OK;
 
 	if (this->lastCommand > 127) {
@@ -652,6 +652,8 @@ uint8_t ArducomMaster::receive(uint8_t expected, uint8_t* destBuffer, uint8_t* s
 
 	uint8_t length = (code & 0b00111111);
 	bool checksum = (code & 0x80) == 0x80;
+	if (checksum != useChecksum)
+		throw std::runtime_error("Checksum flag mismatch");
 	if (verbose) {
 		std::cout << "Code byte: ";
 		this->printBuffer(&code, 1);

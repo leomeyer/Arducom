@@ -190,7 +190,7 @@ protected:
 	* The return code 0 indicates success. Other values mean that an error occurred. 
 	* In these cases, errorInfo contains the info byte as transferred from
 	* the slave, if available. May throw exceptions. */
-	virtual uint8_t receive(uint8_t expected, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose);
+	virtual uint8_t receive(uint8_t expected, bool useChecksum, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose);
 
 	/** Must be called when the transaction is complete. */
 	virtual void done(bool verbose);
