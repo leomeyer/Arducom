@@ -341,6 +341,7 @@ raw_upload_hex:
 
 #include <Arducom.h>
 #include <ArducomI2C.h>
+#include <ArducomEthernet.h>
 #include <ArducomStream.h>
 #include <ArducomFTP.h>
 
@@ -431,7 +432,7 @@ raw_upload_hex:
 // 5. Ethernet
 // #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
 // #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP				192, 168, 0, 177
+// #define ETHERNET_IP			192, 168, 0, 177
 
 // If you use software serial output for debugging, specify its pins here.
 // Note that you cannot use software serial and software I2C at the same time!
@@ -449,13 +450,22 @@ raw_upload_hex:
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // #define DEBUG_OUTPUT		Serial
 
-// If this is defined Arducom will output debug messages on DEBUG_OUTPUT.
-// This will greatly slow down communication, so don't use
-// this during normal operation.
-// #define USE_ARDUCOM_DEBUG	1
+// If USE_ARDUCOM_DEBUG is defined Arducom will output debug messages on DEBUG_OUTPUT.
+// This will greatly slow down communication, so don't use this during normal operation.
+// Requires Arducom to be compiled with debug support. To disable debug support
+// set ARDUCOM_DEBUG_SUPPORT to 0 in Arducom.h.
+#if ARDUCOM_DEBUG_SUPPORT == 1
+// #define USE_ARDUCOM_DEBUG
+#endif
 
-// The chipselect pin depends on the type of SD card shield.
-#define SDCARD_CHIPSELECT	10
+// The chip select pin depends on the type of SD card shield.
+// The Keyes Data Logger Shield uses pin 10 for chip select.
+// The W5100 Ethernet shield uses pin 4 for chip select.
+#define SDCARD_CHIPSELECT	4
+
+// Specifies whether the DS1307 Real Time Clock should be used.
+// If you don't have a DS1307 connected (via I2C), comment this define.
+#define USE_DS1307
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
 #define S0_A_PIN			4
@@ -503,6 +513,19 @@ raw_upload_hex:
 #define SHUTDOWN_BUTTON		A3
 // LED pin to blink to indicate successful shutdown
 #define LED_PIN				13
+
+// validate setup
+#if defined ETHERNET_PORT && defined SERIAL_STREAM
+#error You cannot use Ethernet and serial communication at the same time.
+#endif
+
+#if defined ETHERNET_PORT && defined I2C_SLAVE_ADDRESS
+#error You cannot use Ethernet and I2C communication at the same time.
+#endif
+
+#if defined SERIAL_STREAM && defined I2C_SLAVE_ADDRESS
+#error You cannot use serial and I2C communication at the same time.
+#endif
 
 /*******************************************************
 * Dependent macros
@@ -589,6 +612,7 @@ void print64(Print* print, int64_t n) {
 * RTC access command implementation (for getting and
 * setting of RTC time)
 *******************************************************/
+#ifdef USE_DS1307
 
 RTC_DS1307 RTC;  // define the Real Time Clock object
 
@@ -627,9 +651,12 @@ public:
 	}
 };
 
+#endif
+
 /*******************************************************
 * OBIS parser for D0
 *******************************************************/
+#ifdef OBIS_IR_POWER_PIN
 
 /* This class parses OBIS values from incoming stream data. According to the registered patterns A-F
 * the parsed values are placed in target variables. This class can also write data to a log file. 
@@ -857,6 +884,8 @@ public:
 	}
 };
 
+#endif // ifdef OBIS_IR_POWER_PIN
+
 /*******************************************************
 * Variables
 *******************************************************/
@@ -884,6 +913,11 @@ ArducomTransportStream arducomTransport(&SERIAL_STREAM);
 	#else
 	ArducomHardwareI2C arducomTransport(I2C_SLAVE_ADDRESS);
 	#endif
+#elif defined ETHERNET_PORT
+	// Ethernet settings
+	byte eth_mac[] = {ETHERNET_MAC};
+	IPAddress eth_ip(ETHERNET_IP);
+	ArducomTransportEthernet arducomTransport(ETHERNET_PORT);
 #else
 #error You have to define a transport method (SERIAL_STREAM or I2C_SLAVE_ADDRESS).
 #endif
@@ -896,16 +930,20 @@ Arducom arducom(&arducomTransport
 ArducomFTP arducomFTP;
 
 // SD card and logging related variables
+#ifdef SDCARD_CHIPSELECT
 SdFat sdFat;
+#endif
 uint8_t sdCardOK;
 uint32_t lastWriteMs;
 uint32_t lastOKDateFromRTC;
 bool rtcOK;
 bool initiateShutdown;		// set to true by callback to command 0
 
+#if defined DHT22_A_PIN || defined DHT22_A_PIN
 // DHT sensor 
 dht DHT;
 uint32_t lastDHT22poll;
+#endif
 
 #ifdef OBIS_IR_POWER_PIN
 // OBIS functionality
@@ -940,7 +978,7 @@ volatile uint16_t wdt_token __attribute__ ((section(".noinit")));
 /*******************************************************
 * Routines
 *******************************************************/
-
+#ifdef USE_DS1307
 // taken from SdFat examples
 // call back for file timestamps, used by the SdFat library
 void dateTime(uint16_t* date, uint16_t* time) {
@@ -956,6 +994,7 @@ void dateTime(uint16_t* date, uint16_t* time) {
 		*time = FAT_TIME(0, 0, 0);
 	}
 }
+#endif
 
 #if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
 // Interrupt Service Routine (ISR) for Timer2 overflow (S0 impulse detection)
@@ -1121,6 +1160,7 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 	if (sdCardOK) {
 		SdFile f;
 		if (f.open("/datalogr.log", O_RDWR | O_CREAT | O_AT_END)) {
+			#ifdef USE_DS1307
 			if (timestamp) {
 				if (rtcOK) {
 					// write timestamp to file
@@ -1151,6 +1191,7 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 					f.print(F("<time unknown>      "));
 				}
 			}
+			#endif
 			if (ln)
 				f.println(message);
 			else
@@ -1216,6 +1257,7 @@ void setup() {
 	}
 	#endif
 	
+	#ifdef USE_DS1307
 	// connect to RTC (try three times)
 	int repeat = 3;
 	while (!rtcOK && (repeat > 0))  {
@@ -1223,10 +1265,10 @@ void setup() {
 		repeat--;
 		delay(10);
 	}
-
 	if (rtcOK && sdCardOK)
 		// set date time callback function (for file modification date)
 		SdFile::dateTimeCallback(dateTime);
+	#endif
 
 	log(F("DataLogger starting..."));
 	log(F("Build: "), false);
@@ -1330,6 +1372,13 @@ void setup() {
 	SERIAL_STREAM.begin(SERIAL_BAUDRATE);
 	#endif
 	
+	#ifdef ETHERNET_PORT
+	// initialize LAN
+	// To use different network settings see the Ethernet library documentation:
+	// https://www.arduino.cc/en/Reference/Ethernet
+	Ethernet.begin(eth_mac, eth_ip);
+	#endif
+
 	// Reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM).
 	// It can also test the watchdog and perform a software reset.
@@ -1348,6 +1397,7 @@ void setup() {
 	// the RAM block can be written (S0 initialization access)
 	arducom.addCommand(new ArducomWriteBlock(30, &readings[0], VAR_TOTAL_SIZE));
 
+	#ifdef USE_DS1307
 	if (rtcOK) {
 		// register RTC commands
 		// Assuming I2C, on Linux you can display the current date using the following command:
@@ -1357,6 +1407,7 @@ void setup() {
 		arducom.addCommand(new ArducomGetTime(21));
 		arducom.addCommand(new ArducomSetTime(22));
 	}
+	#endif
 	
 	if (sdCardOK) {
 		log(F("Adding FTP commands"));
@@ -1545,7 +1596,8 @@ void loop() {
 			uint32_t nowUnixtime;
 			uint32_t lastUnixtime = 0;
 			int8_t goodCounter = 0;
-			
+
+			#ifdef USE_DS1307
 			while (!dateOK && (getDateRetries > 0)) {
 				// try to get the time
 				// condition: RTC must be running
@@ -1612,8 +1664,9 @@ void loop() {
 					// remember last known or assumed good date
 					lastOKDateFromRTC = nowUnixtime;
 			}
-			
 			DateTime now;
+			#endif	// use RTC
+			
 			char filename[14];
 			SdFile logFile;
 
@@ -1621,17 +1674,22 @@ void loop() {
 				// log to the fallback file
 				strcpy(filename, "/fallback.log");
 				DEBUG(println(F("RTC date implausible")));
-			} else {
+			}
+			#ifdef USE_DS1307
+			else {
 				// convert to local time
 				now = utcToLocal(nowUTC);
 				sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
 			}
+			#endif
 
 			// reset watchdog timer (file operations may be slow)
 			wdt_reset();
 			if (logFile.open(filename, O_RDWR | O_CREAT | O_AT_END)) {
 				// write timestamp in UTC
+				#ifdef USE_DS1307
 				logFile.print(nowUTC.unixtime());
+				#endif
 				logFile.print(";");
 				
 				// print DHT22 values (invalid readings are left empty)
