@@ -55,6 +55,7 @@ protected:
 	EthernetServer server;
 	EthernetClient client;
 	bool initOK;
+	uint32_t lastSendTime;
 };
 
 #endif

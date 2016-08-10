@@ -38,6 +38,7 @@ int8_t ArducomTransportEthernet::send(Arducom* arducom, uint8_t* buffer, uint8_t
 	}
 	this->client.write((const uint8_t *)buffer, count);
 	this->client.flush();
+	this->lastSendTime = millis();
 	this->status = SENT;
 	this->size = 0;
 	return ARDUCOM_OK;
@@ -74,6 +75,10 @@ int8_t ArducomTransportEthernet::doWork(Arducom* arducom) {
 				}
 				this->status = HAS_DATA;
 			}
+		} else if ((this->lastSendTime > 0) && (millis() - this->lastSendTime > 1000)) {
+			this->client.stop();		// disconnect
+			this->initOK = false;
+			this->lastSendTime = 0;
 		}
 	}
 	return ARDUCOM_OK;
