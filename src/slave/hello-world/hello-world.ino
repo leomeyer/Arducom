@@ -134,7 +134,7 @@
 // #define LED					13
 
 // Define this macro if you are using an SD card.
-// The chipselect pin depends on the type of SD card shield.
+// The chip select pin depends on the type of SD card shield.
 // Requires the SdFat library:
 // https://github.com/greiman/SdFat
 // The Keyes Data Logger Shield uses pin 10 for chip select.
