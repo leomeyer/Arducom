@@ -13,6 +13,8 @@
 // for the arducom-ftp master. Uncomment the define SDCARD_CHIPSELECT below.
 // If a DS1307 RTC is connected (via I2C), supports getting and
 // setting of the time. Uncomment the define USE_DS1307 below.
+//
+// Pay attention to flash ROM usage as some libraries are rather heavy.
 
 // This example code is in the public domain.
 
@@ -47,7 +49,7 @@
 // 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
 // 1. Hardware Serial
-// #define SERIAL_STREAM		Serial
+#define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // 2. Software serial connection (for example with a Bluetooth module)
@@ -120,9 +122,9 @@
 #endif	// SOFTWARE_I2C
 
 // 5. Ethernet
-#define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-#define ETHERNET_IP				192, 168, 0, 177
+// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+// #define ETHERNET_IP				192, 168, 0, 177
 
 // LED pin; define this if you want to use the LED as a status indicator.
 // Note that using the LED will greatly slow down operations like FTP which use
@@ -135,7 +137,9 @@
 // The chipselect pin depends on the type of SD card shield.
 // Requires the SdFat library:
 // https://github.com/greiman/SdFat
-#define SDCARD_CHIPSELECT	4
+// The Keyes Data Logger Shield uses pin 10 for chip select.
+// The W5100 Ethernet shield uses pin 4 for chip select.
+// #define SDCARD_CHIPSELECT		10
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -157,7 +161,7 @@
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
-#define DEBUG_OUTPUT		Serial
+// #define DEBUG_OUTPUT		Serial
 #define DEBUG_BAUDRATE		57600
 
 // Macro for debug output
