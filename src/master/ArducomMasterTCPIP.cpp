@@ -57,9 +57,9 @@ void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
 void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > TCPIP_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds TCP/IP block size limit");
-		
+	
+	// socket closed?
 	if (this->sockfd < 0) {
-
 		struct sockaddr_in serv_addr;
 		struct hostent *server;
 			
@@ -95,6 +95,9 @@ void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retrie
 		
 		if (connect(this->sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
 			throw_system_error("Could not connect to host", this->host.c_str());
+		
+		// reset communication counter
+		this->sockcomm = 0;
 	}
 	
 	for (uint8_t i = 0; i < size; i++) {
@@ -158,8 +161,8 @@ void ArducomMasterTransportTCPIP::request(uint8_t expectedBytes) {
 			bool checksum = (code & 0x80) == 0x80;
 			while ((pos < expectedBytes) && (pos < length + (checksum ? 3 : 2))) {
 				this->readByteInternal(&this->buffer[pos++]);
-			if (pos > TCPIP_BLOCKSIZE_LIMIT)
-				throw std::runtime_error("Error: number of received bytes exceeds TCP/IP block size limit");
+				if (pos > TCPIP_BLOCKSIZE_LIMIT)
+					throw std::runtime_error("Error: number of received bytes exceeds TCP/IP block size limit");
 			}
 		}
 	}
@@ -175,7 +178,8 @@ uint8_t ArducomMasterTransportTCPIP::readByte(void) {
 }
 
 void ArducomMasterTransportTCPIP::done() {
-	// nothing to do (socket remains open)
+	close(this->sockfd);
+	this->sockfd = -1;
 }
 
 size_t ArducomMasterTransportTCPIP::getMaximumCommandSize(void) {

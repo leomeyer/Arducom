@@ -10,6 +10,8 @@
 #include "ArducomMaster.h"
 
 #define TCPIP_BLOCKSIZE_LIMIT	32
+// maximum number of executes before socket is closed to prevent slave hangups
+#define TCPIP_MAXSOCKETCOMM		16
 
 class ArducomMasterTransportTCPIP: public ArducomMasterTransport {
 public:
@@ -43,6 +45,7 @@ protected:
 	key_t semkey;
 
 	int sockfd;
+	int sockcomm;
 
 	uint8_t buffer[TCPIP_BLOCKSIZE_LIMIT];
 	int8_t pos;
