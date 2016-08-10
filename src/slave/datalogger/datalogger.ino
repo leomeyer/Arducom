@@ -357,7 +357,8 @@ raw_upload_hex:
 // 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
 // 1. Hardware Serial
-
+// Warning! This setting conflicts with the OBIS data parser which also uses the serial port!
+// Undefine OBIS_IR_POWER_PIN if you want to test serial communication.
 #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
@@ -371,7 +372,7 @@ raw_upload_hex:
 // 3. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
 
-// 4. Software I2C, additionally define SOFTWARE_I2C
+// 4. Software I2C: additionally define SOFTWARE_I2C
 // #define SOFTWARE_I2C
 
 // If this macro is defined the internal I2C pullups on SDA and SCL are activated.
@@ -494,7 +495,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-#define OBIS_IR_POWER_PIN	A2
+// #define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM			Serial
 #define OBIS_BAUDRATE		9600
@@ -1418,11 +1419,13 @@ void setup() {
 	}
 	#endif
 	
+	#ifdef SDCARD_CHIPSELECT
 	if (sdCardOK) {
 		log(F("Adding FTP commands"));
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 	}
+	#endif
 	
 	// **** S0 polling interrupt setup ****
 
