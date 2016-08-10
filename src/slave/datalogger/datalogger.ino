@@ -6,7 +6,10 @@
 // Data logger using an SD card and a Real Time Clock DS1307
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
+// If using an Ethernet shield, an SD card and an RTC an Arduino Uno is too small.
+// For such advanced purposes use an Arduino Mega.
 // Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
+// This is also the default configuration using serial transport at 57600 baud.
 // Caution: Remove I2C pullup resistors on 5 V data shields if connecting to a Raspberry Pi
 // or another 3.3 V-operated module that uses internal pullups on its I2C pins!
 //
@@ -358,7 +361,7 @@ raw_upload_hex:
 
 // 1. Hardware Serial
 // Warning! This setting conflicts with the OBIS data parser which also uses the serial port!
-// Undefine OBIS_IR_POWER_PIN if you want to test serial communication.
+// Undefine OBIS_IR_POWER_PIN (below) if you want to test serial communication.
 #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
@@ -470,7 +473,7 @@ raw_upload_hex:
 // The chip select pin depends on the type of SD card shield.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT	4
+#define SDCARD_CHIPSELECT	10
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
@@ -513,7 +516,7 @@ raw_upload_hex:
 // #define OBIS_DEBUG			1
 
 // file log interval (milliseconds)
-#define LOG_INTERVAL_MS		60000
+#define LOG_INTERVAL_MS		600000
 
 // interval for S0 EEPROM transfer (seconds)
 #define EEPROM_INTERVAL_S	3600
@@ -1500,6 +1503,7 @@ void loop() {
 	#endif
 	
 	// DHT22
+	#if defined DHT22_A_PIN || defined DHT22_B_PIN
 	// poll interval reached?
 	if (millis() - lastDHT22poll > DHT22_POLL_INTERVAL_MS) {
 		// read sensor values
@@ -1530,6 +1534,7 @@ void loop() {
 
 		lastDHT22poll = millis();
 	}
+	#endif
 	
 	// S0 impulse counters
 	#ifdef S0_A_PIN
