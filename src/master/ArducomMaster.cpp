@@ -427,7 +427,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			switch (result) {
 
 			case ARDUCOM_NO_DATA:
-				throw std::runtime_error("No data (not enough data sent or command not yet processed, try to increase delay -l or number of retries -x)");
+				throw std::runtime_error("No data (not enough data sent or command not yet processed, try to increase --initDelay, delay -l or number of retries -x)");
 
 			case ARDUCOM_COMMAND_UNKNOWN:
 				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errInfoStr).c_str());
