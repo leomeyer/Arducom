@@ -1,0 +1,1 @@
+make reset && /usr/bin/avrdude -q -V -p atmega2560 -C /etc/avrdude.conf -c stk500v2 -P /dev/ttyACM0 -U flash:w:build-cli/hello-world.hex:i -b 115200 -D
