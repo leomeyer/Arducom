@@ -19,6 +19,7 @@ Direct serial connection
 ![Raspberry Pi - UART - Arduino Uno](Raspberry-UART-Arduino.png)
 
 Note that for other serial ports, such as those of PCs, you need a voltage level converter.
+Never connect a PC serial port directly to an Arduino as this will probably damage the Arduino.
 
 On a Raspberry Pi with Raspbian, this serial port is the device /dev/ttyAMA0. Depending on your configuration
 you will have to prevent the system from occupying this port at startup.
@@ -158,6 +159,12 @@ netmask. If you need to change these please consult the Arduino Ethernet library
 at: https://www.arduino.cc/en/Reference/Ethernet
 
 This shield also contains an SD card slot that you can use for data logging.
+
+Please note that using Ethernet together with an SD card and an RTC will exceed the flash ROM
+space on an Arduino UNO (32 kB). If you want to use this combination you have to employ an
+Arduino with more than 32 kB flash (an Arduino Mega is recommended). With an Arduino Mega, however,
+you will have to use different SPI pins than the default ones on the shield; please see:
+http://mcukits.com/2009/04/06/arduino-ethernet-shield-mega-hack/
 
 <!---
 WLAN connection (using an ESP8266-01)
