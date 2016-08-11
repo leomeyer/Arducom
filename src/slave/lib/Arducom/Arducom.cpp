@@ -221,6 +221,7 @@ uint8_t Arducom::doWork(void) {
 			if (millis() - this->lastReceiveTime > this->receiveTimeout) {
 				// timeout is up, reset the transport
 				this->transport->reset();
+				this->lastReceiveTime = 0;
 				return ARDUCOM_TIMEOUT;
 			}
 		}

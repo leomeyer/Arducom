@@ -72,9 +72,11 @@
 #define ARDUCOM_FLAG_SOFTRESET			0x80
 
 // Interpreted by command 0; calls the shudown hook if provided
-#define ARDUCOM_SHUTDOWN			0xff
+#define ARDUCOM_SHUTDOWN				0xff
 
-#define ARDUCOM_TCP_DEFAULT_PORT	4152
+#define ARDUCOM_DEFAULT_TIMEOUT_MS		500
+
+#define ARDUCOM_TCP_DEFAULT_PORT		4152
 
 #ifdef ARDUINO
 
@@ -189,9 +191,9 @@ public:
 	Print* debug;
 
 	/** Initializes the Arducom system with the specified transport.
-	* Default receive timeout is zero (wait forever). If specified, a complete command must be received
+	* If the receive timeout (milliseconds) is greater than 0, a complete command must be received
 	* within this time window. Otherwise, the transport is being reset which will discard the incomplete command. */
-	Arducom(ArducomTransport* transport, Print* debugPrint = NULL, uint16_t receiveTimeout = 0);
+	Arducom(ArducomTransport* transport, Print* debugPrint = NULL, uint16_t receiveTimeout = ARDUCOM_DEFAULT_TIMEOUT_MS);
 
 	/** Adds the specified command to the internal list. When the command is
 	* received from the master, its handle() method is executed. 
