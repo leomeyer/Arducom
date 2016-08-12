@@ -57,8 +57,17 @@ Install arduino-mk:
 Compiling and uploading
 -----------------------
 
-Change into the hello-world folder and check the Makefile. Make sure that you have set the correct BOARD_TAG ("uno" by default).
-If RTC and/or SD card are not present, the sketch will automatically disable the respective functions.
+Change into the hello-world folder and check the Makefile. Make sure that you have set the correct BOARD_TAG ("uno" by default). For an Arduino Mega, try "mega" for a 1280 model and "mega2560" for a 2560 model.
+
+If you want to use an SD card shield, check the following line in hello-world.ino and adjust the pin number if necessary:
+
+	#define SDCARD_CHIPSELECT		4
+
+If you are using an RTC of type DS1307 you can enable it using the following macro:
+
+	#define USE_DS1307
+
+You can enable both RTC and SD card. The sketch will try to detect whether they are in fact present and disable unneeded Arducom commands. However, with some transport methods flash ROM usage will exceed an Uno's limit (about 32 kB). You would have to use an Arduino Mega or disable e. g. the RTC.  
 
 Build the sketch:
 
@@ -104,6 +113,10 @@ In case of errors try
 
 	$ sudo make upload
 
+If using certain clones of the Arduino Mega uploading may fail (avrdude communication timeouts). In such cases, issue the following upload command manually (example for Mega 2560):
+
+	$ make reset && /usr/bin/avrdude -q -V -p atmega2560 -C /etc/avrdude.conf -c stk500v2 -P /dev/ttyACM0 -U flash:w:build-cli/hello-world.hex:i -b 115200 -D
+
 The default hello-world sketch uses serial communication at 57600 baud. To test the sketch go to the folder ~/Arducom/src/master. Build the programs:
 
     $ ./make.sh && ./make-ftp.sh
@@ -129,7 +142,7 @@ Testing the hello-world example
 	
 Issue the Arducom version request (command 0). Your serial port may be different from /dev/ttyACM0 (check this first).
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -c 0
+    $ ./arducom -d /dev/ttyACM0 -c 0
 
 arducom will try to interpret the reply. The correct output is something like:
 
@@ -146,7 +159,7 @@ Accessing a Real Time Clock
 
 If you have a DS1307 Real Time Clock connected you can query its current time:
 
-    $ date -d @`./arducom -t serial -d /dev/ttyACM0 -c 21 -o Int32`
+    $ date -d @`./arducom -d /dev/ttyACM0 -c 21 -o Int32`
 
 The output should be something like:
 
@@ -154,7 +167,7 @@ The output should be something like:
 
 If the RTC has not yet been set you can use the following command to set it:
 
-    $ date +"%s" | ./arducom -t serial -d /dev/ttyACM0 -c 22 -i Int32 -r
+    $ date +"%s" | ./arducom -d /dev/ttyACM0 -c 22 -i Int32 -r
 	
 This command transfers the current Unix timestamp (UTC) to the Arduino and sets the RTC time from it.
 This means that the RTC runs on UTC, not the local time of your machine as set by the time zone.
@@ -196,20 +209,20 @@ Addresses are interpreted as 16-bit values, i. e. you have to specify the lower 
 
 For example, to read the 8 bytes at EEPROM address 0x0A issue the following command:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -c 7 -p 0A00
+    $ ./arducom -d /dev/ttyACM0 -c 7 -p 0A00
 
 To write four bytes to address 02 of the (predefined) RAM array issue the following command:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -c 20 -p 020001020304
+    $ ./arducom -d /dev/ttyACM0 -c 20 -p 020001020304
 
 To read them out again use:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -c 19 -p 020004
+    $ ./arducom -d /dev/ttyACM0 -c 19 -p 020004
 	
 To avoid having to reverse bytes you can combine multiple input formats. For example, the last command could
 also be written as:
 
-    $ ./arducom -t serial -d /dev/ttyACM0 -c 19 -i Int16 -p 2 -i Byte -p 4
+    $ ./arducom -d /dev/ttyACM0 -c 19 -i Int16 -p 2 -i Byte -p 4
 	
 This causes arducom to construct a payload of three bytes length: first a 16-bit value of 2 (0002 hex) and a byte value of 4 (04 hex).
 	
@@ -234,25 +247,25 @@ input or output, use '-i Bin' or '-o Bin' respectively.
 
 To set all exposed pins to output use:
 
-	$ ./arducom -t serial -d /dev/ttyACM0 -c 31 -i Bin -p 11111100,11111100 -o Bin
+	$ ./arducom -d /dev/ttyACM0 -c 31 -i Bin -p 11111100,11111100 -o Bin
 	
 This command will respond with the current directional state. To query this state, use:
 
-	$  ./arducom -t serial -d /dev/ttyACM0 -c 30 -o Bin
+	$  ./arducom -d /dev/ttyACM0 -c 30 -o Bin
 	
 To set or query the state of the pins use commands 33 and 32 in a similar fashion.
 
 To read the value of an analog pin you can use command 35. It expects the channel number (one byte) and returns
 an Int16 containing a 10-bit value. Example (reads channel 2):
 
-	$  ./arducom -t serial -d /dev/ttyACM0 -c 35 -p 02 -o Int16
+	$  ./arducom -d /dev/ttyACM0 -c 35 -p 02 -o Int16
 	
 Accessing files on an SD card
 -----------------------------
 
 If you have a FAT-formatted SD card connected you can access it using the arducom-ftp command:
 
-    $ ./arducom-ftp -t serial -d /dev/ttyACM0
+    $ ./arducom-ftp -d /dev/ttyACM0
 
 You should get an output similar to this:
 
@@ -289,9 +302,7 @@ arducom-ftp supports a 'help' command.
 
 Some serial over USB drivers use the DTR line when opening the serial port, and this causes the Arduino to reset.
 If arducom sends too early the command will be lost and you will receive error messages of type "No data".
-Unfortunately there is no easy software fix for this. You can either disable the reset in hardware, but this also disables
-automatic uploading of new code. The behavior is driver specific: an Arduino connected to one PC may exhibit this
-problem while connected to a different machine it may not.
+Unfortunately there is no easy software fix for this. You can either disable the reset in hardware, but this also disables automatic uploading of new code. The behavior is driver specific: an Arduino connected to one PC may exhibit this problem while connected to a different machine it may not.
 
 Arducom attempts to detect these devices by checking for the strings "ttyACM" and "ttyUSB" and if found, sets an
 initialization delay of 2000 milliseconds which can be overridden using the parameter "--initDelay <milliseconds>".

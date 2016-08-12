@@ -44,7 +44,6 @@ To enable software serial in the hello-world sketch, follow these steps:
 1. Disable hardware serial support:
 
 		// #define SERIAL_STREAM                Serial
-		// #define SERIAL_BAUDRATE              57600
 
 2. Enable software serial support:
 
