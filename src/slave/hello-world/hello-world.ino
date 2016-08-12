@@ -124,7 +124,7 @@
 // 5. Ethernet
 // #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
 // #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP				192, 168, 0, 177
+// #define ETHERNET_IP			192, 168, 0, 177
 
 // LED pin; define this if you want to use the LED as a status indicator.
 // Note that using the LED will greatly slow down operations like FTP which use
