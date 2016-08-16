@@ -453,6 +453,24 @@ int main(int argc, char* argv[]) {
 				memcpy(&versionInfo, buffer, size);
 				std::cout << "Arducom slave version: " << (int)versionInfo.version;
 				std::cout << "; Uptime: " << versionInfo.uptime << " ms";
+				int s = versionInfo.uptime / 1000;
+				int m = s / 60;
+				int h = m / 60;
+				int d = h / 24;
+				s = s % 60;
+				m = m % 60;
+				h = h % 24;
+				if ((d > 0) || (h > 0) || (m > 0)) {
+					std::cout << " (";
+					if (d > 0)
+						std::cout << d << "d ";
+					if ((d > 0) || (h > 0))
+						std::cout << h << "h ";
+					if ((d > 0) || (h > 0) || (m > 0))
+						std::cout << m << "m ";
+					std::cout << s << "s";
+					std::cout << ")";
+				}
 				std::cout << "; Flags: " << (int)versionInfo.flags << (versionInfo.flags & 1 ? " (debug on)" : " (debug off)");
 				std::cout << "; Free RAM: " << versionInfo.freeRAM << " bytes";
 				std::cout << "; Info: " << versionInfo.info;
