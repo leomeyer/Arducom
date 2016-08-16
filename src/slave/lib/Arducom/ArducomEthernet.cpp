@@ -36,6 +36,16 @@ int8_t ArducomTransportEthernet::send(Arducom* arducom, uint8_t* buffer, uint8_t
 		#endif
 		return ARDUCOM_NETWORK_ERROR;
 	}
+	#ifdef ARDUCOM_DEBUG_SUPPORT
+	if (arducom->debug) {
+		arducom->debug->print(F("Send: "));
+		for (uint8_t i = 0; i < count; i++) {
+			arducom->debug->print(buffer[i], HEX);
+			arducom->debug->print(F(" "));
+		}
+		arducom->debug->println();
+	}
+	#endif
 	this->client.write((const uint8_t *)buffer, count);
 	this->client.flush();
 	this->lastSendTime = millis();
@@ -59,15 +69,18 @@ int8_t ArducomTransportEthernet::doWork(Arducom* arducom) {
 			this->client = server.available();
 		// get data from a connected client
 		if (this->client.available() > 0) {
-			#if ARDUCOM_DEBUG_SUPPORT == 1
-			if (arducom->debug)
-				arducom->debug->println(F("Ethernet data received"));
-			#endif
 			if (this->status != HAS_DATA)
 				this->size = 0;
 			// read incoming data
 			while (this->client.available()) {
 				this->data[this->size] = this->client.read();
+				#ifdef ARDUCOM_DEBUG_SUPPORT
+				if (arducom->debug) {
+					arducom->debug->print(F("Recv: "));
+					arducom->debug->print(this->data[this->size], HEX);
+					arducom->debug->println(F(" "));
+				}
+				#endif
 				this->size++;
 				if (this->size > ARDUCOM_BUFFERSIZE) {
 					this->status = TOO_MUCH_DATA;

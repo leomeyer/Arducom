@@ -180,6 +180,7 @@ uint8_t Arducom::doWork(void) {
 		}
 		// reset data size cache (start over)
 		this->lastDataSize = -1;
+		this->lastReceiveTime = 0;
 		// check result code
 		if (result != ARDUCOM_OK) {
 			// an error has occurred; send it back to the master

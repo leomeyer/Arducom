@@ -48,6 +48,16 @@ int8_t ArducomHardwareI2C::send(Arducom* arducom, uint8_t* buffer, uint8_t count
 		this->size = 3;
 		return ARDUCOM_OVERFLOW;
 	} else {
+		#ifdef ARDUCOM_DEBUG_SUPPORT
+		if (arducom->debug) {
+			arducom->debug->print(F("Send: "));
+			for (uint8_t i = 0; i < count; i++) {
+				arducom->debug->print(buffer[i], HEX);
+				arducom->debug->print(F(" "));
+			}
+			arducom->debug->println();
+		}
+		#endif
 		// copy buffer data
 		for (uint8_t i = 0; i < count; i++)
 			this->data[i] = buffer[i];
@@ -61,6 +71,7 @@ void ArducomHardwareI2C::receiveEvent(int count) {
 	while (Wire.available()) {
 		// read byte
 		hardwareI2C->data[hardwareI2C->size] = Wire.read(); 
+		// no debug support here because it's an interrupt routine
 		hardwareI2C->size++;
 		if (hardwareI2C->size >= ARDUCOM_BUFFERSIZE) {
 			hardwareI2C->status = TOO_MUCH_DATA;
@@ -99,6 +110,7 @@ void ArducomSoftwareI2C::I2CReceive(uint8_t length) {
 	while (softwareI2C->size < length) {
 		// read byte
 		softwareI2C->data[softwareI2C->size] = softwareI2C->i2c_buffer[softwareI2C->size];
+		// no debug support here because it's an interrupt routine
 		softwareI2C->size++;
 	}
 	softwareI2C->status = HAS_DATA;
@@ -125,6 +137,16 @@ int8_t ArducomSoftwareI2C::send(Arducom* arducom, uint8_t* buffer, uint8_t count
 		this->i2c_send(this->data, (uint8_t)this->size);
 		return ARDUCOM_OVERFLOW;
 	} else {
+		#ifdef ARDUCOM_DEBUG_SUPPORT
+		if (arducom->debug) {
+			arducom->debug->print(F("Send: "));
+			for (uint8_t i = 0; i < count; i++) {
+				arducom->debug->print(buffer[i], HEX);
+				arducom->debug->print(F(" "));
+			}
+			arducom->debug->println();
+		}
+		#endif
 		this->size = count;
 		this->i2c_send(buffer, count);
 	}

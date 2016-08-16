@@ -27,9 +27,7 @@
 
 // If ARDUCOM_DEBUG_SUPPORT is 1 Arducom compiles with support for debug messages.
 // Comment this or set it to 0 to reduce code size.
-#ifndef ARDUCOM_DEBUG_SUPPORT
 #define ARDUCOM_DEBUG_SUPPORT			0
-#endif
 
 // Arducom status codes that are used internally
 #define ARDUCOM_OK						0
