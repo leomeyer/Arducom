@@ -62,8 +62,13 @@
 // 3. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
 
-// 4. Software I2C, additionally define SOFTWARE_I2C
+// 4. For Software I2C, additionally define SOFTWARE_I2C (configuration see below)
 // #define SOFTWARE_I2C
+
+// 5. Ethernet
+// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+// #define ETHERNET_IP			192, 168, 0, 177
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
@@ -118,20 +123,15 @@
 	#define I2C_SLAVE_PINMASKREG	PCMSK1
 
 	#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
-	
-#endif	// SOFTWARE_I2C
 
-// 5. Ethernet
-// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP			192, 168, 0, 177
+#endif	// SOFTWARE_I2C
 
 // LED pin; define this if you want to use the LED as a status indicator.
 // Note that using the LED will greatly slow down operations like FTP which use
 // lots of commands. Also, if you are using an SD card you won't probably see the
 // blinking of the status LED due to its inference with the SPI ports.
 // For these reasons it's recommended to use the LED for debugging purposes only.
-// #define LED					13
+// #define LED				13
 
 // Define this macro if you are using an SD card.
 // The chip select pin depends on the type of SD card shield.
@@ -139,7 +139,7 @@
 // https://github.com/greiman/SdFat
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT		4
+#define SDCARD_CHIPSELECT		10
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -152,14 +152,14 @@
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-// #define USE_DS1307
+#define USE_DS1307
 
 // Specifies a Print object to use for the debug output.
 // You cannot use the same Print object for Arducom serial communication
 // (for example, Serial). Instead, use a SoftwareSerial port or another
 // HardwareSerial on Arduinos with more than one UART.
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
-// use the define USE_ARDUCOM_DEBUG below. Arducom will also use this output.
+// use the define USE_ARDUCOM_DEBUG below. Arducom debug will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
 // #define DEBUG_OUTPUT		Serial
 // #define DEBUG_BAUDRATE		57600
@@ -173,8 +173,8 @@
 
 // If USE_ARDUCOM_DEBUG is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use this during normal operation.
-// Requires Arducom to be compiled with debug support. To disable debug support
-// set ARDUCOM_DEBUG_SUPPORT to 0 in Arducom.h.
+// Requires Arducom to be compiled with debug support. To enable Arducom debug support
+// set ARDUCOM_DEBUG_SUPPORT to 1 in Arducom.h.
 #if ARDUCOM_DEBUG_SUPPORT == 1
 // #define USE_ARDUCOM_DEBUG
 #endif
@@ -338,9 +338,6 @@ void setup()
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
 	// EEPROM access commands
-#ifdef ESP8266_PORT	
-	#warning Omitting Arducom commands 1 - 8 due to excessive ESP8266 flash memory usage
-#else
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
 	arducom.addCommand(new ArducomWriteEEPROMByte(2));
 	arducom.addCommand(new ArducomReadEEPROMInt16(3));
@@ -349,14 +346,10 @@ void setup()
 	arducom.addCommand(new ArducomWriteEEPROMInt32(6));
 	arducom.addCommand(new ArducomReadEEPROMInt64(7));
 	arducom.addCommand(new ArducomWriteEEPROMInt64(8));
-#endif	
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 	
 	// expose RAM test variables
-#ifdef ESP8266_PORT	
-	#warning Omitting Arducom commands 11 - 18 due to excessive ESP8266 flash memory usage
-#else
 	arducom.addCommand(new ArducomReadByte(11, &testByte));
 	arducom.addCommand(new ArducomWriteByte(12, &testByte));
 	arducom.addCommand(new ArducomReadInt16(13, &testInt16));
@@ -365,8 +358,7 @@ void setup()
 	arducom.addCommand(new ArducomWriteInt32(16, &testInt32));
 	arducom.addCommand(new ArducomReadInt64(17, &testInt64));
 	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
-#endif	
-	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock));
+	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	
 	// expose all of port D's pins through pin commands
@@ -403,12 +395,12 @@ void setup()
 
 #ifdef SDCARD_CHIPSELECT
 	// initialize SD system
-	if (sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
+	if (!sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
+		DEBUG(println(F("SD card setup failure!")));
+	} else {
 		// initialize FTP system (adds FTP commands)
 		arducomFTP.init(&arducom, &sdFat);
 		DEBUG(println(F("SD card setup ok.")));
-	} else {
-		DEBUG(println(F("SD card setup failure!")));
 	}		
 #endif
 
