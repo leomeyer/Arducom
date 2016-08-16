@@ -14,11 +14,19 @@
 #include <sstream>
 #include <string>
 
-#define DEFAULT_DELAY_MS	10
-#define DEFAULT_TIMEOUT_MS	3000
+// Default slave reaction delay for processing and sending
+// Only relevant for I2C transport (I2C data request fails immediately if there is not data).
+#define DEFAULT_DELAY_MS		10
+// The default timeout for I/O should not be less than 500 because with TCP/IP, if it is less,
+// an error message for an unknown host would be "timeout" rather than "no route to host",
+// which is slightly confusing. To avoid this confusion, set the default rather high.
+#define DEFAULT_TIMEOUT_MS		5000
 #define DEFAULT_BAUDRATE		57600
+// The init delay is only relevant for serial transports in case an Arduino is being reset
+// by the serial driver on connection. This constant allows for some startup time.
 #define DEFAULT_INIT_DELAY_MS	3000
 
+// helper macros
 #define Q(str)				#str
 #define QUOTE(str)			Q(str)
 

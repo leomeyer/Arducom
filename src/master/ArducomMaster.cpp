@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sstream>
+#include <arpa/inet.h>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "ArducomMasterI2C.h"
@@ -21,7 +22,12 @@
 
 void throw_system_error(const char* what, const char* info) {
 	std::stringstream fullWhatSS;
-	fullWhatSS << what << ": " << (info != NULL ? info : "") << (info != NULL ? ": " : "") << strerror(errno);
+	fullWhatSS << what << ": " << (info != NULL ? info : "") << (info != NULL ? ": " : "");
+	// special treatment for certain errors
+	if (errno == EINPROGRESS)
+		fullWhatSS << "The operation timed out";
+	else
+		fullWhatSS << strerror(errno);
 	std::string fullWhat = fullWhatSS.str();
 	throw std::runtime_error(fullWhat.c_str());
 }
@@ -205,6 +211,11 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		} else
 		if (device.find("/dev/i2c") == 0) {
 			transportType = "i2c";
+		} else {
+			// check whether the device represents a valid IP address
+			struct sockaddr_in sa;
+			if (inet_pton(AF_INET, device.c_str(), &(sa.sin_addr)) == 1)
+				transportType = "tcpip";
 		}
 	}
 
