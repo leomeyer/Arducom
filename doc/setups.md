@@ -13,6 +13,12 @@ Of course, you can also use a normal PC or laptop instead of a Raspberry Pi.
 This setup is recommended for getting started. The hello-world test sketch works with this setup by default.
 The serial device on the Raspberry Pi would be something like /dev/ttyUSB0 or /dev/ttyACM0.
 
+You can connect to it with Arducom using the following command (adjust device name if necessary):
+
+		$ ./arducom -d /dev/ttyUSB0 -c 0
+
+The size of the hello-world sketch with SD card and RTC support is about 24 kB.
+
 Direct serial connection
 ------------------------
 
@@ -25,17 +31,21 @@ On a Raspberry Pi with Raspbian, this serial port is the device /dev/ttyAMA0. De
 you will have to prevent the system from occupying this port at startup.
 For an example how to do this see here: https://www.raspberrypi.org/forums/viewtopic.php?f=44&t=15683
 
-The hello-world test sketch works with this setup by default.
+The hello-world test sketch works with this setup by default. Its size with SD card and RTC support is about 24 kB.
 
-Serial Bluetooth connection
----------------------------
+You can connect to it with Arducom using the following command:
+
+		$ ./arducom -d /dev/ttyAMA0 -c 0
+
+Serial Bluetooth or WLAN shield connection
+------------------------------------------
 
 ![HC-05 Bluetooth Module - Arduino Uno](HC-05-Arduino.png)
 
 This example shows how to connect a serial Bluetooth module of type HC-05.
 If you use a different one, please check that you use the correct voltages on your module's pins.
 
-This example uses software serial port emulation on the Arduino. The default baud rate of the HC-05 is
+This example uses software serial port emulation on the Arduino Uno. The default baud rate of the HC-05 is
 9600 baud which is quite slow but works for a test. If you change the baud rate be aware that software
 serial stops working well from 115200 baud onwards on 16 MHz devices; possibly less on slower ones.
 
@@ -57,7 +67,17 @@ Getting a Linux machine to connect to the HC-05 is a topic that is outside the s
 You can find a lot of information on the web, please see for example here:
 https://myraspberryandme.wordpress.com/2013/11/20/bluetooth-serial-communication-with-hc-05/
 
-Once setup correctly, the serial device on the Raspberry Pi would be something like /dev/rfcomm0.
+Once setup correctly, the serial device on the Raspberry Pi would be something like /dev/rfcomm0. You can connect with Arducom using the following command:
+
+		$ ./arducom -d /dev/rfcomm0 -c 0
+
+How to connect a WLAN shield depends a lot on the type of WLAN shield. Refer to your manual on how to connect the software serial pins to the WLAN shield. Alternatively, you may use hardware serial if your shield supports this; however, sketch uploading may be affected if the WLAN shield uses hardware RX and TX.
+
+The WLAN module should be configured to use a fixed IP address, e.g. 192.168.0.155, and a TCP socket listening for serial data, for example on port 9000. You can then connect to it with Arducom using the following command:
+
+		$ ./arducom -d 192.168.0.155 -a 9000 -c 0
+
+The size of the hello-world sketch with SD card and RTC support is about 24 kB.
 
 I2C connection
 --------------
@@ -99,6 +119,8 @@ The hello-world sketch needs to be modified to use this setup.
 
 		// #define SOFTWARE_I2C         1
 
+The size of the hello-world sketch with SD card and RTC support is about 24 kB.
+
 ### Software I2C ###
 
 This is a setup using software I2C on the Arduino:
@@ -127,6 +149,12 @@ The hello-world sketch needs to be modified to use this setup.
 		#define SOFTWARE_I2C         1
 
 The hello-world sketch uses the default software I2C pins A0 and A1 (without enabling pullup resistors).
+
+Connect with Arducom using the following command (use the correct I2C device):
+
+		$ ./arducom -d /dev/i2c-1 -c 0
+
+The size of the hello-world sketch with SD card and RTC support is about 25 kB.
 
 Ethernet
 --------
@@ -157,13 +185,11 @@ Ethernet is being initialized with the supplied parameters. It uses a default ga
 netmask. If you need to change these please consult the Arduino Ethernet library documentation
 at: https://www.arduino.cc/en/Reference/Ethernet
 
-This shield also contains an SD card slot that you can use for data logging.
+This shield also contains an SD card slot that you can use for data logging. You can connect to it with Arducom using the following command:
 
-Please note that using Ethernet together with an SD card and an RTC will exceed the flash ROM
-space on an Arduino UNO (32 kB). If you want to use this combination you have to employ an
-Arduino with more than 32 kB flash (an Arduino Mega is recommended). With an Arduino Mega, however,
-you will have to use different SPI pins than the default ones on the shield; please see:
-http://mcukits.com/2009/04/06/arduino-ethernet-shield-mega-hack/
+		$ ./arducom -d 192.168.0.155 -a 9000 -c 0
+
+The size of the hello-world sketch with SD card and RTC support is about 30 kB. This approaches the limit of an Arduino Uno. If you exceed about 31 kB you have to employ an Arduino with more than 32 kB flash (an Arduino Mega is recommended). With an Arduino Mega, however, you will have to use different SPI pins than the default ones on the shield; please see: http://mcukits.com/2009/04/06/arduino-ethernet-shield-mega-hack/
 
 <!---
 WLAN connection (using an ESP8266-01)
