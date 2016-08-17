@@ -6,15 +6,15 @@
 // Data logger using an SD card and a Real Time Clock DS1307
 // Recommended hardware: Arduino Uno or similar with a data logging shield, for example:
 // https://learn.adafruit.com/adafruit-data-logger-shield 
-// If using an Ethernet shield, an SD card and an RTC an Arduino Uno is too small.
-// For such advanced purposes use an Arduino Mega.
+// If using an Ethernet shield with an SD card and an RTC, an Arduino Uno may be too small.
+// For such advanced purposes please use an Arduino Mega or similar.
 // Tested with an Arduino Uno clone and a "KEYES XD-204 Data Logging Shield Module".
 // This is also the default configuration using serial transport at 57600 baud.
 // Caution: Remove I2C pullup resistors on 5 V data shields if connecting to a Raspberry Pi
 // or another 3.3 V-operated module that uses internal pullups on its I2C pins!
 //
 // For interoperation with a Raspberry Pi it is recommended to use the software I2C slave
-// implementation instead of a multi-master setup (if using other peripherals like an RTC).
+// implementation instead of a multi-master setup if using other peripherals like an RTC.
 // Software I2C supports a maximum baud rate of about 40 kHz.
 //
 // This sketch can also be used without RTC and SD card for testing purposes.
@@ -22,6 +22,11 @@
 // Startup time will also be *much* longer. If using a serial connection you will have to
 // set the Arducom --initDelay parameter to about 7000 (ms) to get a response if your driver
 // resets the Arduino during the serial connect.
+//
+// Important: To start logging to timestamped files see the instructions under the "RTC" section.
+//
+// All Arducom command line examples are given for the I2C transport. If using for example serial
+// transport, change "/dev/i2c-1" to your serial device name and remove the "-a 5" parameter.
 // 
 // This file is best viewed with a monospace font and tab width 4.
 
@@ -39,7 +44,7 @@
 // All readings are accessible via Arducom via memory block read (command 20). See "RAM layout" below for details.
 // The EEPROM is accessible via Arducom commands 9 (read block) and 10 (write block). See "EEPROM layout" for details.
 // 
-// The logger can write history data to an SD card; this data can be downloaded using an FTP-like client.
+// The logger can write history data to an SD card; this data can be downloaded using the arducom-ftp tool.
 
 // ********* Arducom command codes *********
 // 
@@ -81,7 +86,7 @@
 //
 // The D0 interface is a serial interface used by electronic power meters and other measurement devices.
 // Data transmitted over this interface conforms to the OBIS specification ("Object Identification System").
-// This implementation is for the Easymeter Q3D. It can be easily extended to support other devices.
+// This implementation is for the Easymeter Q3D. It can be extended to support other devices.
 // This datalogger uses the hardware serial port to read the serial data (on Uno). This may conflict with the bootloader
 // during programming because the bootloader also uses the serial port.
 // As the Arduino should still be programmable via USB cable, D0 serial data input must be disabled during
@@ -122,12 +127,12 @@
 // and timestamping records.
 // To query and set the RTC use the following:
 // Assuming I2C, on Linux you can display the current date using the following command:
-// $ date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
+// $ date -d @`./arducom -d /dev/i2c-1 -a 5 -c 21 -o Int32`
 // To set the current date and time, use:
-// $ date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 30
+// $ date +"%s" | ./arducom -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r
 //
 // Important! You must set the time using this command before data is logged into timestamped files!
-// Otherwise data will be logged to the file "/fallback.log."
+// Otherwise data will be logged to the file "/fallback.log".
 // It is also advisable to set the RTC time regularly from a known good time source (such as NTP)
 // because the RTC might not be very accurate. It also allows the logger to validate the RTC date.
 // Setting the RTC too often should be avoided however because the value is stored in EEPROM causing wear.
@@ -142,19 +147,19 @@
 // to move the device to a different timezone, or if you want to adjust for daylight saving time changes.
 // You can read or adjust the timezone offset using the Arducom EEPROM read and write block commands.
 // To set the timezone offset to 7200 (two hours), use the following command (assume I2C):
-// $ ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
+// $ ./arducom -d /dev/i2c-1 -a 5 -c 10 -p 2000 -i Int16 -p 7200
 //
 // It is advised to automate daylight saving changes and RTC corrections (e. g. setting them once per hour).
 
 // ********* Logging **********
 //
-// Timestamped sensor readings are stored on the SD card in a configurable interval.
+// Timestamped sensor readings are stored on the SD card in a configurable interval (default: 1 minute).
 // SD card log files should be rolled over when they become larger. Generally it is advisable to keep these files
 // to around 100 kB. Logging 100 bytes every minute causes a daily data volume of about 140 kB;
 // this should be considered the upper limit. At a baud rate of 57600 (or an I2C bus speed of 50 kHz)
 // such a file will take about 30 seconds to download using an Arducom FTP transfer.
 // Log files are rolled over each day by creating/appending to a file with name /YYYYMMDD.log.
-// To correctly determine the day the TIMEZONE_OFFSET_SECONDS is added to the RTC time (which is UTC).
+// To correctly determine the date the TIMEZONE_OFFSET_SECONDS is added to the RTC time (which is UTC).
 // Data that cannot be reliably timestamped (due to RTC or I2C problems) is appended to the file /fallback.log.
 // To facilitate a clean shutdown you can add a shutdown button which, when pressed, writes all relevant
 // current values to the EEPROM, closes all files and halts the system. Use this e. g. before changing SD cards.
@@ -168,26 +173,27 @@
 // DHT22 temperature data is read as a double, multiplied by 10 and stored as a 16 bit integer.
 // If you read an invalid value you should retry after a few seconds (depending on the sensor update interval).
 // If the value is still invalid you can assume a defective sensor or broken communication.
+// Tools along the chain that process the sensor data should account for temporarily invalid data.
 
 // ********* GPIO pin map **********
 //
 // Suggested pin map for Uno; check whether this works if using a different board:
 //
-// 0 (RX): D0 OBIS input
+// 0 (RX): optional D0 OBIS input
 // 1 (TX): used for programmer, do not use
-// 2: Software Serial RX on Uno (unused if using Software I2C)
-// 3: Software Serial TX on Uno (unused if using Software I2C) 
+// 2: Software Serial RX on Uno (unused if not using software serial)
+// 3: Software Serial TX on Uno (unused if not using software serial) 
 // 4 - 7: S0 inputs (attention: 4 is SD card chip select for some data logger shields)
-// 8: data pin for DHT22 A
-// 9: data pin for DHT22 B
+// 8: optional data pin for DHT22 A
+// 9: optional data pin for DHT22 B
 // 10: Chip Select for SD card on Keyes Data Logger Shield
 // 11 - 13: MOSI, MISO, SCK for SD card on Keyes Data Logger Shield (13 is also the default LED pin)
-// A0: Software I2C SDA
-// A1: Software I2C SCL
-// A2: power supply for OBIS serial input circuit
-// A3: shutdown button (active if low)
-// A4: I2C SDA
-// A5: I2C SCL
+// A0: Software I2C SDA (unused if not using software I2C)
+// A1: Software I2C SCL (unused if not using software I2C)
+// A2: optional power supply for OBIS serial input circuit
+// A3: optional shutdown button (active if low)
+// A4: I2C SDA (unused if not using I2C)
+// A5: I2C SCL (unused if not using I2C)
 
 // ********* Debug output **********
 //
@@ -224,12 +230,12 @@ raw_upload_hex:
 //
 // To query the sensor values you can use the "arducom" tool on Linux. If you are not using the RX pin for
 // OBIS data you can use the serial interface for the Arducom data transfer. If you use OBIS data or the RX pin is
-// otherwise in use you can use I2C to connect your host (e. g. a Raspberry Pi).
+// otherwise in use you must use a different transport to connect your host (e. g. a Raspberry Pi).
 // You can download data files using the "arducom-ftp" tool.
 // If you are using USB serial communication make sure that your serial USB driver does not reset the Arduino
-// while connecting.
+// while connecting. If it does it will interrupt logging and data may be lost.
 //
-// When doing I2C with a Raspberry Pi it is recommended to use the software I2C library to avoid
+// When doing I2C with a Raspberry Pi you must use the software I2C library to avoid
 // bus conflicts with the RTC as the Raspberry Pi does not support multi-master setups. Please see the example
 // in lib/SoftwareI2CSlave for information on how to setup and test such a configuration.
 // The recommended speed for software I2C is 40 kHz.
@@ -242,8 +248,8 @@ raw_upload_hex:
 // #define TOTAL_KWH		16		// 0x0010, length 8
 // This means that the total kilowatthours of the electric meter are an 8 byte value stored at offset 16.
 // To query this value, assuming I2C, use the following command:
-// $ ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 20 -p 100008 -o Int64
-// This sends command 20 to the I2C device at address 5 on I2C bus 1 with a delay of 10 ms and 5 retries.
+// $ ./arducom -d /dev/i2c-1 -a 5 -c 20 -p 100008 -o Int64
+// This sends command 20 to the I2C device at address 5 on I2C bus 1.
 // Command parameters are three bytes: a two byte offset (lower byte first), and a length byte.
 // The output will be formatted as a 64 bit integer. If you want to know what's going on under the hood, use -v.
 
@@ -274,9 +280,9 @@ raw_upload_hex:
 // 
 // The EEPROM can be accessed using the Arducom commands 9 (read) and 10 (write).
 // To read eight bytes at offset 0x08, use the following command (assume I2C):
-// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 9 -p 080008 -o Int64
+// ./arducom -d /dev/i2c-1 -a 5 -c 9 -p 080008 -o Int64
 // To set the timezone offset at position 0x20 to 7200 (two hours), use the following command (assume I2C):
-// ./arducom -t i2c -d /dev/i2c-1 -a 5 -l 10 -x 5 -c 10 -p 2000 -i Int16 -p 7200
+// ./arducom -d /dev/i2c-1 -a 5 -c 10 -p 2000 -i Int16 -p 7200
 // 
 #define EEPROM_S0COUNTER_LEN	0x08
 // EEPROM map:
@@ -311,13 +317,13 @@ raw_upload_hex:
 #define WATCHDOG_TIMEOUT	WDTO_4S
 //
 // Watchdog behavior can be tested by setting bit 6 of mask and flags of the Arducom version command 0:
-// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 4040
+// ./arducom -d /dev/i2c-1 -a 5 -c 0 -p 4040
 // Be careful! If the watchdog is not enabled this will hang the device!
 // A software reset using the watchdog can be done by setting bit 7 of mask and flags of the Arducom version command 0: 
-// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0 -p 8080
+// ./arducom -d /dev/i2c-1 -a 5 -c 0 -p 8080
 // As this is an Arducom function it will do the watchdog reset regardless of the ENABLE_WATCHDOG define.
 // You can test whether this worked using the Arducom version command (which will tell you the uptime):
-// ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0
+// ./arducom -d /dev/i2c-1 -a 5 -c 0
 
 // See the section "Configuration" below for further settings and explanations.
 
@@ -328,19 +334,6 @@ raw_upload_hex:
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <WSWire.h>
-
-// use RTClib from Adafruit
-// https://github.com/adafruit/RTClib
-#include <RTClib.h>
-
-// DHTlib:
-// https://github.com/RobTillaart/Arduino
-#include <dht.h>
-
-// SdFat:
-// https://github.com/greiman/SdFat
-#include <SdFat.h>
-#include <SdFatUtil.h> 
 
 #include <Arducom.h>
 #include <ArducomI2C.h>
@@ -377,6 +370,11 @@ raw_upload_hex:
 
 // 4. Software I2C: additionally define SOFTWARE_I2C
 // #define SOFTWARE_I2C
+
+// 5. Ethernet
+// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+// #define ETHERNET_IP			192, 168, 0, 177
 
 // If this macro is defined the internal I2C pullups on SDA and SCL are activated.
 // This will cause those lines to have a voltage of 5 V which may damage connected equipment
@@ -441,15 +439,10 @@ raw_upload_hex:
 	
 #endif	// SOFTWARE_I2C
 
-// 5. Ethernet
-// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP			192, 168, 0, 177
-
 // If you use software serial output for debugging, specify its pins here.
 // Note that you cannot use software serial and software I2C at the same time!
-#define SOFTWARESERIAL_RX	2
-#define SOFTWARESERIAL_TX	3
+// #define SOFTWARESERIAL_RX	2
+// #define SOFTWARESERIAL_TX	3
 // #include <SoftwareSerial.h>
 // SoftwareSerial softSerial(SOFTWARESERIAL_RX, SOFTWARESERIAL_TX);
 
@@ -464,8 +457,8 @@ raw_upload_hex:
 
 // If USE_ARDUCOM_DEBUG is defined Arducom will output debug messages on DEBUG_OUTPUT.
 // This will greatly slow down communication, so don't use this during normal operation.
-// Requires Arducom to be compiled with debug support. To disable debug support
-// set ARDUCOM_DEBUG_SUPPORT to 0 in Arducom.h.
+// Requires Arducom to be compiled with debug support. To enable debug support
+// set ARDUCOM_DEBUG_SUPPORT to 1 in Arducom.h.
 #if ARDUCOM_DEBUG_SUPPORT == 1
 // #define USE_ARDUCOM_DEBUG
 #endif
@@ -473,14 +466,14 @@ raw_upload_hex:
 // The chip select pin depends on the type of SD card shield.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT	10
+#define SDCARD_CHIPSELECT	4
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
 #define USE_DS1307
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
-#define S0_A_PIN			4
+#define S0_A_PIN			5
 // #define S0_B_PIN			5
 // #define S0_C_PIN			6
 // #define S0_D_PIN			7
@@ -500,7 +493,7 @@ raw_upload_hex:
 // Undefining this macro switches off OBIS parsing and logging.
 // #define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
-#define OBIS_STREAM			Serial
+#define OBIS_STREAM		Serial
 #define OBIS_BAUDRATE		9600
 // older Arduino libraries (< 102) do not yet have serial protocol configuration constants
 #ifdef SERIAL_7E1
@@ -516,7 +509,7 @@ raw_upload_hex:
 // #define OBIS_DEBUG			1
 
 // file log interval (milliseconds)
-#define LOG_INTERVAL_MS		600000
+#define LOG_INTERVAL_MS		60000
 
 // interval for S0 EEPROM transfer (seconds)
 #define EEPROM_INTERVAL_S	3600
@@ -625,6 +618,10 @@ void print64(Print* print, int64_t n) {
 * setting of RTC time)
 *******************************************************/
 #ifdef USE_DS1307
+
+// use RTClib from Adafruit
+// https://github.com/adafruit/RTClib
+#include <RTClib.h>
 
 RTC_DS1307 RTC;  // define the Real Time Clock object
 
@@ -944,6 +941,12 @@ ArducomFTP arducomFTP;
 
 // SD card and logging related variables
 #ifdef SDCARD_CHIPSELECT
+
+// SdFat:
+// https://github.com/greiman/SdFat
+#include <SdFat.h>
+#include <SdFatUtil.h> 
+
 SdFat sdFat;
 #endif
 uint8_t sdCardOK;
@@ -953,6 +956,11 @@ bool rtcOK;
 bool initiateShutdown;		// set to true by callback to command 0
 
 #if defined DHT22_A_PIN || defined DHT22_A_PIN
+
+// DHTlib:
+// https://github.com/RobTillaart/Arduino
+#include <dht.h>
+
 // DHT sensor 
 dht DHT;
 uint32_t lastDHT22poll;
@@ -1414,9 +1422,9 @@ void setup() {
 	if (rtcOK) {
 		// register RTC commands
 		// Assuming I2C, on Linux you can display the current date using the following command:
-		//  date -d @`./arducom -t i2c -d /dev/i2c-1 -a 5 -c 21 -o Int32 -l 10`
+		//  date -d @`./arducom -d /dev/i2c-1 -a 5 -c 21 -o Int32`
 		// To set the current date and time, use:
-		//  date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
+		//  date +"%s" | ./arducom -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r
 		arducom.addCommand(new ArducomGetTime(21));
 		arducom.addCommand(new ArducomSetTime(22));
 	}
