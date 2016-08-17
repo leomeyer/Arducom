@@ -1,9 +1,8 @@
 
-# set compile time as current UNIX timestamp
 CXXFLAGS += -fno-strict-aliasing
 ARDUINO_DIR = /usr/share/arduino
 BOARD_TAG    = uno
 ARDUINO_PORT = /dev/ttyUSB*
 USER_LIB_PATH = ../lib
-ARDUINO_LIBS = WSWireLib/Library/WSWire WSWireLib/Library/WSWire/utility SdFat/SdFat Arducom
+ARDUINO_LIBS = SPI WSWireLib WSWireLib/utility SdFat Ethernet Ethernet/utility Arducom
 include /usr/share/arduino/Arduino.mk
