@@ -470,7 +470,7 @@ raw_upload_hex:
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-#define USE_DS1307
+#define USE_DS1307        1
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
 #define S0_A_PIN			5
@@ -1000,6 +1000,7 @@ volatile uint16_t wdt_token __attribute__ ((section(".noinit")));
 * Routines
 *******************************************************/
 #ifdef USE_DS1307
+
 // taken from SdFat examples
 // call back for file timestamps, used by the SdFat library
 void dateTime(uint16_t* date, uint16_t* time) {
@@ -1015,6 +1016,17 @@ void dateTime(uint16_t* date, uint16_t* time) {
 		*time = FAT_TIME(0, 0, 0);
 	}
 }
+
+uint32_t utcToLocal(uint32_t utc) {
+  // timezone offset is stored in EEPROM
+  int16_t offset = eeprom_read_word((const uint16_t *)EEPROM_TIMEZONE);
+  // not initialized?
+  if (offset == -1)
+    return utc;
+  uint32_t unixtime = utc + offset;
+  return unixtime;
+}
+
 #endif
 
 #if defined S0_A_PIN || defined S0_B_PIN || defined S0_C_PIN || defined S0_D_PIN
@@ -1160,17 +1172,6 @@ void resetReadings() {
 	// do not reset S0 values; these are set from EEPROM at program start
 }
 
-DateTime utcToLocal(DateTime utc) {
-	// timezone offset is stored in EEPROM
-	int16_t offset = eeprom_read_word((const uint16_t *)EEPROM_TIMEZONE);
-	// not initialized?
-	if (offset == -1)
-		return utc;
-	uint32_t unixtime = utc.unixtime();
-	unixtime += offset;
-	return DateTime(unixtime);
-}
-
 // log the message to a file
 void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = true) {
 	if (ln) {
@@ -1185,7 +1186,7 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 			if (timestamp) {
 				if (rtcOK) {
 					// write timestamp to file
-					DateTime now = utcToLocal(RTC.now());
+					DateTime now(utcToLocal(RTC.now().unixtime()));
 					f.print(now.year());
 					f.print(F("-"));
 					if (now.month() < 10)
@@ -1703,7 +1704,7 @@ void loop() {
 			#ifdef USE_DS1307
 			else {
 				// convert to local time
-				now = utcToLocal(nowUTC);
+				now = DateTime(utcToLocal(nowUTC.unixtime()));
 				sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
 			}
 			#endif
