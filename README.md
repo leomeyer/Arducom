@@ -1,7 +1,7 @@
 Arducom - Arduino communication library
 =======================================
 
-_Please note - this project is pretty much work in progress. Also, documentation is not yet complete._
+Current version: 1.0 (2016-08-17)
 
 Arducom simplifies interaction between Arduinos and Linux devices.
 It is designed to be versatile and easy to extend. It currently supports serial, I2C and TCP/IP connections.
@@ -40,6 +40,8 @@ that supports up to four S0 lines, DHT22 temperature sensors, and an OBIS parser
 The library provides command line tools for testing and integration as well as a C++ API
 for use in your own programs.
 
+The example sketches can be built on Linux on the command line as well as on Windows with the Arduino IDE. The command line tools can also be built on Windows using Cygwin.
+
 Quick start
 -----------
 
@@ -50,7 +52,7 @@ https://github.com/leomeyer/Arducom/tree/master/src/slave/hello-world
 
 For the bare necessities, have a look at:
 
-https://github.com/leomeyer/Arducom/blob/master/src/slave/minimal/minimal_arducom.ino
+https://github.com/leomeyer/Arducom/blob/master/src/slave/minimal/minimal-arducom.ino
 
 For a list of possible hardware setups, go to:
 
@@ -148,7 +150,7 @@ separated by the respective separator.
 
 Examples:
 
-    ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 0
+    ./arducom -d /dev/i2c-1 -a 5 -c 0
 Sends the command number 0 (version command) via I2C to address 5. The test implementations on the Arduino
 recognize this special command and send back slave information. By default arducom interprets this response 
 and outputs something like:
@@ -157,19 +159,19 @@ and outputs something like:
 
 Use -p to send parameters to the slave:
 	
-    ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 9 -o Hex -i Byte -p 0,0,4
+    ./arducom -d /dev/i2c-1 -a 5 -c 9 -o Hex -i Byte -p 0,0,4
 This example sends the command number 9 via I2C to address 5 and prints the result as hex.
 The command parameters are three bytes: 0x00, 0x00, 0x04.
 Command 9, in case of the hello-world sketch, reads a block of data from the EEPROM, and returns the result.
 
 Input formats can also be mixed:
 
-    ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 10 -i Byte -p 10,0 -i Raw -p 'Hello, World!'
+    ./arducom -d /dev/i2c-1 -a 5 -c 10 -i Byte -p 10,0 -i Raw -p 'Hello, World!'
 Sends the command number 10 via I2C to address 5. The command parameters are two bytes: 0x10, 0x00. 
 The input format is then switched to Raw allowing to append additional parameter bytes as the string 'Hello, World!'.
 Command 10, in case of the hello-world sketch, writes a block of data to the EEPROM. It returns nothing.
 
-    date +"%s" | ./arducom -t i2c -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r -l 10
+    date +"%s" | ./arducom -d /dev/i2c-1 -a 5 -c 22 -i Int32 -r
 Outputs the current datetime as Unix timestamp and sends it to arducom which reads the value
 from the command line and sends it via I2C to address 5 with command 22.
 This command, in case of the hello-world sketch, updates the current time of a Real Time Clock. It returns nothing.
@@ -199,7 +201,7 @@ For the most current parameter information, use
 	
 Example:
 
-    ./arducom-ftp -t serial -d /dev/ttyACM0 -x 3
+    ./arducom-ftp -d /dev/ttyACM0 -x 3
 	
 This example connects to the slave using the serial device ttyACM0 specifying 3 retries.
 
@@ -219,3 +221,8 @@ To change the number of retries, use "set retries _n_".
 To change the command delay, use "set delay _n_" with n in milliseconds.
 
 "help" displays a list of commands and some more information.
+
+Building Arducom sketches and tools
+-----------------------------------
+
+How to build Arducom is described here: https://github.com/leomeyer/Arducom/tree/master/src/slave/hello-world

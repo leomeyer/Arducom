@@ -15,8 +15,10 @@ For additional features, use a data logging shield such as this:
 
 For more setups, see https://github.com/leomeyer/Arducom/tree/master/doc/setups.md
 
-Installing the required software
---------------------------------
+Linux
+-----
+
+### Installing the required software
 
 Suppose you start from a clean Linux installation (e. g. Ubuntu 14.04).
 
@@ -47,15 +49,14 @@ If git is not yet installed, install it:
 
 Clone the Arducom git repository:
 
-    $ git clone https://github.com/leomeyer/Arducom
+    $ git clone https://github.com/leomeyer/Arducom --depth=1
 
 Building the hello-world example is done from the command line.
 Install arduino-mk:
 
     $ sudo apt-get install arduino-mk
 	
-Compiling and uploading
------------------------
+### Compiling and uploading
 
 Change into the hello-world folder and check the Makefile. Make sure that you have set the correct BOARD_TAG ("uno" by default). For an Arduino Mega, try "mega" for a 1280 model and "mega2560" for a 2560 model.
 
@@ -117,7 +118,9 @@ If using certain clones of the Arduino Mega uploading may fail (avrdude communic
 
 	$ make reset && /usr/bin/avrdude -q -V -p atmega2560 -C /etc/avrdude.conf -c stk500v2 -P /dev/ttyACM0 -U flash:w:build-cli/hello-world.hex:i -b 115200 -D
 
-The default hello-world sketch uses serial communication at 57600 baud. To test the sketch go to the folder ~/Arducom/src/master. Build the programs:
+### Command line tools
+
+To build the command line tools go to the folder ~/Arducom/src/master. Build the programs:
 
     $ ./make.sh && ./make-ftp.sh
 
@@ -137,12 +140,58 @@ To successfully compile you may also have to install libssl-dev:
 
 	$ sudo apt-get install libssl-dev
 	
+Windows
+-------
+
+### Installing the required software
+
+Download the Arducom zip file from: https://github.com/leomeyer/Arducom/archive/master.zip
+Unzip the file to a directory of your choice.
+
+You can also use a Git command line tool or use TortoiseGit do clone the Arducom repository.
+
+### Compiling and uploading
+
+You can use the Arduino IDE, version 1.6.5 or newer, to build and upload the Arducom sketches. Install the IDE if you haven't done so already. The Arduino IDE can be obtained from here: https://www.arduino.cc/
+
+First, you have to copy the libraries supplied with Arducom to your Arduino libraries folder. For most users, this will be My Documents\Arduino\libraries. Copy the content of the src\slave\lib folder there.
+
+Double click the .ino file, for example, hello-world.ino. The Arduino IDE should open the sketch. 
+
+Adjust the defines that control the program behaviour. If you want to use an SD card shield, check the following line in hello-world.ino and adjust the pin number if necessary:
+
+	#define SDCARD_CHIPSELECT		4
+
+If you are using an RTC of type DS1307 you can enable it using the following macro:
+
+	#define USE_DS1307
+
+You can enable both RTC and SD card. The sketch will try to detect whether they are in fact present and disable unneeded Arducom commands. However, with some transport methods flash ROM usage will exceed an Uno's limit (about 32 kB). You would have to use an Arduino Mega or disable e. g. the RTC.  
+
+Select your Arduino board and the serial port to use for the upload. Compile and upload the sketch.
+
+### Command line tools
+
+To build the command line tools you have to use Cygwin. Obtain the correct executable (32 or 64 bits) for your system from here: https://www.cygwin.com/
+
+When you run the Cygwin executable you have to select the packages necessary to build the Arducom tools. The required packages are gcc-g++ and openssl-devel. Check these packages (by clicking on "Skip"). Cygwin will automatically resolve their dependencies.
+
+To compile Arducom, open a Cygwin terminal and cd to the src/master folder. Issue the following commands:
+
+	$ ./make_cygwin.sh && ./make-ftp_cygwin.sh
+
 Testing the hello-world example
 -------------------------------
 	
-Issue the Arducom version request (command 0). Your serial port may be different from /dev/ttyACM0 (check this first).
+Issue the Arducom version request (command 0). Your serial port may be different (check this first).
+
+Linux:
 
     $ ./arducom -d /dev/ttyACM0 -c 0
+
+Windows (use Cygwin terminal):
+
+	$ ./arducom -d /dev/ttySx (with x being the COM port number)
 
 arducom will try to interpret the reply. The correct output is something like:
 
