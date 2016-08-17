@@ -237,23 +237,26 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		if ((deviceAddress < 1) || (deviceAddress > 127))
 			throw std::invalid_argument("Expected I2C slave device address within range 1..127 (argument -a)");
 
-		transport = new ArducomMasterTransportI2C(device, deviceAddress);
+		transport = new ArducomMasterTransportI2C();
 		#endif
 	} else
 	if (transportType == "serial") {
 		if (device == "")
 			throw std::invalid_argument("Expected serial transport device file name (argument -d)");
 
-		transport = new ArducomMasterTransportSerial(device, baudrate);		
+		transport = new ArducomMasterTransportSerial();		
 	} else
 	if (transportType == "tcpip") {
 		if (device == "")
-			throw std::invalid_argument("Expected TCP/IP host name (argument -d)");
+			throw std::invalid_argument("Expected TCP/IP host name or IP (argument -d)");
 			
 		if ((deviceAddress < 0) || (deviceAddress > 65535))
 			throw std::invalid_argument("TCP/IP port number must be within 0 (default) and 65535");
+		
+		if (deviceAddress == 0)
+			deviceAddress = ARDUCOM_TCP_DEFAULT_PORT;
 
-		transport = new ArducomMasterTransportTCPIP(device, deviceAddress);
+		transport = new ArducomMasterTransportTCPIP();
 	} else
 	if (transportType != "")
 		throw std::invalid_argument("Transport type unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
@@ -279,7 +282,7 @@ std::string ArducomBaseParameters::toString() {
 	result << "Transport: ";
 	result << this->transportType;
 	result << "; ";
-	result << "Device/IP: ";
+	result << "Device/Host: ";
 	result << this->device;
 	result << "; ";
 	result << "Address/Port: ";

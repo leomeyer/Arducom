@@ -63,10 +63,15 @@ static speed_t serial_baud_lookup(long baud)
   throw std::invalid_argument("Unsupported baud rate");
 }
 
-ArducomMasterTransportSerial::ArducomMasterTransportSerial(const std::string& filename, int baudrate) {
-	this->filename = filename;
-	this->baudrate = baudrate;
+ArducomMasterTransportSerial::ArducomMasterTransportSerial() {
 	this->pos = -1;
+}
+
+void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
+	this->parameters = parameters;
+	
+	this->filename = parameters->device;
+	this->baudrate = parameters->baudrate;
 	
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
@@ -76,10 +81,6 @@ ArducomMasterTransportSerial::ArducomMasterTransportSerial(const std::string& fi
 	this->semkey = *(int*)&hash;
 	
 	// std::cout << "Semaphore key:" << this->semkey << std::endl;
-}
-
-void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
-	this->parameters = parameters;
 	
 	// Special case for devices that use USB over serial:
 	// To account for resets of the Arduino that might occur because of the

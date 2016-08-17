@@ -20,12 +20,16 @@
 #include <iostream>
 #include <openssl/sha.h>
 
-ArducomMasterTransportI2C::ArducomMasterTransportI2C(const std::string& filename, int slaveAddress) {
-	this->filename = filename;
-	this->slaveAddress = slaveAddress;
-
+ArducomMasterTransportI2C::ArducomMasterTransportI2C() {
 	this->fileHandle = 0;
 	this->pos = -1;
+}
+
+void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
+	this->parameters = parameters;
+
+	this->filename = parameters->device;
+	this->slaveAddress = parameters->deviceAddress;
 	
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
@@ -33,13 +37,6 @@ ArducomMasterTransportI2C::ArducomMasterTransportI2C(const std::string& filename
 	
 	// IPC semaphore key is the first four bytes of the hash
 	this->semkey = *(int*)&hash;
-}
-
-ArducomMasterTransportI2C::~ArducomMasterTransportI2C() {
-}
-
-void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
-	this->parameters = parameters;
 
 	// Special case for devices that use I2C:
 	// Set the command delay if it has not been set manually.

@@ -19,9 +19,7 @@ class ArducomMasterTransportI2C: public ArducomMasterTransport {
 
 public:
 
-	ArducomMasterTransportI2C(const std::string& filename, int slaveAddress);
-
-	~ArducomMasterTransportI2C();
+	ArducomMasterTransportI2C();
 
 	virtual void init(ArducomBaseParameters* parameters);
 

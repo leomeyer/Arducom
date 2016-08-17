@@ -27,15 +27,19 @@
 
 #include "../slave/lib/Arducom/Arducom.h"
 
-ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP(const std::string& host, int port) {
-	this->host = host;
-	this->port = port;
+ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP() {
 	this->pos = -1;
 	this->sockfd = -1;
+}
+
+void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
+	this->parameters = parameters;
+	this->host = parameters->device;
+	this->port = parameters->deviceAddress;
 	
 	// calculate SHA1 hash of host:port
 	std::stringstream fullNameSS;
-	fullNameSS << host << ":" << port;
+	fullNameSS << this->host << ":" << this->port;
 	std::string fullName = fullNameSS.str();
 
 	unsigned char hash[SHA_DIGEST_LENGTH];
@@ -45,13 +49,6 @@ ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP(const std::string& host
 	this->semkey = *(int*)&hash;
 	
 	// std::cout << "Semaphore key:" << this->semkey << std::endl;
-}
-
-void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
-	this->parameters = parameters;
-	
-	if (this->port == 0)
-		this->port = ARDUCOM_TCP_DEFAULT_PORT;
 }
 
 void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retries) {

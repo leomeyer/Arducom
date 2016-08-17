@@ -16,7 +16,7 @@
 class ArducomMasterTransportTCPIP: public ArducomMasterTransport {
 public:
 
-	ArducomMasterTransportTCPIP(const std::string& host, int port);
+	ArducomMasterTransportTCPIP();
 
 	virtual void init(ArducomBaseParameters* parameters);
 

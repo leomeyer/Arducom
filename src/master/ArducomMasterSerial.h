@@ -14,7 +14,7 @@
 class ArducomMasterTransportSerial: public ArducomMasterTransport {
 public:
 
-	ArducomMasterTransportSerial(const std::string& filename, int baudrate);
+	ArducomMasterTransportSerial();
 
 	virtual void init(ArducomBaseParameters* parameters);
 
