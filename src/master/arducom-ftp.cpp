@@ -280,6 +280,7 @@ void printProgress(uint32_t total, uint32_t current, uint8_t width) {
 			std::cout << ' ';
 	}
 	std::cout << ']';
+	fflush(stdout);
 	needEndl = true;
 }
 
