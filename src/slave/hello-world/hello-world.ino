@@ -139,7 +139,7 @@
 // https://github.com/greiman/SdFat
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT		10
+#define SDCARD_CHIPSELECT		4
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -337,6 +337,7 @@ void setup()
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
+
 	// EEPROM access commands
 	arducom.addCommand(new ArducomReadEEPROMByte(1));
 	arducom.addCommand(new ArducomWriteEEPROMByte(2));
