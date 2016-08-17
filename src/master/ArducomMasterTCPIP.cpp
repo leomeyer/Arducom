@@ -88,9 +88,9 @@ void ArducomMasterTransportTCPIP::send(uint8_t* buffer, uint8_t size, int retrie
 		if (setsockopt(this->sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int)) < 0)
 			throw_system_error("Error disabling TCP nagling");
 		
-		bzero((char*)&serv_addr, sizeof(serv_addr));
+		memset((char*)&serv_addr, 0, sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
-		bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
+		memcpy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
 		serv_addr.sin_port = htons(this->port);
 		
 		if (connect(this->sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)

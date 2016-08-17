@@ -6,6 +6,9 @@
 // Project page: https://github.com/leomeyer/Arducom
 // License: MIT License. For details see the project page.
 
+// required for non-ANSI function fileno
+#define _POSIX_C_SOURCE 200809L
+
 #include <iostream>
 #include <string>
 #include <sstream>

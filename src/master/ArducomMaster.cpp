@@ -7,11 +7,13 @@
 
 #include "ArducomMaster.h"
 
+#include <errno.h>
+#include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <stdexcept>
 #include <iostream>
 #include <unistd.h>
-#include <string.h>
 #include <sstream>
 #include <arpa/inet.h>
 
@@ -179,6 +181,9 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 		}
 	} else
 	if (args.at(*i) == "-k") {
+		#ifdef	__CYGWIN__
+		throw std::invalid_argument("Sorry, System V semaphore locking is not supported under Cygwin");
+		#else
 		(*i)++;
 		if (args.size() == *i) {
 			throw std::invalid_argument("Expected semaphore key (integer) after argument -k");
@@ -189,6 +194,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 				throw std::invalid_argument("Expected integer number after argument -k");
 			}
 		}
+		#endif
 	} else
 		throw std::invalid_argument("Unknown argument: " + args.at(*i));
 }
@@ -222,6 +228,9 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 	ArducomMasterTransport* transport;
 
 	if (transportType == "i2c") {
+		#ifdef	__CYGWIN__
+		throw std::invalid_argument("Sorry, the I2C transport is not supported under Cygwin");
+		#else
 		if (device == "")
 			throw std::invalid_argument("Expected I2C transport device file name (argument -d)");
 
@@ -229,6 +238,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			throw std::invalid_argument("Expected I2C slave device address within range 1..127 (argument -a)");
 
 		transport = new ArducomMasterTransportI2C(device, deviceAddress);
+		#endif
 	} else
 	if (transportType == "serial") {
 		if (device == "")
@@ -324,8 +334,10 @@ std::string ArducomBaseParameters::getHelp() {
 	result.append("    Optional; default: " QUOTE(DEFAULT_DELAY_MS) ". Gives the device time to process.\n");
 	result.append("  -x <value>: Number of retries should sending or retrieving fail.\n");
 	result.append("    Optional; default: 0. A sensible value would be about 3.\n");
+	#ifndef	__CYGWIN__
 	result.append("  -k <value>: The semaphore key used to synchronize between different\n");
 	result.append("    processes. A value of 0 disables semaphore synchronization.\n");
+	#endif
 	
 	return result;
 }
@@ -378,10 +390,15 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	// determine the semaphore key to use
 	// If the parameters specify a value < 0 (default), use the transport's semaphore key.
 	// A value of 0 disables the semaphore mechanism.
+	#ifdef	__CYGWIN__
+	// disable semaphores under Cygwin (not supported)
+	this->semkey = 0;
+	#else
 	if (parameters.semkey < 0)
 		this->semkey = transport->getSemkey();
 	else
 		this->semkey = parameters.semkey;
+	#endif
 	
 	try {
 		this->lock(parameters.debug, parameters.timeoutMs);
@@ -517,16 +534,24 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	semops[1].sem_op = 1;
 	semops[1].sem_flg = SEM_UNDO;
 	
+#ifdef linux
+	// try to acquire resource with a one second timeout
 	// wait for the specified timeout
 	struct timespec timeout;
 	timeout.tv_sec = timeoutMs / 1000;
 	timeout.tv_nsec = 0;
 
-	// try to acquire resource with a one second timeout
 	if (semtimedop(this->semid, semops, 2, &timeout) < 0) {
 		// error acquiring semaphore
 		throw_system_error("Error acquiring semaphore");
 	}
+#else
+	// POSIX-compliant version
+	if (semop(this->semid, semops, 2) < 0) {
+		// error acquiring semaphore
+		throw_system_error("Error acquiring semaphore");
+	}
+#endif
 
 	this->hasLock = true;
 }
