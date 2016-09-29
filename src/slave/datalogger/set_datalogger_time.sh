@@ -10,7 +10,8 @@ TRANSPORT=i2c
 DEVICE=/dev/i2c-1
 ADDRESS=5
 BAUDRATE=57600
-CHECKFILE=timeset.txt
+TMPFOLDER=/var/tmp
+CHECKFILE=$TMPFOLDER/timeset.txt
 
 rm -rf $CHECKFILE
 
@@ -21,31 +22,31 @@ set -e
 date +"%s" | $ARDUCOM -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -c 22 -o Int32 -l 10 -i Int32 -r
 
 # determine current time zone offset
-date +%z | cut -c 1-3 | sed s/+// > tzhours
-date +%z | cut -c 4-5 > tzminutes
+date +%z | cut -c 1-3 | sed s/+// > $TMPFOLDER/tzhours
+date +%z | cut -c 4-5 > $TMPFOLDER/tzminutes
 
 # the following calculations require calc (sudo apt-get install apcalc)
 
 # calculate minutes to a fraction of an hour
-calc "`cat tzminutes` / 60" > tzhourfrac
+calc "`cat $TMPFOLDER/tzminutes` / 60" > $TMPFOLDER/tzhourfrac
 
 # calculate time zone offset in seconds
 # if hours are negative, subtract fraction
-if [ `cat tzhours` -lt "0" ]; then
-	calc "3600 * `cat tzhours` - 3600 * `cat tzhourfrac`" > tzoffset
+if [ `cat $TMPFOLDER/tzhours` -lt "0" ]; then
+	calc "3600 * `cat $TMPFOLDER/tzhours` - 3600 * `cat $TMPFOLDER/tzhourfrac`" > $TMPFOLDER/tzoffset
 else
-	calc "3600 * `cat tzhours` + 3600 * `cat tzhourfrac`" > tzoffset
+	calc "3600 * `cat $TMPFOLDER/tzhours` + 3600 * `cat $TMPFOLDER/tzhourfrac`" > $TMPFOLDER/tzoffset
 fi
 
 # send time zone offset to data logger
-$ARDUCOM -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l 10 -x 5 -c 10 -p 2000 -i Int16 -p `cat tzoffset`
+$ARDUCOM -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -l 10 -x 5 -c 10 -p 2000 -i Int16 -p `cat $TMPFOLDER/tzoffset`
 
 # read current time and offset from data logger to the check file
 date -d @`$ARDUCOM -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -c 21 -o Int32 -l 10` > $CHECKFILE
 $ARDUCOM -t $TRANSPORT -d $DEVICE -a $ADDRESS -b $BAUDRATE -c 9 -p 200002 -o Int16 >> $CHECKFILE
 
 # cleanup
-rm tzhours
-rm tzminutes
-rm tzhourfrac
-rm tzoffset
+rm $TMPFOLDER/tzhours
+rm $TMPFOLDER/tzminutes
+rm $TMPFOLDER/tzhourfrac
+rm $TMPFOLDER/tzoffset
