@@ -139,7 +139,7 @@
 // https://github.com/greiman/SdFat
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT		4
+#define SDCARD_CHIPSELECT		10
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -364,10 +364,10 @@ void setup()
 	
 	// expose all of port D's pins through pin commands
 	// except the two lower ones; these are used by RX and TX
-	arducom.addCommand(new ArducomGetPinDirection(30, &DDRD, ~3));
-	arducom.addCommand(new ArducomSetPinDirection(31, &DDRD, ~3));
-	arducom.addCommand(new ArducomGetPinState(32, &PIND, ~3));
-	arducom.addCommand(new ArducomSetPinState(33, &PORTD, &PIND, ~3));
+	arducom.addCommand(new ArducomGetPortDirection(30, &DDRD, ~3));
+	arducom.addCommand(new ArducomSetPortDirection(31, &DDRD, ~3));
+	arducom.addCommand(new ArducomGetPortState(32, &PIND, ~3));
+	arducom.addCommand(new ArducomSetPortState(33, &PORTD, &PIND, ~3));
 	
 	// expose the analog ports
 	arducom.addCommand(new ArducomGetAnalogPin(35));

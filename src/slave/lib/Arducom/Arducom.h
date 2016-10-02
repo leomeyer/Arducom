@@ -516,7 +516,7 @@ protected:
 };
 
 /***************************************
-* Predefined pin access commands
+* Predefined port access commands
 ****************************************/
 
 /** This class implements a command to set the pin direction of the port defined during creation.
@@ -528,9 +528,9 @@ protected:
 *   Sets the highest pin to input, the lowest pin to output, and does nothing to the rest.
 *   Returns the current value of the direction port; masks out disallowed pins.
 */
-class ArducomSetPinDirection: public ArducomCommand {
+class ArducomSetPortDirection: public ArducomCommand {
 public:
-	ArducomSetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
+	ArducomSetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
@@ -543,9 +543,9 @@ protected:
 *   of the port. If a bit is 0 the pin is configured as input. If it is 1, the pin
 *   is configured as output. The allowedMask specified which pins are allowed at all.
 */
-class ArducomGetPinDirection: public ArducomCommand {
+class ArducomGetPortDirection: public ArducomCommand {
 public:
-	ArducomGetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
+	ArducomGetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
@@ -562,9 +562,9 @@ protected:
 *   Sets the highest pin to low, the lowest pin to high, and does nothing to the rest.
 *   Returns the current value of the input port; masks out disallowed pins.
 */
-class ArducomSetPinState: public ArducomCommand {
+class ArducomSetPortState: public ArducomCommand {
 public:
-	ArducomSetPinState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
+	ArducomSetPortState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
@@ -578,14 +578,61 @@ protected:
 *   of the port. If a bit is 0 the pin is read low. If it is 1, the pin
 *   is read high. The allowedMask specified which pins are allowed at all.
 */
-class ArducomGetPinState: public ArducomCommand {
+class ArducomGetPortState: public ArducomCommand {
 public:
-	ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
+	ArducomGetPortState(uint8_t commandCode, volatile uint8_t* portRegister, uint8_t allowedMask = 0xff);
 	
 	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* pinRegister;
 	uint8_t allowedMask;
+};
+
+/** This class implements a command to set the direction of the pin defined during creation.
+*   Returns the current value of the direction.
+*/
+class ArducomSetPinDirection: public ArducomCommand {
+public:
+	ArducomSetPinDirection(uint8_t commandCode, uint8_t pinNumber);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t pinNumber;
+};
+
+/** This class implements a command to get the direction of the pin defined during creation.
+*/
+/*
+class ArducomGetPinDirection: public ArducomCommand {
+public:
+	ArducomGetPinDirection(uint8_t commandCode, uint8_t pinNumber);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t pinNumber;
+};
+*/
+/** This class implements a command to set the state of the pin defined during creation.
+*   Returns the current value of the pin.
+*/
+class ArducomSetPinState: public ArducomCommand {
+public:
+	ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t pinNumber;
+};
+
+/** This class implements a command to get the state of the pin defined during creation.
+*/
+class ArducomGetPinState: public ArducomCommand {
+public:
+	ArducomGetPinState(uint8_t commandCode,	uint8_t pinNumber);
+	
+	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t pinNumber;
 };
 
 /** This class implements a command to get the value of an analog pin.

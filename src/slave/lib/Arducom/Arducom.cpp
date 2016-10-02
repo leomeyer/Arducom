@@ -578,15 +578,15 @@ int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, 
 }
 
 /***************************************
-* Predefined pin access commands
+* Predefined port access commands
 ****************************************/
 
-ArducomSetPinDirection::ArducomSetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+ArducomSetPortDirection::ArducomSetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
 	this->ddRegister = ddRegister;
 	this->allowedMask = allowedMask;
 }
 	
-int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPortDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
 	uint8_t mask = dataBuffer[0];
 	uint8_t dir = dataBuffer[1];
@@ -605,12 +605,12 @@ int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBu
 	return ARDUCOM_OK;
 }
 	
-ArducomGetPinDirection::ArducomGetPinDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
+ArducomGetPortDirection::ArducomGetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
 	this->ddRegister = ddRegister;
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPortDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current direction values
 	uint8_t ddr = *this->ddRegister;
@@ -621,13 +621,13 @@ int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBu
 	return ARDUCOM_OK;
 }
 	
-ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
+ArducomSetPortState::ArducomSetPortState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 2) {
 	this->portRegister = portRegister;
 	this->pinRegister = pinRegister;
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPortState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
 	uint8_t mask = dataBuffer[0];
 	uint8_t state = dataBuffer[1];
@@ -646,12 +646,12 @@ int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	return ARDUCOM_OK;
 }
 	
-ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
+ArducomGetPortState::ArducomGetPortState(uint8_t commandCode, volatile uint8_t* pinRegister, uint8_t allowedMask) : ArducomCommand(commandCode, 0) {
 	this->pinRegister = pinRegister;
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPortState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current port values
 	uint8_t pins = *this->pinRegister;
@@ -659,6 +659,62 @@ int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 	pins &= this->allowedMask;
 	destBuffer[0] = pins;
 	*dataSize = 1;
+	return ARDUCOM_OK;
+}
+
+/***************************************
+* Predefined pin access commands
+****************************************/
+
+ArducomSetPinDirection::ArducomSetPinDirection(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 1) {
+	this->pinNumber = pinNumber;
+}
+	
+int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects one byte
+	uint8_t dir = dataBuffer[0];
+	pinMode(this->pinNumber, (dir == 0 ? INPUT : OUTPUT));
+	*dataSize = 1;
+	destBuffer[0] = 0; // getPinMode(this->pinNumber);
+	return ARDUCOM_OK;
+}
+/*
+ArducomGetPinDirection::ArducomGetPinDirection(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 0) {
+	this->pinNumber = pinNumber;
+}
+
+int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects nothing
+	*dataSize = 1;
+	destBuffer[0] = getPinMode(this->pinNumber);
+	return ARDUCOM_OK;
+}
+*/	
+ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 1) {
+	this->pinNumber = pinNumber;
+}
+
+int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects one byte
+	uint8_t state = dataBuffer[0];
+	// set new state
+	digitalWrite(this->pinNumber, (state == 0 ? LOW : HIGH));
+	// return the state of the pn
+	*dataSize = 1;
+	destBuffer[0] = digitalRead(this->pinNumber);
+	return ARDUCOM_OK;
+}
+	
+ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 0) {
+	this->pinNumber = pinNumber;
+}
+
+int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects nothing
+	// get current port values
+	// return the state of the pn
+	*dataSize = 1;
+	destBuffer[0] = digitalRead(this->pinNumber);
 	return ARDUCOM_OK;
 }
 
