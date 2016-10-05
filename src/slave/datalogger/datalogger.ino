@@ -955,7 +955,7 @@ uint32_t lastOKDateFromRTC;
 bool rtcOK;
 bool initiateShutdown;		// set to true by callback to command 0
 
-#if defined DHT22_A_PIN || defined DHT22_A_PIN
+#if defined DHT22_A_PIN || defined DHT22_B_PIN
 
 // DHTlib:
 // https://github.com/RobTillaart/Arduino
