@@ -1793,8 +1793,11 @@ void loop() {
 	}
 
 	// shutdown requested?
-	#ifdef SHUTDOWN_BUTTON
-	if ((digitalRead(SHUTDOWN_BUTTON) == LOW) || initiateShutdown) {
+	if (
+		#ifdef SHUTDOWN_BUTTON
+		(digitalRead(SHUTDOWN_BUTTON) == LOW) || 
+		#endif
+		initiateShutdown) {
 		log(F("Shutdown requested"));
 		wdt_disable();
 		
@@ -1815,5 +1818,4 @@ void loop() {
 			#endif
 		}
 	}
-	#endif
 }
