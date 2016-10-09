@@ -75,7 +75,7 @@ class ArducomFTPInit: public ArducomCommand {
 public:
 	ArducomFTPInit(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read file infos from the current directory.
@@ -84,7 +84,7 @@ class ArducomFTPListFiles: public ArducomCommand {
 public:
 	ArducomFTPListFiles(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to rewind the current directory after listing files.
@@ -93,7 +93,7 @@ class ArducomFTPRewind: public ArducomCommand {
 public:
 	ArducomFTPRewind(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to change the current directory.
@@ -102,7 +102,7 @@ class ArducomFTPChangeDir: public ArducomCommand {
 public:
 	ArducomFTPChangeDir(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to open a file for reading. Returns the size of the opened file.
@@ -111,7 +111,7 @@ class ArducomFTPOpenRead: public ArducomCommand {
 public:
 	ArducomFTPOpenRead(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read a section of the currently open file.
@@ -120,7 +120,7 @@ class ArducomFTPReadFile: public ArducomCommand {
 public:
 	ArducomFTPReadFile(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to close the currently open file.
@@ -129,7 +129,7 @@ class ArducomFTPCloseFile: public ArducomCommand {
 public:
 	ArducomFTPCloseFile(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to delete a file. Only 8.3 files and folders that do not have a long file name can be deleted.
@@ -138,7 +138,7 @@ class ArducomFTPDeleteFile: public ArducomCommand {
 public:
 	ArducomFTPDeleteFile(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 #endif

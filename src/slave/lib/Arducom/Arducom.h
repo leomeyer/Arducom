@@ -164,7 +164,7 @@ protected:
 	* The result data is sent back to the master if this method returns a code of 0 (ARDUCOM_OK). 
 	* Any other return code is interpreted as an error. Additional error information can be returned in errorInfo.
 	*/
-	virtual int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
+	virtual int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
 
 	// forms a linked list of supported commands (internal data structure)
 	ArducomCommand* next;
@@ -252,7 +252,7 @@ public:
 		this->shutdownHook = shutdownHook;
 	}
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
 	const char *data;
 	shutdownHook_t shutdownHook;
@@ -269,7 +269,7 @@ class ArducomWriteEEPROMByte: public ArducomCommand {
 public:
 	ArducomWriteEEPROMByte(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read a byte value from a specified EEPROM address.
@@ -281,7 +281,7 @@ class ArducomReadEEPROMByte: public ArducomCommand {
 public:
 	ArducomReadEEPROMByte(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to write a two-byte integer value to a specified EEPROM address.
@@ -291,7 +291,7 @@ class ArducomWriteEEPROMInt16: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt16(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read a two-byte integer value from a specified EEPROM address.
@@ -303,7 +303,7 @@ class ArducomReadEEPROMInt16: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt16(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to write a four-byte integer value to a specified EEPROM address.
@@ -313,7 +313,7 @@ class ArducomWriteEEPROMInt32: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt32(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read a four-byte integer value from a specified EEPROM address.
@@ -325,7 +325,7 @@ class ArducomReadEEPROMInt32: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt32(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to write an eight-byte integer value to a specified EEPROM address.
@@ -335,7 +335,7 @@ class ArducomWriteEEPROMInt64: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt64(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read an eight-byte integer value from a specified EEPROM address.
@@ -347,7 +347,7 @@ class ArducomReadEEPROMInt64: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt64(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to write an arbitrary data block to a specified EEPROM address.
@@ -357,7 +357,7 @@ class ArducomWriteEEPROMBlock: public ArducomCommand {
 public:
 	ArducomWriteEEPROMBlock(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /** This class implements a command to read an arbitrary data block from a specified EEPROM address.
@@ -369,7 +369,7 @@ class ArducomReadEEPROMBlock: public ArducomCommand {
 public:
 	ArducomReadEEPROMBlock(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
 /***************************************
@@ -384,7 +384,7 @@ class ArducomWriteByte: public ArducomCommand {
 public:
 	ArducomWriteByte(uint8_t commandCode, uint8_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
 };
@@ -398,7 +398,7 @@ class ArducomReadByte: public ArducomCommand {
 public:
 	ArducomReadByte(uint8_t commandCode, uint8_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
 };
@@ -411,7 +411,7 @@ class ArducomWriteInt16: public ArducomCommand {
 public:
 	ArducomWriteInt16(uint8_t commandCode, int16_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int16_t* address;
 };
@@ -425,7 +425,7 @@ class ArducomReadInt16: public ArducomCommand {
 public:
 	ArducomReadInt16(uint8_t commandCode, int16_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int16_t* address;
 };
@@ -438,7 +438,7 @@ class ArducomWriteInt32: public ArducomCommand {
 public:
 	ArducomWriteInt32(uint8_t commandCode, int32_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int32_t* address;
 };
@@ -452,7 +452,7 @@ class ArducomReadInt32: public ArducomCommand {
 public:
 	ArducomReadInt32(uint8_t commandCode, int32_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int32_t* address;
 };
@@ -465,7 +465,7 @@ class ArducomWriteInt64: public ArducomCommand {
 public:
 	ArducomWriteInt64(uint8_t commandCode, int64_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int64_t* address;
 };
@@ -479,7 +479,7 @@ class ArducomReadInt64: public ArducomCommand {
 public:
 	ArducomReadInt64(uint8_t commandCode, int64_t* address);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int64_t* address;
 };
@@ -492,7 +492,7 @@ class ArducomWriteBlock: public ArducomCommand {
 public:
 	ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
 	uint16_t maxBlockSize;
@@ -509,7 +509,7 @@ class ArducomReadBlock: public ArducomCommand {
 public:
 	ArducomReadBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize = 0);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
 	uint16_t maxBlockSize;
@@ -532,7 +532,7 @@ class ArducomSetPortDirection: public ArducomCommand {
 public:
 	ArducomSetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* ddRegister;
 	uint8_t allowedMask;
@@ -547,7 +547,7 @@ class ArducomGetPortDirection: public ArducomCommand {
 public:
 	ArducomGetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* ddRegister;
 	uint8_t allowedMask;
@@ -566,7 +566,7 @@ class ArducomSetPortState: public ArducomCommand {
 public:
 	ArducomSetPortState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* portRegister;
 	volatile uint8_t* pinRegister;
@@ -582,7 +582,7 @@ class ArducomGetPortState: public ArducomCommand {
 public:
 	ArducomGetPortState(uint8_t commandCode, volatile uint8_t* portRegister, uint8_t allowedMask = 0xff);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* pinRegister;
 	uint8_t allowedMask;
@@ -595,7 +595,7 @@ class ArducomSetPinDirection: public ArducomCommand {
 public:
 	ArducomSetPinDirection(uint8_t commandCode, uint8_t pinNumber);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
 };
@@ -607,7 +607,7 @@ class ArducomGetPinDirection: public ArducomCommand {
 public:
 	ArducomGetPinDirection(uint8_t commandCode, uint8_t pinNumber);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
 };
@@ -619,7 +619,7 @@ class ArducomSetPinState: public ArducomCommand {
 public:
 	ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
 };
@@ -630,7 +630,7 @@ class ArducomGetPinState: public ArducomCommand {
 public:
 	ArducomGetPinState(uint8_t commandCode,	uint8_t pinNumber);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
 };
@@ -643,13 +643,22 @@ class ArducomGetAnalogPin: public ArducomCommand {
 public:
 	ArducomGetAnalogPin(uint8_t commandCode);
 	
-	int8_t handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* pinRegister;
 	uint8_t allowedMask;
 };
 
+/** This class implements a command to set the PWM value of a digital pin using the analogWrite function.
+*   It expects a pin number and a PWM value between 0 and 255.
+*/
+class ArducomSetPWM: public ArducomCommand {
+public:
+	ArducomSetPWM(uint8_t commandCode);
+	
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+};
 
-#endif
+#endif		// def ARDUINO
 
 #endif

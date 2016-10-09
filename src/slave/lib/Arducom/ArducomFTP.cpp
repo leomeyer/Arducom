@@ -78,7 +78,7 @@ const char string_3[] PROGMEM = "SDXC";
 
 const char* const cardTypes[] PROGMEM = { string_0, string_1, string_2, string_3 }; 
 
-int8_t ArducomFTPInit::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPInit::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this command does not expect any data from the master
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
@@ -149,7 +149,7 @@ int8_t ArducomFTPInit::handle(Arducom* arducom, volatile uint8_t* dataBuffer, in
 ArducomFTPListFiles::ArducomFTPListFiles(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 
-int8_t ArducomFTPListFiles::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPListFiles::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -202,7 +202,7 @@ int8_t ArducomFTPListFiles::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 ArducomFTPRewind::ArducomFTPRewind(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 
-int8_t ArducomFTPRewind::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPRewind::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -219,7 +219,7 @@ int8_t ArducomFTPRewind::handle(Arducom* arducom, volatile uint8_t* dataBuffer, 
 ArducomFTPChangeDir::ArducomFTPChangeDir(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 
-int8_t ArducomFTPChangeDir::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPChangeDir::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -269,7 +269,7 @@ int8_t ArducomFTPChangeDir::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 ArducomFTPOpenRead::ArducomFTPOpenRead(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 
-int8_t ArducomFTPOpenRead::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPOpenRead::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -320,7 +320,7 @@ int8_t ArducomFTPOpenRead::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 ArducomFTPReadFile::ArducomFTPReadFile(uint8_t commandCode) : ArducomCommand(commandCode, 4) {
 }
 
-int8_t ArducomFTPReadFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPReadFile::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -359,7 +359,7 @@ int8_t ArducomFTPReadFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer
 ArducomFTPCloseFile::ArducomFTPCloseFile(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 
-int8_t ArducomFTPCloseFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPCloseFile::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;
@@ -378,7 +378,7 @@ int8_t ArducomFTPCloseFile::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 ArducomFTPDeleteFile::ArducomFTPDeleteFile(uint8_t commandCode) : ArducomCommand(commandCode) {
 }
 	
-int8_t ArducomFTPDeleteFile::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomFTPDeleteFile::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	if (!_arducomFTP) {
 		*errorInfo = ARDUCOM_FTP_NOT_INITIALIZED;
 		return ARDUCOM_FUNCTION_ERROR;

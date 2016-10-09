@@ -273,7 +273,7 @@ uint8_t Arducom::getFlags(void) {
 // for calculation of free RAM
 extern int __heap_start, *__brkval; 
 
-int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	int v; 	
 	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 
@@ -296,7 +296,7 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 	*millisDest = millis();
 	pos += 4;
 	// send config flags (one byte)
-	uint8_t *flagDest = (uint8_t *)&destBuffer[pos];
+	uint8_t* flagDest = (uint8_t* )&destBuffer[pos];
 	*flagDest = arducom->getFlags();
 	pos += 1;
 	// send free RAM info
@@ -325,7 +325,7 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, volatile uint8_t *dataBuf
 
 ArducomWriteEEPROMByte::ArducomWriteEEPROMByte(uint8_t commandCode) : ArducomCommand(commandCode, 3) {}
 	
-int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects three bytes; a two-byte address and a one-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_update_byte((uint8_t*)address, dataBuffer[2]);
@@ -335,7 +335,7 @@ int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBu
 
 ArducomReadEEPROMByte::ArducomReadEEPROMByte(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
-int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
 	destBuffer[0] = eeprom_read_byte((uint8_t*)address);
@@ -345,7 +345,7 @@ int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, volatile uint8_t *dataBuf
 
 ArducomWriteEEPROMInt16::ArducomWriteEEPROMInt16(uint8_t commandCode) : ArducomCommand(commandCode, 4) {}
 	
-int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects four bytes; a two-byte address and a two-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_update_word((uint16_t*)address, dataBuffer[2] + (dataBuffer[3] << 8));
@@ -355,7 +355,7 @@ int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataB
 
 ArducomReadEEPROMInt16::ArducomReadEEPROMInt16(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
-int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_read_block(destBuffer, (uint16_t*)address, 2);
@@ -365,7 +365,7 @@ int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, volatile uint8_t *dataBu
 
 ArducomWriteEEPROMInt32::ArducomWriteEEPROMInt32(uint8_t commandCode) : ArducomCommand(commandCode, 6) {}
 	
-int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects six bytes; a two-byte address and a four-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 4);
@@ -375,7 +375,7 @@ int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataB
 
 ArducomReadEEPROMInt32::ArducomReadEEPROMInt32(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
-int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_read_block(destBuffer, (uint16_t*)address, 4);
@@ -385,7 +385,7 @@ int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, volatile uint8_t *dataBu
 
 ArducomWriteEEPROMInt64::ArducomWriteEEPROMInt64(uint8_t commandCode) : ArducomCommand(commandCode, 10) {}
 	
-int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects ten bytes; a two-byte address and an eight-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 8);
@@ -395,7 +395,7 @@ int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataB
 
 ArducomReadEEPROMInt64::ArducomReadEEPROMInt64(uint8_t commandCode) : ArducomCommand(commandCode, 2) {}
 	
-int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
 	eeprom_read_block(destBuffer, (uint16_t*)address, 8);
@@ -405,7 +405,7 @@ int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, volatile uint8_t *dataBu
 
 ArducomWriteEEPROMBlock::ArducomWriteEEPROMBlock(uint8_t commandCode) : ArducomCommand(commandCode, -1) {}
 	
-int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address plus at least one byte to write
 	#define EXPECTED_PARAM_BYTES 3
 	if (*dataSize < EXPECTED_PARAM_BYTES) {
@@ -421,7 +421,7 @@ int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataB
 
 ArducomReadEEPROMBlock::ArducomReadEEPROMBlock(uint8_t commandCode) : ArducomCommand(commandCode, 3) {}
 	
-int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address plus a length byte
 	uint16_t address = *((uint16_t*)dataBuffer);
 	uint8_t length = dataBuffer[2];
@@ -443,7 +443,7 @@ ArducomWriteByte::ArducomWriteByte(uint8_t commandCode, uint8_t* address) : Ardu
 	this->address = address;
 }
 	
-int8_t ArducomWriteByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a one-byte value
 	*this->address = dataBuffer[0];
 	*dataSize = 0;	// no return value
@@ -454,7 +454,7 @@ ArducomReadByte::ArducomReadByte(uint8_t commandCode, uint8_t* address) : Arduco
 	this->address = address;
 }
 
-int8_t ArducomReadByte::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects no parameters
 	destBuffer[0] = *this->address;
 	*dataSize = 1;
@@ -465,7 +465,7 @@ ArducomWriteInt16::ArducomWriteInt16(uint8_t commandCode, int16_t* address) : Ar
 	this->address = address;
 }
 	
-int8_t ArducomWriteInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte value
 	*this->address = *((int16_t*)dataBuffer);
 	*dataSize = 0;	// no return value
@@ -476,7 +476,7 @@ ArducomReadInt16::ArducomReadInt16(uint8_t commandCode, int16_t* address) : Ardu
 	this->address = address;
 }
 	
-int8_t ArducomReadInt16::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects no parameters
 	*((int16_t*)destBuffer) = *this->address;
 	*dataSize = 2;
@@ -487,7 +487,7 @@ ArducomWriteInt32::ArducomWriteInt32(uint8_t commandCode, int32_t* address) : Ar
 	this->address = address;
 }
 	
-int8_t ArducomWriteInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a four-byte value
 	*this->address = *((int32_t*)dataBuffer);
 	*dataSize = 0;	// no return value
@@ -497,7 +497,7 @@ int8_t ArducomWriteInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer,
 ArducomReadInt32::ArducomReadInt32(uint8_t commandCode, int32_t* address) : ArducomCommand(commandCode, 0) {
 	this->address = address;
 }	
-int8_t ArducomReadInt32::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects no parameters
 	*((int32_t*)destBuffer) = *this->address;
 	*dataSize = 4;
@@ -508,7 +508,7 @@ ArducomWriteInt64::ArducomWriteInt64(uint8_t commandCode, int64_t* address) : Ar
 	this->address = address;
 }
 	
-int8_t ArducomWriteInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects an eight-byte value
 	*this->address = *((int64_t*)dataBuffer);
 	*dataSize = 0;	// no return value
@@ -519,7 +519,7 @@ ArducomReadInt64::ArducomReadInt64(uint8_t commandCode, int64_t* address) : Ardu
 	this->address = address;
 }
 	
-int8_t ArducomReadInt64::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects no parameters
 	*((int64_t*)destBuffer) = *this->address;
 	*dataSize = 8;
@@ -531,7 +531,7 @@ ArducomWriteBlock::ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint
 	this->maxBlockSize = maxBlockSize;
 }
 	
-int8_t ArducomWriteBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomWriteBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte offset plus at least one byte to write
 	#define EXPECTED_PARAM_BYTES 3
 	if (*dataSize < EXPECTED_PARAM_BYTES) {
@@ -557,7 +557,7 @@ ArducomReadBlock::ArducomReadBlock(uint8_t commandCode, uint8_t* address, uint16
 	this->maxBlockSize = maxBlockSize;
 }
 	
-int8_t ArducomReadBlock::handle(Arducom* arducom, volatile uint8_t *dataBuffer, int8_t *dataSize, uint8_t *destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomReadBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte offset plus a length byte
 	uint16_t offset = *((uint16_t*)dataBuffer);
 	uint8_t length = dataBuffer[2];
@@ -586,7 +586,7 @@ ArducomSetPortDirection::ArducomSetPortDirection(uint8_t commandCode, volatile u
 	this->allowedMask = allowedMask;
 }
 	
-int8_t ArducomSetPortDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPortDirection::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
 	uint8_t mask = dataBuffer[0];
 	uint8_t dir = dataBuffer[1];
@@ -610,7 +610,7 @@ ArducomGetPortDirection::ArducomGetPortDirection(uint8_t commandCode, volatile u
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomGetPortDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPortDirection::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current direction values
 	uint8_t ddr = *this->ddRegister;
@@ -627,7 +627,7 @@ ArducomSetPortState::ArducomSetPortState(uint8_t commandCode, volatile uint8_t* 
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomSetPortState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPortState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects two bytes
 	uint8_t mask = dataBuffer[0];
 	uint8_t state = dataBuffer[1];
@@ -641,8 +641,8 @@ int8_t ArducomSetPortState::handle(Arducom* arducom, volatile uint8_t* dataBuffe
 	// set new directions
 	*this->portRegister = port;
 	// return the states of the port pins that the master may know about
-	*dataSize = 1;
 	destBuffer[0] = *this->pinRegister & this->allowedMask;
+	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 	
@@ -651,7 +651,7 @@ ArducomGetPortState::ArducomGetPortState(uint8_t commandCode, volatile uint8_t* 
 	this->allowedMask = allowedMask;
 }
 
-int8_t ArducomGetPortState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPortState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current port values
 	uint8_t pins = *this->pinRegister;
@@ -670,12 +670,12 @@ ArducomSetPinDirection::ArducomSetPinDirection(uint8_t commandCode, uint8_t pinN
 	this->pinNumber = pinNumber;
 }
 	
-int8_t ArducomSetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPinDirection::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects one byte
 	uint8_t dir = dataBuffer[0];
 	pinMode(this->pinNumber, (dir == 0 ? INPUT : OUTPUT));
-	*dataSize = 1;
 	destBuffer[0] = 0; // getPinMode(this->pinNumber);
+	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 /*
@@ -683,7 +683,7 @@ ArducomGetPinDirection::ArducomGetPinDirection(uint8_t commandCode, uint8_t pinN
 	this->pinNumber = pinNumber;
 }
 
-int8_t ArducomGetPinDirection::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPinDirection::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	*dataSize = 1;
 	destBuffer[0] = getPinMode(this->pinNumber);
@@ -694,14 +694,14 @@ ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber) :
 	this->pinNumber = pinNumber;
 }
 
-int8_t ArducomSetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomSetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects one byte
 	uint8_t state = dataBuffer[0];
 	// set new state
 	digitalWrite(this->pinNumber, (state == 0 ? LOW : HIGH));
 	// return the state of the pn
-	*dataSize = 1;
 	destBuffer[0] = digitalRead(this->pinNumber);
+	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 	
@@ -709,22 +709,34 @@ ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber) :
 	this->pinNumber = pinNumber;
 }
 
-int8_t ArducomGetPinState::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current port values
 	// return the state of the pn
-	*dataSize = 1;
 	destBuffer[0] = digitalRead(this->pinNumber);
+	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 
 ArducomGetAnalogPin::ArducomGetAnalogPin(uint8_t commandCode) : ArducomCommand(commandCode, 1) {
 }
 
-int8_t ArducomGetAnalogPin::handle(Arducom* arducom, volatile uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+int8_t ArducomGetAnalogPin::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects the channel number in the first byte
 	uint8_t channel = dataBuffer[0];
 	*((int16_t*)destBuffer) = analogRead(channel);
 	*dataSize = 2;
+	return ARDUCOM_OK;
+}
+
+ArducomSetPWM::ArducomSetPWM(uint8_t commandCode) : ArducomCommand(commandCode, 2) {
+}
+
+int8_t ArducomSetPWM::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects the pin number in the first byte and the PWM value in the second byte
+	uint8_t pin = dataBuffer[0];
+	uint8_t pwm = dataBuffer[1];
+	analogWrite(pin, pwm);
+	*dataSize = 0;
 	return ARDUCOM_OK;
 }
