@@ -70,7 +70,8 @@
 #define ARDUCOM_FLAG_SOFTRESET			0x80
 
 // Interpreted by command 0; calls the shudown hook if provided
-#define ARDUCOM_SHUTDOWN				0xff
+// as command line parameter, this reads "DEAD" as input is LSB first
+#define ARDUCOM_SHUTDOWN				0xADDE
 
 #define ARDUCOM_DEFAULT_TIMEOUT_MS		500
 

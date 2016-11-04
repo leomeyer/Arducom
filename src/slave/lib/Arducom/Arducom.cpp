@@ -282,7 +282,7 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8
 		uint8_t mask = dataBuffer[0];
 		uint8_t flags = dataBuffer[1];
 		
-		if ((mask == ARDUCOM_SHUTDOWN) && (flags == ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
+		if ((mask + (flags << 8) == ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
 			(this->shutdownHook)();
 		else
 			arducom->setFlags(mask, flags);
