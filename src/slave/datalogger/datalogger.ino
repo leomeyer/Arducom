@@ -354,8 +354,8 @@ raw_upload_hex:
 
 // 1. Hardware Serial
 // Warning! This setting conflicts with the OBIS data parser which also uses the serial port!
-// Undefine OBIS_IR_POWER_PIN (below) if you want to test serial communication.
-#define SERIAL_STREAM		Serial
+// Undefine OBIS_IR_POWER_PIN if you want to test serial communication.
+// #define SERIAL_STREAM		Serial
 #define SERIAL_BAUDRATE		57600
 
 // 2. Software serial connection (for example with a Bluetooth module)
@@ -366,10 +366,10 @@ raw_upload_hex:
 // #define SERIAL_BAUDRATE		9600
 
 // 3. Hardware I2C communication: define a slave address
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
 
 // 4. Software I2C: additionally define SOFTWARE_I2C
-// #define SOFTWARE_I2C
+#define SOFTWARE_I2C
 
 // 5. Ethernet
 // #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
@@ -466,7 +466,7 @@ raw_upload_hex:
 // The chip select pin depends on the type of SD card shield.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT	4
+#define SDCARD_CHIPSELECT	10
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
@@ -491,7 +491,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-// #define OBIS_IR_POWER_PIN	A2
+#define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM		Serial
 #define OBIS_BAUDRATE		9600
