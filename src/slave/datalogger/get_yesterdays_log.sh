@@ -15,6 +15,7 @@ DELAY=40
 RETRIES=10
 
 # mail settings (mail address must be passed as a parameter)
+MAILPROGRAM=mail
 MAILRECEIVER=$1
 DOWNLOADDATE=$2
 
@@ -84,7 +85,7 @@ function send_mail {
 	echo "Sending mail: $1"
 	echo $2
 
-	echo "$2" | cat - $OUTPUT_FILENAME | mail -s "$1" $MAILRECEIVER
+	echo "$2" | cat - $OUTPUT_FILENAME | eval $MAILPROGRAM -s \"$1\" $MAILRECEIVER
 }
 
 # main program
