@@ -1614,15 +1614,15 @@ void loop() {
 			bool dateOK = false;
 
 			#ifdef USE_DS1307
-      // Each try will take about 3 ms. The worst case duration of a running I2C transfer, which
-      // might interfere with the RTC request, can be calculated like: baud rate / byte size * max length.
-      // With baud rate assumed to be 100 kHz, byte size = 10 bits and 
-      // max length = 32 we get a worst case transfer length of 3.2 ms. 
-      int8_t getDateRetries = 10;
-      DateTime nowUTC;
-      uint32_t nowUnixtime;
-      uint32_t lastUnixtime = 0;
-      int8_t goodCounter = 0;
+			// Each try will take about 3 ms. The worst case duration of a running I2C transfer, which
+			// might interfere with the RTC request, can be calculated like: baud rate / byte size * max length.
+			// With baud rate assumed to be 100 kHz, byte size = 10 bits and 
+			// max length = 32 we get a worst case transfer length of 3.2 ms. 
+			int8_t getDateRetries = 10;
+			DateTime nowUTC;
+			uint32_t nowUnixtime;
+			uint32_t lastUnixtime = 0;
+			int8_t goodCounter = 0;
 
 			while (!dateOK && (getDateRetries > 0)) {
 				// try to get the time
