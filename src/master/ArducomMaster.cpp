@@ -28,6 +28,7 @@
 #include "ArducomMasterSerial.h"
 #include "ArducomMasterTCPIP.h"
 
+#ifdef _MSC_VER
 //Returns the last Win32 error, in string format. Returns an empty string if there is no error.
 // https://stackoverflow.com/a/17387176
 std::string GetLastErrorAsString(int errorCode = 0) {
@@ -50,6 +51,7 @@ std::string GetLastErrorAsString(int errorCode = 0) {
 
 	return message;
 }
+#endif
 
 void throw_system_error(const char* what, const char* info, int code) {
 	std::stringstream fullWhatSS;
@@ -256,7 +258,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			char buffer[4];
 			if (InetPtonA(AF_INET, device.c_str(), &buffer) == 1)
 				transportType = "tcpip";
-#elif
+#else
 			// check whether the device represents a valid IP address
 			struct sockaddr_in sa;
 			if (inet_pton(AF_INET, device.c_str(), &(sa.sin_addr)) == 1)

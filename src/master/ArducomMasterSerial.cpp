@@ -205,7 +205,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->fileHandle = fd;
 }
 
-void ArducomMasterTransportSerial::send(uint8_t* buffer, uint8_t size, int retries) {
+void ArducomMasterTransportSerial::sendBytes(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > SERIAL_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds serial block size limit");
 
