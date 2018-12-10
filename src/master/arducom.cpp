@@ -14,25 +14,30 @@
 #include <exception>
 #include <stdexcept>
 #include <cstdint>
+#ifdef _MSC_VER
+#else
 #include <unistd.h>
+#endif
 #include <cstring>
 #include <bitset>
 
 #include "../slave/lib/Arducom/Arducom.h"
 
 #include "ArducomMaster.h"
+#ifndef _MSC_VER
 #include "ArducomMasterI2C.h"
+#endif
 #include "ArducomMasterSerial.h"
 
 /* Input and output data formats */
 enum Format {
-	HEX,
-	RAW,
-	BIN,
-	BYTE,
-	INT16,
-	INT32,
-	INT64
+	FMT_HEX,
+	FMT_RAW,
+	FMT_BIN,
+	FMT_BYTE,
+	FMT_INT16,
+	FMT_INT32,
+	FMT_INT64
 };
 
 uint8_t char2byte(const char input) {
@@ -47,25 +52,25 @@ uint8_t char2byte(const char input) {
 
 Format parseFormat(const std::string& arg, const std::string& argName) {
 	if (arg == "Hex")
-		return HEX;
+		return FMT_HEX;
 	else
 	if (arg == "Raw")
-		return RAW;
+		return FMT_RAW;
 	else
 	if (arg == "Bin")
-		return BIN;
+		return FMT_BIN;
 	else
 	if (arg == "Byte")
-		return BYTE;
+		return FMT_BYTE;
 	else
 	if (arg == "Int16")
-		return INT16;
+		return FMT_INT16;
 	else
 	if (arg == "Int32")
-		return INT32;
+		return FMT_INT32;
 	else
 	if (arg == "Int64")
-		return INT64;
+		return FMT_INT64;
 	else
 		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64");
 }
@@ -83,7 +88,7 @@ std::vector<std::string>& split(const std::string& s, char delim, std::vector<st
 /* Parse parameter and add to payload; convert depending on specified format */
 void parsePayload(const std::string& arg, Format format, char separator, std::vector<uint8_t>& params) {
 	// for all formats but raw: does the string contain the separator?
-	if ((format != RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
+	if ((format != FMT_RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
 		// split along the separators
 		std::vector<std::string> parts;
 		split(arg, separator, parts);
@@ -99,7 +104,7 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 	else {
 		// parse the string
 		switch (format) {
-			case HEX: {
+			case FMT_HEX: {
 				if (arg.size() % 2 == 1)
 					throw std::invalid_argument("Expected parameter string of even length for input format Hex");
 				const char* paramStr = arg.c_str();
@@ -108,13 +113,13 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				}
 				break;
 			}
-			case RAW: {
+			case FMT_RAW: {
 				for (size_t p = 0; p < arg.size(); p++) {
 					params.push_back(arg.at(p));
 				}
 				break;
 			}
-			case BIN: {
+			case FMT_BIN: {
 				if (arg.size() != 8)
 					throw std::invalid_argument("Expected parameter string of length 8 for input format Bin");
 				const char* paramStr = arg.c_str();
@@ -129,11 +134,11 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				params.push_back(value);
 				break;
 			}
-			case BYTE: {
+			case FMT_BYTE: {
 				int value;
 				try {
 					value = std::stoi(arg);
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Byte");
 				}
 				if ((value < 0) || (value > 255))
@@ -141,11 +146,11 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				params.push_back((uint8_t)value);
 				break;
 			}
-			case INT16: {
+			case FMT_INT16: {
 				int value;
 				try {
 					value = std::stoi(arg);
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Int16");
 				}
 				if ((value < -32768) || (value > 32767))
@@ -154,11 +159,11 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				params.push_back((uint8_t)(value >> 8));
 				break;
 			}
-			case INT32: {
+			case FMT_INT32: {
 				long long value;
 				try {
 					value = std::stoll(arg);
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Int32");
 				}
 				if ((value < -2147483648) || (value > 2147483647))
@@ -169,11 +174,11 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				params.push_back((uint8_t)(value >> 24));
 				break;
 			}
-			case INT64: {
+			case FMT_INT64: {
 				long long value;
 				try {
 					value = std::stoll(arg);
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Int64");
 				}
 				params.push_back((uint8_t)value);
@@ -213,8 +218,8 @@ public:
 		paramSpecified = false;
 		readInputSpecified = false;
 		expectedBytes = -1;
-		inputFormat = HEX;
-		outputFormat = HEX;
+		inputFormat = FMT_HEX;
+		outputFormat = FMT_HEX;
 		noNewline = false;
 		outputSeparator = ',';
 		inputSeparator = outputSeparator;
@@ -229,7 +234,7 @@ public:
 			} else {
 				try {
 					command = std::stoi(args.at(*i));
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric command number after argument -c");
 				}
 			}
@@ -241,7 +246,7 @@ public:
 			} else {
 				try {
 					expectedBytes = std::stoi(args.at(*i));
-				} catch (std::exception& e) {
+				} catch (std::exception&) {
 					throw std::invalid_argument("Expected number after argument -e");
 				}
 			}
@@ -319,7 +324,11 @@ public:
 
 		if (readInputSpecified) {
 			// fill buffer from stdin
+#ifdef _MSC_VER
+			char* buffer = (char*)alloca(sizeof(char) * transport->getMaximumCommandSize() * 4);	// this should be enough for all input formats
+#else
 			char buffer[transport->getMaximumCommandSize() * 4];	// this should be enough for all input formats
+#endif
 			size_t readBytes = fread(buffer, 1, sizeof buffer - 1, stdin);
 
 			buffer[readBytes] = '\0';
@@ -432,7 +441,7 @@ int main(int argc, char* argv[]) {
 		master = new ArducomMaster(transport);
 		
 		uint8_t buffer[255];
-		uint8_t size = parameters.payload.size();
+		uint8_t size = (uint8_t)parameters.payload.size();
 
 		master->execute(parameters, parameters.command, parameters.payload.data(), &size, parameters.expectedBytes, buffer, &errorInfo);
 
@@ -440,13 +449,22 @@ int main(int argc, char* argv[]) {
 		if (size > 0) {
 			// interpret command 0 (version command)?
 			if (parameters.tryInterpret && (parameters.command == 0)) {
-				struct __attribute__((packed)) VersionInfo {
+#ifndef _MSC_VER
+				struct __attribute__((packed))
+#else
+					__pragma(pack(push, 1))
+				struct
+#endif
+					VersionInfo {
 					uint8_t version;
 					uint32_t uptime;
 					uint8_t flags;
 					uint16_t freeRAM;
 					char info[64];
 				} versionInfo;
+#ifdef _MSC_VER
+					__pragma(pack(pop))
+#endif
 				// clear structure
 				memset(&versionInfo, 0, sizeof(versionInfo));
 				// copy received data
@@ -477,9 +495,9 @@ int main(int argc, char* argv[]) {
 			} else {
 				// cannot or should not interpret
 				switch (parameters.outputFormat) {
-				case HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
-				case RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
-				case BIN: {
+				case FMT_HEX: ArducomMaster::printBuffer(buffer, size, false, true); break;
+				case FMT_RAW: ArducomMaster::printBuffer(buffer, size, true, false); break;
+				case FMT_BIN: {
 					for (uint8_t i = 0; i < size; i++) {
 						std::cout << std::bitset<8>(buffer[i]);
 						if ((i < size - 1) && (parameters.outputSeparator > '\0'))
@@ -487,7 +505,7 @@ int main(int argc, char* argv[]) {
 					}
 					break;
 				}
-				case BYTE: {
+				case FMT_BYTE: {
 					for (uint8_t i = 0; i < size; i++) {
 						std::cout << (int)buffer[i];
 						if ((i < size - 1) && (parameters.outputSeparator > '\0'))
@@ -495,7 +513,7 @@ int main(int argc, char* argv[]) {
 					}
 					break;
 				}
-				case INT16: {
+				case FMT_INT16: {
 					if (size % 2 != 0)
 						throw std::invalid_argument("Output size must fit into two byte blocks for output format Int16");
 					for (uint8_t i = 0; i < size; i += 2) {
@@ -505,7 +523,7 @@ int main(int argc, char* argv[]) {
 					}
 					break;
 				}
-				case INT32: {
+				case FMT_INT32: {
 					if (size % 4 != 0)
 						throw std::invalid_argument("Output size must fit into four byte blocks for output format Int32");
 					for (uint8_t i = 0; i < size; i += 4) {
@@ -515,7 +533,7 @@ int main(int argc, char* argv[]) {
 					}
 					break;
 				}
-				case INT64: {
+				case FMT_INT64: {
 					if (size % 8 != 0)
 						throw std::invalid_argument("Output size must fit into eight byte blocks for output format Int64");
 					for (uint8_t i = 0; i < size; i += 8) {

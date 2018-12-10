@@ -14,6 +14,10 @@
 #include <sstream>
 #include <string>
 
+#if defined(__CYGWIN__) || defined(_MSC_VER)
+#define __NO_LOCK_MECHANISM 1
+#endif
+
 // Default slave reaction delay for processing and sending
 // Only relevant for I2C transport (I2C data request fails immediately if there is not data).
 #define DEFAULT_DELAY_MS		10
@@ -36,7 +40,7 @@ public:
 };
 
 /** Helper function that throws an error message with system error information */
-void throw_system_error(const char* what, const char* info = NULL);
+void throw_system_error(const char* what, const char* info = NULL, int code = 0);
 
 /** Recursively prints exception whats */
 void print_what(const std::exception& e, bool printEndl = true);
@@ -52,7 +56,7 @@ public:
 	virtual void init(ArducomBaseParameters* parameters) = 0;
 
 	/** Sends the specified bytes over the transport. Throws an exception in case of errors. */
-	virtual void send(uint8_t* buffer, uint8_t size, int retries = 0) = 0;
+	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0) = 0;
 
 	/** Requests up to expectedBytes from the transport. Throws an exception in case of errors. */
 	virtual void request(uint8_t expectedBytes) = 0;

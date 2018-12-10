@@ -5,6 +5,10 @@
 // Project page: https://github.com/leomeyer/Arducom
 // License: MIT License. For details see the project page.
 
+#ifdef _MSC_VER
+#include <windows.h>
+#endif
+
 #include <string>
 
 #include "ArducomMaster.h"
@@ -18,7 +22,7 @@ public:
 
 	virtual void init(ArducomBaseParameters* parameters);
 
-	virtual void send(uint8_t* buffer, uint8_t size, int retries = 0);
+	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0);
 
 	virtual void request(uint8_t expectedBytes);
 
@@ -39,10 +43,16 @@ protected:
 	int baudrate;
 	ArducomBaseParameters* parameters;
 	
+#ifndef __NO_LOCK_MECHANISM
 	// semaphore key
 	key_t semkey;
+#endif
 
+#ifdef _MSC_VER
+	HANDLE fileHandle;
+#else
 	int fileHandle;
+#endif
 
 	uint8_t buffer[SERIAL_BLOCKSIZE_LIMIT];
 	int8_t pos;
