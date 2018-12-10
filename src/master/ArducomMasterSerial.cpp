@@ -106,6 +106,17 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 	
+	// initialization delay specified?
+	if (this->parameters->initDelayMs > 0) {
+		if (this->parameters->debug)
+			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
+		// sleep for the specified time
+		timespec sleeptime;
+		sleeptime.tv_sec = 0;
+		sleeptime.tv_nsec = this->parameters->initDelayMs * 1000000;
+		nanosleep(&sleeptime, nullptr);
+	}
+	
 	memset(&tty, 0, sizeof(tty));
 	if (tcgetattr(fd, &tty) != 0) {
 		throw_system_error("Error getting serial device attributes (is the device valid?)");
@@ -167,6 +178,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	}
 
 	tty.c_cflag &= ~CRTSCTS;
+	tty.c_cflag &= ~HUPCL;          // disable hang up on close (toggling DTR)
 	
 	cfmakeraw(&tty);
 
@@ -228,7 +240,10 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 						break;
 					timeout--;
 					// sleep for a ms
-					usleep(1000);
+					timespec sleeptime;
+					sleeptime.tv_sec = 0;
+					sleeptime.tv_nsec = 1000000;
+					nanosleep(&sleeptime, nullptr);
 				}
 				// in case of no timeout, repeat infinitely
 				continue;
