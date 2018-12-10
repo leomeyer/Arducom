@@ -425,8 +425,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 				*errorInfo = 0;
 
 			// wait for the specified delay
-			const timespec ts = {0, parameters.delayMs * 1000000};
-			nanosleep(&ts, nullptr);
+			usleep(parameters.delayMs * 1000);
 
 			// try to retrieve the result
 			*size = 0;

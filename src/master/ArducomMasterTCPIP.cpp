@@ -24,7 +24,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netdb.h> 
-#include <sys/time.h>
 
 #include "../slave/lib/Arducom/Arducom.h"
 
