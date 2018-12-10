@@ -187,7 +187,10 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		if (this->parameters->debug)
 			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		// sleep for the specified time
-		usleep(this->parameters->initDelayMs * 1000);
+		struct timespec sleeptime;
+		sleeptime.tv_sec = 0;
+		sleeptime.tv_nsec = this->parameters->initDelayMs * 1000000;
+		nanosleep(&sleeptime, nullptr);
 	}
 	
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
