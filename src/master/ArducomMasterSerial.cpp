@@ -175,7 +175,8 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		if (this->parameters->debug)
 			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		// sleep for the specified time
-		usleep(this->parameters->initDelayMs * 1000);
+		const timespec ts = {0, this->parameters->initDelayMs * 1000000};
+		nanosleep(&ts, nullptr);
 	}
 	
 	if (tcsetattr(fd, TCSANOW, &tty) != 0) {
@@ -228,7 +229,8 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 						break;
 					timeout--;
 					// sleep for a ms
-					usleep(1000);
+					const timespec ts = {0, 1000000};
+					nanosleep(&ts, nullptr);
 				}
 				// in case of no timeout, repeat infinitely
 				continue;
