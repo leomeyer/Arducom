@@ -45,7 +45,7 @@ void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
 	}
 }
 
-void ArducomMasterTransportI2C::send(uint8_t* buffer, uint8_t size, int retries) {
+void ArducomMasterTransportI2C::sendBytes(uint8_t* buffer, uint8_t size, int retries) {
 	if (size > I2C_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to send exceeds I2C block size limit");
 

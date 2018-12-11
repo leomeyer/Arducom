@@ -38,7 +38,7 @@
 #ifdef _MSC_VER
 #define SOCKERR_FUNC WSAGetLastError()
 #else
-#error Linux ToDo
+#define SOCKERR_FUNC errno
 #endif
 
 ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP() {

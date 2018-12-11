@@ -23,7 +23,7 @@ public:
 
 	virtual void init(ArducomBaseParameters* parameters);
 
-	virtual void send(uint8_t* buffer, uint8_t size, int retries = 0);
+	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0);
 
 	virtual void request(uint8_t expectedBytes);
 
