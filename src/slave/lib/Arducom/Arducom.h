@@ -69,7 +69,7 @@
 #define ARDUCOM_FLAG_INFINITELOOP		0x40
 #define ARDUCOM_FLAG_SOFTRESET			0x80
 
-// Interpreted by command 0; calls the shudown hook if provided
+// Interpreted by command 0; calls the shutdown hook if provided
 // as command line parameter, this reads "DEAD" as input is LSB first
 #define ARDUCOM_SHUTDOWN				0xADDE
 
@@ -141,6 +141,10 @@ public:
 * let the class handle all received data. If a value is specified, too much data for a command counts as an error. */
 class ArducomCommand {
 
+public: 
+	uint8_t commandCode;
+	int8_t expectedBytes;	// number of expected bytes
+
 protected:
 	/** Initializes an ArducomCommand for a variable number of expected data bytes. */
 	ArducomCommand(const uint8_t commandCode) {
@@ -155,9 +159,6 @@ protected:
 		this->expectedBytes = expectedBytes;
 		this->next = 0;
 	};
-
-	uint8_t commandCode;
-	int8_t expectedBytes;	// number of expected bytes
 	
 	/** Is called when the command code of this command has been received and the number of expected bytes match. 
 	* This method should evaluate the data in the dataBuffer. Return data should be placed in the destBuffer,
