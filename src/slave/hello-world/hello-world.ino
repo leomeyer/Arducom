@@ -29,7 +29,6 @@
 #include <Arducom.h>
 #include <ArducomI2C.h>
 #include <ArducomEthernet.h>
-#include <ArducomStream.h>
 #include <ArducomFTP.h>
 
 /*******************************************************
