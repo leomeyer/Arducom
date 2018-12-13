@@ -338,7 +338,6 @@ raw_upload_hex:
 #include <Arducom.h>
 #include <ArducomI2C.h>
 #include <ArducomEthernet.h>
-#include <ArducomStream.h>
 #include <ArducomFTP.h>
 
 /*******************************************************
@@ -435,7 +434,7 @@ raw_upload_hex:
 	// For PIND, use PCMSK2
 	#define I2C_SLAVE_PINMASKREG	PCMSK1
 
-	#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
+	#include <SoftwareI2CSlave.h>
 	
 #endif	// SOFTWARE_I2C
 
