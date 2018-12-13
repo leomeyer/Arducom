@@ -23,6 +23,7 @@
 #include <Arduino.h>
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
+#include <Stream.h>
 
 #include <Arducom.h>
 
@@ -55,6 +56,55 @@ int8_t ArducomTransport::hasData(void) {
 	if (this->status != HAS_DATA)
 		return -1;
 	return this->size;
+}
+
+/******************************************************************************************	
+* Arducom stream transport class implementation
+******************************************************************************************/
+
+ArducomTransportStream::ArducomTransportStream(Stream* stream): ArducomTransport() {
+	this->stream = stream;
+}
+
+int8_t ArducomTransportStream::send(Arducom* arducom, uint8_t* buffer, uint8_t count) {
+	#ifdef ARDUCOM_DEBUG_SUPPORT
+	if (arducom->debug) {
+		arducom->debug->print(F("Send: "));
+		for (uint8_t i = 0; i < count; i++) {
+			arducom->debug->print(buffer[i], HEX);
+			arducom->debug->print(F(" "));
+		}
+		arducom->debug->println();
+	}
+	#endif
+	this->stream->write((const uint8_t *)buffer, count);
+	this->stream->flush();
+	this->status = SENT;
+	this->size = 0;
+	return ARDUCOM_OK;
+}
+
+int8_t ArducomTransportStream::doWork(Arducom* arducom) {
+	if (this->status != HAS_DATA)
+		this->size = 0;
+	// read incoming data
+	while (stream->available()) {
+		this->data[this->size] = stream->read();
+		#ifdef ARDUCOM_DEBUG_SUPPORT
+		if (arducom->debug) {
+			arducom->debug->print(F("Recv: "));
+			arducom->debug->print(this->data[this->size], HEX);
+			arducom->debug->println(F(" "));
+		}
+		#endif
+		this->size++;
+		if (this->size > ARDUCOM_BUFFERSIZE) {
+			this->status = TOO_MUCH_DATA;
+			return ARDUCOM_OVERFLOW;
+		}
+		this->status = HAS_DATA;
+	}
+	return ARDUCOM_OK;
 }
 
 /******************************************************************************************	

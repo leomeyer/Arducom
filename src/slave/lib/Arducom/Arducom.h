@@ -135,6 +135,22 @@ public:
 	virtual int8_t doWork(Arducom* arducom) = 0;
 };
 
+/** This class defines the transport mechanism for Arducom commands over a Stream.
+*/
+class ArducomTransportStream: public ArducomTransport {
+
+public:
+	ArducomTransportStream(Stream* stream);
+
+	virtual int8_t doWork(Arducom* arducom);
+
+	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
+	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count);
+
+protected:
+	Stream* stream;
+};
+
 /** This class is the base class for command handlers. If the command code and the number of expected bytes
 * matches its definition its handle() method is called. This method can inspect the supplied data and send
 * data back to the master. The number of expected bytes is optional. If it is > -1 the Arducom system will
