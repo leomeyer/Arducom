@@ -332,8 +332,7 @@ raw_upload_hex:
 #include <Arduino.h>
 
 #include <SPI.h>
-#include <SoftwareSerial.h>
-#include <WSWire.h>
+#include <Wire.h>
 
 #include <Arducom.h>
 #include <ArducomI2C.h>

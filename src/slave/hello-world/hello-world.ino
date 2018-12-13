@@ -200,7 +200,7 @@
 
 // use RTClib from Adafruit
 // https://github.com/adafruit/RTClib
-#include <WSWire.h>
+#include <Wire.h>
 #include <RTClib.h>
 
 RTC_DS1307 RTC;  // define the Real Time Clock object
