@@ -7,7 +7,6 @@
 // This code is in the public domain.
 
 #include <Arducom.h>
-#include <ArducomStream.h>
 
 /*******************************************************
 * Variables
