@@ -71,14 +71,20 @@ void throw_system_error(const char* what, const char* info, int code) {
 	throw std::runtime_error(fullWhat.c_str());
 }
 
-void print_what(const std::exception& e, bool printEndl) {
-	std::cerr << e.what();
+std::string get_what(const std::exception& e) {
+	std::stringstream ss;
+	ss << e.what();
 	try {
 		std::rethrow_if_nested(e);
 	} catch (const std::exception& nested) {
-		std::cerr << ": ";
-		print_what(nested, false);
+		ss << ": ";
+		ss << get_what(nested);
 	}
+	return ss.str();
+}
+
+void print_what(const std::exception& e, bool printEndl) {
+	std::cerr << get_what(e);
 	if (printEndl)
 		std::cerr << std::endl;
 }
@@ -98,6 +104,10 @@ static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* dat
 	// return two's complement of result
 	return ~(uint8_t)sum;
 }
+
+/** ArducomMasterTransport implementation */
+
+ArducomMasterTransport::~ArducomMasterTransport() {}
 
 /** ArducomBaseParameters implementation */
 
@@ -402,6 +412,16 @@ ArducomMaster::ArducomMaster(ArducomMasterTransport* transport) {
 	this->semkey = 0;
 	this->semid = 0;
 	this->hasLock = false;
+}
+
+ArducomMaster::~ArducomMaster() {
+	// free the transport object if present
+	if (transport != nullptr)
+		delete transport;
+}
+
+std::string ArducomMaster::getExceptionMessage(const std::exception& e) {
+    return get_what(e);
 }
 
 void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool noRAW) {

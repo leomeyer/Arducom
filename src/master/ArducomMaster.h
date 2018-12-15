@@ -54,6 +54,9 @@ class ArducomBaseParameters;
 class ArducomMasterTransport {
 
 public:
+	/** Destructor */
+	virtual ~ArducomMasterTransport();
+	
 	/** Initializes the transport. Throws an exception in case of errors. */
 	virtual void init(ArducomBaseParameters* parameters) = 0;
 
@@ -165,8 +168,15 @@ public:
 	* Codes lower than 128 are local. Codes greater than 127 come from the slave. */
 	uint8_t lastError;
 
+	/** Initialize the object with the given transport. The object takes ownership of the transport
+	* and frees it when it is destroyed. */
 	ArducomMaster(ArducomMasterTransport* transport);
 
+	/** Destructor */
+	virtual ~ArducomMaster();
+	
+	std::string getExceptionMessage(const std::exception& e);
+	
 	/** Prints the buffer content (as hex and RAW) to stdout. */
 	static void printBuffer(uint8_t* buffer, uint8_t size, bool noHex = false, bool noRAW = false);
 
