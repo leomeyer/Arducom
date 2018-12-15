@@ -943,7 +943,6 @@ ArducomFTP arducomFTP;
 // SdFat:
 // https://github.com/greiman/SdFat
 #include <SdFat.h>
-#include <SdFatUtil.h> 
 
 SdFat sdFat;
 #endif
