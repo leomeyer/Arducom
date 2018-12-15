@@ -354,7 +354,7 @@ raw_upload_hex:
 // Warning! This setting conflicts with the OBIS data parser which also uses the serial port!
 // Undefine OBIS_IR_POWER_PIN if you want to test serial communication.
 // #define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		57600
+#define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // 2. Software serial connection (for example with a Bluetooth module)
 // #define SOFTSERIAL_RX_PIN	8

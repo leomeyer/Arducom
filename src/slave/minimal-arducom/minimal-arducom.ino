@@ -23,7 +23,7 @@ Arducom arducom(&arducomTransport);
 void setup()
 {	
 	// initialize hardware
-	Serial.begin(57600);
+	Serial.begin(ARDUCOM_DEFAULT_BAUDRATE);
 
 	// setup Arducom system
 	arducom.addCommand(new ArducomVersionCommand("MinimalExample"));

@@ -48,8 +48,8 @@
 // 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
 // 1. Hardware Serial
-#define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		57600
+#define SERIAL_STREAM		  Serial
+#define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // 2. Software serial connection (for example with a Bluetooth module)
 // #define SOFTSERIAL_RX_PIN	8
@@ -161,7 +161,7 @@
 // use the define USE_ARDUCOM_DEBUG below. Arducom debug will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
 // #define DEBUG_OUTPUT		Serial
-// #define DEBUG_BAUDRATE		57600
+// #define DEBUG_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
