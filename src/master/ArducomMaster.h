@@ -8,13 +8,15 @@
 #ifndef __ARDUCOMMASTER_H
 #define __ARDUCOMMASTER_H
 
+#include "../slave/lib/Arducom/Arducom.h"
+
 #include <vector>
 #include <stdexcept>
 #include <inttypes.h>
 #include <sstream>
 #include <string>
 
-#if defined(__CYGWIN__) || defined(_MSC_VER)
+#if defined(__CYGWIN__) || defined(WIN32)
 #define __NO_LOCK_MECHANISM 1
 #endif
 
@@ -25,7 +27,7 @@
 // an error message for an unknown host would be "timeout" rather than "no route to host",
 // which is slightly confusing. To avoid this confusion, set the default rather high.
 #define DEFAULT_TIMEOUT_MS		5000
-#define DEFAULT_BAUDRATE		57600
+#define DEFAULT_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 // The init delay is only relevant for serial transports in case an Arduino is being reset
 // by the serial driver on connection. This constant allows for some startup time.
 #define DEFAULT_INIT_DELAY_MS	3000

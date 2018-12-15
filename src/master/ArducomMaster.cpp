@@ -13,7 +13,7 @@
 #include <exception>
 #include <stdexcept>
 #include <iostream>
-#ifndef _MSC_VER
+#ifndef WIN32
 #include <unistd.h>
 #include <arpa/inet.h>
 #else
@@ -22,13 +22,15 @@
 #include <sstream>
 
 #include "../slave/lib/Arducom/Arducom.h"
-#ifndef _MSC_VER
+#ifndef WIN32
 #include "ArducomMasterI2C.h"
 #endif
 #include "ArducomMasterSerial.h"
+#ifndef ARDUCOM_DISABLE_TCPIP
 #include "ArducomMasterTCPIP.h"
+#endif
 
-#ifdef _MSC_VER
+#ifdef WIN32
 //Returns the last Win32 error, in string format. Returns an empty string if there is no error.
 // https://stackoverflow.com/a/17387176
 std::string GetLastErrorAsString(int errorCode = 0) {
@@ -57,12 +59,12 @@ void throw_system_error(const char* what, const char* info, int code) {
 	std::stringstream fullWhatSS;
 	fullWhatSS << what << ": " << (info != NULL ? info : "") << (info != NULL ? ": " : "");
 	// special treatment for certain errors
+#ifdef WIN32
+		fullWhatSS << GetLastErrorAsString(code);
+#else
 	if (errno == EINPROGRESS)
 		fullWhatSS << "The operation timed out";
 	else
-#ifdef _MSC_VER
-		fullWhatSS << GetLastErrorAsString(code);
-#else
 		fullWhatSS << strerror(errno);
 #endif
 	std::string fullWhat = fullWhatSS.str();
@@ -216,7 +218,7 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 		}
 	} else
 	if (args.at(*i) == "-k") {
-		#if defined(__CYGWIN__) || defined(_MSC_VER)
+		#if defined(__CYGWIN__) || defined(WIN32)
 		throw std::invalid_argument("Sorry, System V semaphore locking is not supported under Windows");
 		#else
 		(*i)++;
@@ -243,7 +245,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 
 	if (retries < 0)
 		throw std::invalid_argument("Number of retries must not be negative (argument -x)");
-		
+
 	if ((transportType == "") && (device != "")) {
 		// try to figure out transport type from device name
 		if ((device.find("/dev/tty") == 0)
@@ -254,11 +256,11 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		if (device.find("/dev/i2c") == 0) {
 			transportType = "i2c";
 		} else {
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 			char buffer[4];
 			if (InetPtonA(AF_INET, device.c_str(), &buffer) == 1)
 				transportType = "tcpip";
-#else
+#elif not defined(__MINGW32__)
 			// check whether the device represents a valid IP address
 			struct sockaddr_in sa;
 			if (inet_pton(AF_INET, device.c_str(), &(sa.sin_addr)) == 1)
@@ -270,7 +272,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 	ArducomMasterTransport* transport;
 
 	if (transportType == "i2c") {
-		#if defined(__CYGWIN__) || defined(_MSC_VER)
+		#if defined(__CYGWIN__) || defined(WIN32)
 		throw std::invalid_argument("Sorry, the I2C transport is not supported under Windows");
 		#else
 		if (device == "")
@@ -286,19 +288,23 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		if (device == "")
 			throw std::invalid_argument("Expected serial transport device file name (argument -d)");
 
-		transport = new ArducomMasterTransportSerial();		
+		transport = new ArducomMasterTransportSerial();
 	} else
 	if (transportType == "tcpip") {
+#ifdef ARDUCOM_DISABLE_TCPIP
+			throw std::invalid_argument("Sorry, TCP/IP is not supported in this build");
+#else
 		if (device == "")
 			throw std::invalid_argument("Expected TCP/IP host name or IP (argument -d)");
-			
+
 		if ((deviceAddress < 0) || (deviceAddress > 65535))
 			throw std::invalid_argument("TCP/IP port number must be within 0 (default) and 65535");
-		
+
 		if (deviceAddress == 0)
 			deviceAddress = ARDUCOM_TCP_DEFAULT_PORT;
 
 		transport = new ArducomMasterTransportTCPIP();
+#endif // ARDUCOM_DISABLE_TCPIP
 	} else
 	if (transportType != "")
 		throw std::invalid_argument("Transport type unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
@@ -307,7 +313,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			throw std::invalid_argument("Transport type could not be determined, use 'i2c', 'serial', or 'tcpip' (argument -t)");
 		else
 			throw std::invalid_argument("Expected a device name (argument -d)");
-	}		
+	}
 
 	try {
 		transport->init(this);
@@ -383,7 +389,7 @@ std::string ArducomBaseParameters::getHelp() {
 	result.append("  -k <value>: The semaphore key used to synchronize between different\n");
 	result.append("    processes. A value of 0 disables semaphore synchronization.\n");
 	#endif
-	
+
 	return result;
 }
 
@@ -422,7 +428,7 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 }
 
 void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size, uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo) {
-	
+
 	// Sends the command to the slave and returns the response if possible.
 	// Throws exceptions in case of errors. Exceptions that are handled by the standard
 	// always set errorInfo to 0 (if it is not null). For errors of type ARDUCOM_FUNCTION_ERROR
@@ -430,12 +436,12 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	// the ability to react to device specific function errors.
 
 	if (parameters.debug)
-	std::cout << parameters.toString() << std::endl;
-	
+		std::cout << parameters.toString() << std::endl;
+
 	// determine the semaphore key to use
 	// If the parameters specify a value < 0 (default), use the transport's semaphore key.
 	// A value of 0 disables the semaphore mechanism.
-	#if defined(__CYGWIN__) || defined(_MSC_VER)
+	#if defined(__CYGWIN__) || defined(WIN32)
 	// disable semaphores under Windows (not supported)
 	this->semkey = 0;
 	#else
@@ -444,10 +450,10 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	else
 		this->semkey = parameters.semkey;
 	#endif
-	
+
 	try {
 		this->lock(parameters.debug, parameters.timeoutMs);
-		
+
 		// send the command and payload to the slave
 		// The command is sent only once. If the caller requires the command to be re-sent in case
 		// of failure, it should handle this case by itself.
@@ -458,14 +464,14 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 		int retries = parameters.retries;
 
 		// retry loop
-		// The logic tries to retrieve the response several times in case there is 
+		// The logic tries to retrieve the response several times in case there is
 		// a delay of execution on the slave or some other error that can be possibly
 		// remedied by trying again.
 		while (retries >= 0) {
 			// errorInfo may be null if the caller is not interested in error details
 			if (errorInfo != nullptr)
 				*errorInfo = 0;
-#ifdef _MSC_VER
+#ifdef WIN32
 			Sleep(parameters.delayMs);
 #else
 			// wait for the specified delay
@@ -491,7 +497,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 				}
 				continue;
 			}
-			
+
 			// retries exceeded or another error occurred
 
 			// convert result code to string
@@ -540,7 +546,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			// handle unknown errors
 			throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errInfoStr).c_str());
 		}	// while (retries)
-		
+
 	} catch (const std::exception&) {
 		// cleanup after the transaction
 		done(parameters.debug);
@@ -563,7 +569,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	// acquire interprocess semaphore to avoid contention
 	if (verbose)
 		std::cout << "Acquiring interprocess communication semaphore with key 0x" << std::hex << this->semkey << "..." << std::dec << std::endl;
-	
+
 	// when creating, allow access for processes running under all users
 	this->semid = semget(this->semkey, 1, IPC_CREAT | 0666);
 	if (this->semid < 0)
@@ -584,7 +590,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	semops[1].sem_num = 0;
 	semops[1].sem_op = 1;
 	semops[1].sem_flg = SEM_UNDO;
-	
+
 #ifdef linux
 	// try to acquire resource with a one second timeout
 	// wait for the specified timeout
@@ -617,7 +623,7 @@ void ArducomMaster::unlock(bool verbose) {
 #ifndef __NO_LOCK_MECHANISM
 	if (verbose)
 		std::cout << "Releasing interprocess communication semaphore..." << std::endl;
-		
+
 	// decrease the semaphore
 	struct sembuf semops;
 	semops.sem_num = 0;
@@ -627,12 +633,12 @@ void ArducomMaster::unlock(bool verbose) {
 		perror("Error decreasing semaphore");
 #endif
 
-	this->hasLock = false;	
+	this->hasLock = false;
 }
 
 void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries, bool verbose) {
 	this->lastError = ARDUCOM_OK;
-#ifdef _MSC_VER
+#if defined(WIN32) && !defined(__MINGW32__)
 	uint8_t* data = (uint8_t*)alloca(size + (checksum ? 3 : 2));
 #else
 	uint8_t data[size + (checksum ? 3 : 2)];

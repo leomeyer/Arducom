@@ -7,6 +7,10 @@
 
 #include "ArducomMasterI2C.h"
 
+#if defined(__CYGWIN__) || defined(WIN32)
+	#warning I2C is not supported on Windows
+#else
+
 #include <exception>
 #include <stdexcept>
 #include <stdio.h>
@@ -31,13 +35,14 @@ void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
 	this->filename = parameters->device;
 	this->slaveAddress = parameters->deviceAddress;
 	
+#ifdef __NO_LOCK_MECHANISM
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
 	
 	// IPC semaphore key is the first four bytes of the hash
 	this->semkey = *(int*)&hash;
-
+#endif
 	// Special case for devices that use I2C:
 	// Set the command delay if it has not been set manually.
 	if (!parameters->delaySetManually) {
@@ -108,9 +113,15 @@ size_t ArducomMasterTransportI2C::getDefaultExpectedBytes(void) {
 }
 
 int ArducomMasterTransportI2C::getSemkey(void) {
+#ifdef __NO_LOCK_MECHANISM
+	return 0;
+#else
 	return this->semkey;
+#endif
 }
 
 void ArducomMasterTransportI2C::printBuffer(void) {
 	ArducomMaster::printBuffer(this->buffer, I2C_BLOCKSIZE_LIMIT);
 }
+
+#endif		// !WIN32

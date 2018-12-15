@@ -5,11 +5,11 @@
 // Project page: https://github.com/leomeyer/Arducom
 // License: MIT License. For details see the project page.
 
+#include "ArducomMaster.h"
+
 #include <string>
 #include <sys/sem.h>
 #include <sys/ipc.h>
-
-#include "ArducomMaster.h"
 
 #define I2C_BLOCKSIZE_LIMIT	32
 
@@ -45,8 +45,10 @@ protected:
 	ArducomBaseParameters* parameters;
 
 	int fileHandle;
+#ifndef __NO_LOCK_MECHANISM	
 	// semaphore key
 	key_t semkey;
+#endif
 
 	uint8_t buffer[I2C_BLOCKSIZE_LIMIT];
 	int8_t pos;

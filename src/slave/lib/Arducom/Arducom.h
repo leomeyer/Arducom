@@ -73,6 +73,8 @@
 // as command line parameter, this reads "DEAD" as input is LSB first
 #define ARDUCOM_SHUTDOWN				0xADDE
 
+#define ARDUCOM_DEFAULT_BAUDRATE		57600
+
 #define ARDUCOM_DEFAULT_TIMEOUT_MS		500
 
 #define ARDUCOM_TCP_DEFAULT_PORT		4152

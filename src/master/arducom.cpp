@@ -14,7 +14,7 @@
 #include <exception>
 #include <stdexcept>
 #include <cstdint>
-#ifdef _MSC_VER
+#ifdef WIN32
 #else
 #include <unistd.h>
 #endif
@@ -24,7 +24,7 @@
 #include "../slave/lib/Arducom/Arducom.h"
 
 #include "ArducomMaster.h"
-#ifndef _MSC_VER
+#ifndef WIN32
 #include "ArducomMasterI2C.h"
 #endif
 #include "ArducomMasterSerial.h"
@@ -324,7 +324,7 @@ public:
 
 		if (readInputSpecified) {
 			// fill buffer from stdin
-#ifdef _MSC_VER
+#ifdef WIN32
 			char* buffer = (char*)alloca(sizeof(char) * transport->getMaximumCommandSize() * 4);	// this should be enough for all input formats
 #else
 			char buffer[transport->getMaximumCommandSize() * 4];	// this should be enough for all input formats
@@ -449,7 +449,7 @@ int main(int argc, char* argv[]) {
 		if (size > 0) {
 			// interpret command 0 (version command)?
 			if (parameters.tryInterpret && (parameters.command == 0)) {
-#ifndef _MSC_VER
+#ifndef WIN32
 				struct __attribute__((packed))
 #else
 					__pragma(pack(push, 1))
@@ -462,7 +462,7 @@ int main(int argc, char* argv[]) {
 					uint16_t freeRAM;
 					char info[64];
 				} versionInfo;
-#ifdef _MSC_VER
+#ifdef WIN32
 					__pragma(pack(pop))
 #endif
 				// clear structure

@@ -60,7 +60,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
 	
 	this->filename = parameters->device;
-	this->baudrate = parameters->baudrate;
+	this->baudrate = serial_baud_lookup(parameters->baudrate);
 
 #ifndef __NO_LOCK_MECHANISM
 	// calculate SHA1 hash of the filename
@@ -86,10 +86,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 	
-	// initialization delay specified?
+	if (this->parameters->debug)
+		std::cout << "Opened serial port." << this->filename.c_str() << std::endl;
+	
 	if (this->parameters->initDelayMs > 0) {
 		if (this->parameters->debug)
-			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
+			std::cout << "Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		Sleep(this->parameters->initDelayMs);
 	}
 	
@@ -143,6 +145,9 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	};
 
 	SetCommTimeouts(hPort, &timeouts);
+	
+	if (this->parameters->debug)
+		std::cout << "Serial port initialized successfully." << std::endl;
 }
 
 void ArducomMasterTransportSerial::sendBytes(uint8_t* buffer, uint8_t size, int retries) {

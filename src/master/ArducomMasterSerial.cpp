@@ -73,12 +73,14 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->filename = parameters->device;
 	this->baudrate = parameters->baudrate;
 	
+#ifndef __NO_LOCK_MECHANISM
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
 	
 	// IPC semaphore key is the first four bytes of the hash
 	this->semkey = *(int*)&hash;
+#endif
 	
 	// std::cout << "Semaphore key:" << this->semkey << std::endl;
 	
@@ -106,10 +108,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
 	
-	// initialization delay specified?
+	if (this->parameters->debug)
+		std::cout << "Opened serial port " << this->filename.c_str() << std::endl;
+	
 	if (this->parameters->initDelayMs > 0) {
 		if (this->parameters->debug)
-			std::cout << "Opened serial port. Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
+			std::cout << "Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		// sleep for the specified time
 		timespec sleeptime;
 		sleeptime.tv_sec = 0;
@@ -203,6 +207,9 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	while (read(fd, &buffer, 1) >= 0) {}
 
 	this->fileHandle = fd;
+
+	if (this->parameters->debug)
+		std::cout << "Serial port initialized successfully." << std::endl;
 }
 
 void ArducomMasterTransportSerial::sendBytes(uint8_t* buffer, uint8_t size, int retries) {
@@ -325,7 +332,11 @@ size_t ArducomMasterTransportSerial::getDefaultExpectedBytes(void) {
 }
 
 int ArducomMasterTransportSerial::getSemkey(void) {
+#ifdef __NO_LOCK_MECHANISM
+	return 0;
+#else
 	return this->semkey;
+#endif
 }
 
 void ArducomMasterTransportSerial::printBuffer(void) {

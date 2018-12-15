@@ -5,7 +5,7 @@
 // Project page: https://github.com/leomeyer/Arducom
 // License: MIT License. For details see the project page.
 
-#ifdef _MSC_VER
+#ifdef WIN32
 #include <windows.h>
 #endif
 
@@ -48,7 +48,7 @@ protected:
 	key_t semkey;
 #endif
 
-#ifdef _MSC_VER
+#ifdef WIN32
 	HANDLE fileHandle;
 #else
 	int fileHandle;
