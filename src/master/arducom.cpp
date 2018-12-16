@@ -447,8 +447,8 @@ int main(int argc, char* argv[]) {
 
 		// output received?
 		if (size > 0) {
-			// interpret command 0 (version command)?
-			if (parameters.tryInterpret && (parameters.command == 0)) {
+			// interpret version command?
+			if (parameters.tryInterpret && (parameters.command == ARDUCOM_VERSION_COMMAND)) {
 #ifndef WIN32
 				struct __attribute__((packed))
 #else

@@ -8,10 +8,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
@@ -69,6 +69,8 @@
 #define ARDUCOM_FLAG_INFINITELOOP		0x40
 #define ARDUCOM_FLAG_SOFTRESET			0x80
 
+#define ARDUCOM_VERSION_COMMAND         0
+
 // Interpreted by command 0; calls the shutdown hook if provided
 // as command line parameter, this reads "DEAD" as input is LSB first
 #define ARDUCOM_SHUTDOWN				0xADDE
@@ -83,7 +85,7 @@
 
 class Arducom;
 
-/******************************************************************************************	
+/******************************************************************************************
 * Arducom transport base class definition
 ******************************************************************************************/
 
@@ -103,7 +105,7 @@ public:
 	enum Status
 // avoid warnings about typed enums if C++11 is not supported
 #if __cplusplus >= 201103L
-: uint8_t 
+: uint8_t
 #endif
 {
 		NO_DATA
@@ -114,7 +116,7 @@ public:
 	};
 
 	volatile Status status;
-	
+
 	// the buffer for data received and data to send
 	uint8_t data[ARDUCOM_BUFFERSIZE];
 	// number of valid bytes in the buffer
@@ -123,16 +125,16 @@ public:
 	ArducomTransport() {
 		this->reset();
 	};
-	
+
 	/** Resets the transport (clears input buffers). */
 	virtual void reset(void);
-	
+
 	/** If valid data has been received, returns the number of valid bytes, else -1. */
 	virtual int8_t hasData(void);
-	
+
 	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
 	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count) = 0;
-	
+
 	/** Performs regular housekeeping; called from the Arducom main class; returns -1 in case of errors. */
 	virtual int8_t doWork(Arducom* arducom) = 0;
 };
@@ -159,7 +161,7 @@ protected:
 * let the class handle all received data. If a value is specified, too much data for a command counts as an error. */
 class ArducomCommand {
 
-public: 
+public:
 	uint8_t commandCode;
 	int8_t expectedBytes;	// number of expected bytes
 
@@ -177,11 +179,11 @@ protected:
 		this->expectedBytes = expectedBytes;
 		this->next = 0;
 	};
-	
-	/** Is called when the command code of this command has been received and the number of expected bytes match. 
+
+	/** Is called when the command code of this command has been received and the number of expected bytes match.
 	* This method should evaluate the data in the dataBuffer. Return data should be placed in the destBuffer,
-	* up to a length of maxBufferSize. The length of the returned data should be placed in dataSize. 
-	* The result data is sent back to the master if this method returns a code of 0 (ARDUCOM_OK). 
+	* up to a length of maxBufferSize. The length of the returned data should be placed in dataSize.
+	* The result data is sent back to the master if this method returns a code of 0 (ARDUCOM_OK).
 	* Any other return code is interpreted as an error. Additional error information can be returned in errorInfo.
 	*/
 	virtual int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
@@ -189,10 +191,10 @@ protected:
 	// forms a linked list of supported commands (internal data structure)
 	ArducomCommand* next;
 
-friend class Arducom;	
+friend class Arducom;
 };
 
-/******************************************************************************************	
+/******************************************************************************************
 * Arducom main class definition
 ******************************************************************************************/
 
@@ -200,10 +202,10 @@ friend class Arducom;
 class Arducom {
 public:
 	static const uint8_t VERSION = 1;
-	
+
 	/** The timezone offset maintained by this instance. It can be queried or set with the version command (0). */
 	int16_t timezoneOffsetSeconds;
-	
+
 	/** Debug Print instance as supplied in the constructor. If this value is != NULL it means that debugging
 	* is enabled for this Ardudom instance. */
 	Print* debug;
@@ -214,36 +216,36 @@ public:
 	Arducom(ArducomTransport* transport, Print* debugPrint = NULL, uint16_t receiveTimeout = ARDUCOM_DEFAULT_TIMEOUT_MS);
 
 	/** Adds the specified command to the internal list. When the command is
-	* received from the master, its handle() method is executed. 
+	* received from the master, its handle() method is executed.
 	* Returns ARDUCOM_OK if the command could be added. */
 	uint8_t addCommand(ArducomCommand* command);
-	
+
 	/** This method must be regularly called within the main loop of your program.
-	* It allows the Arducom class to accept and process commands. 
+	* It allows the Arducom class to accept and process commands.
 	* Returns ARDUCOM_OK if everything is ok, or an error code otherwise. */
 	virtual uint8_t doWork(void);
-	
+
 	virtual void setFlags(uint8_t mask, uint8_t flags);
-	
+
 	virtual uint8_t getFlags(void);
-	
+
 protected:
 	ArducomTransport* transport;
-	
+
 	// linked list of commands
 	ArducomCommand* list;
-	
+
 	// performance optimization: store data size of last check
 	int8_t lastDataSize;
-	
+
 	uint16_t receiveTimeout;
 	long lastReceiveTime;
-	
+
 	// backup of Print instance for re-enabling debug
 	Print* origDebug;
 };
 
-/******************************************************************************************	
+/******************************************************************************************
 * Arducom command definitions
 ******************************************************************************************/
 
@@ -271,7 +273,7 @@ public:
 		this->data = data;
 		this->shutdownHook = shutdownHook;
 	}
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
 	const char *data;
@@ -288,7 +290,7 @@ private:
 class ArducomWriteEEPROMByte: public ArducomCommand {
 public:
 	ArducomWriteEEPROMByte(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -300,7 +302,7 @@ public:
 class ArducomReadEEPROMByte: public ArducomCommand {
 public:
 	ArducomReadEEPROMByte(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -310,7 +312,7 @@ public:
 class ArducomWriteEEPROMInt16: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt16(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -322,7 +324,7 @@ public:
 class ArducomReadEEPROMInt16: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt16(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -332,7 +334,7 @@ public:
 class ArducomWriteEEPROMInt32: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt32(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -344,7 +346,7 @@ public:
 class ArducomReadEEPROMInt32: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt32(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -354,7 +356,7 @@ public:
 class ArducomWriteEEPROMInt64: public ArducomCommand {
 public:
 	ArducomWriteEEPROMInt64(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -366,7 +368,7 @@ public:
 class ArducomReadEEPROMInt64: public ArducomCommand {
 public:
 	ArducomReadEEPROMInt64(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -376,7 +378,7 @@ public:
 class ArducomWriteEEPROMBlock: public ArducomCommand {
 public:
 	ArducomWriteEEPROMBlock(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -388,7 +390,7 @@ public:
 class ArducomReadEEPROMBlock: public ArducomCommand {
 public:
 	ArducomReadEEPROMBlock(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
@@ -403,7 +405,7 @@ public:
 class ArducomWriteByte: public ArducomCommand {
 public:
 	ArducomWriteByte(uint8_t commandCode, uint8_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
@@ -417,7 +419,7 @@ protected:
 class ArducomReadByte: public ArducomCommand {
 public:
 	ArducomReadByte(uint8_t commandCode, uint8_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
@@ -430,7 +432,7 @@ protected:
 class ArducomWriteInt16: public ArducomCommand {
 public:
 	ArducomWriteInt16(uint8_t commandCode, int16_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int16_t* address;
@@ -444,7 +446,7 @@ protected:
 class ArducomReadInt16: public ArducomCommand {
 public:
 	ArducomReadInt16(uint8_t commandCode, int16_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int16_t* address;
@@ -457,7 +459,7 @@ protected:
 class ArducomWriteInt32: public ArducomCommand {
 public:
 	ArducomWriteInt32(uint8_t commandCode, int32_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int32_t* address;
@@ -471,7 +473,7 @@ protected:
 class ArducomReadInt32: public ArducomCommand {
 public:
 	ArducomReadInt32(uint8_t commandCode, int32_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int32_t* address;
@@ -484,7 +486,7 @@ protected:
 class ArducomWriteInt64: public ArducomCommand {
 public:
 	ArducomWriteInt64(uint8_t commandCode, int64_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int64_t* address;
@@ -498,7 +500,7 @@ protected:
 class ArducomReadInt64: public ArducomCommand {
 public:
 	ArducomReadInt64(uint8_t commandCode, int64_t* address);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	int64_t* address;
@@ -511,7 +513,7 @@ protected:
 class ArducomWriteBlock: public ArducomCommand {
 public:
 	ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
@@ -528,7 +530,7 @@ protected:
 class ArducomReadBlock: public ArducomCommand {
 public:
 	ArducomReadBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize = 0);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t* address;
@@ -551,7 +553,7 @@ protected:
 class ArducomSetPortDirection: public ArducomCommand {
 public:
 	ArducomSetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* ddRegister;
@@ -566,7 +568,7 @@ protected:
 class ArducomGetPortDirection: public ArducomCommand {
 public:
 	ArducomGetPortDirection(uint8_t commandCode, volatile uint8_t* ddRegister, uint8_t allowedMask = 0xff);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* ddRegister;
@@ -585,7 +587,7 @@ protected:
 class ArducomSetPortState: public ArducomCommand {
 public:
 	ArducomSetPortState(uint8_t commandCode, volatile uint8_t* portRegister, volatile uint8_t* pinRegister, uint8_t allowedMask = 0xff);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* portRegister;
@@ -601,7 +603,7 @@ protected:
 class ArducomGetPortState: public ArducomCommand {
 public:
 	ArducomGetPortState(uint8_t commandCode, volatile uint8_t* portRegister, uint8_t allowedMask = 0xff);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* pinRegister;
@@ -614,7 +616,7 @@ protected:
 class ArducomSetPinDirection: public ArducomCommand {
 public:
 	ArducomSetPinDirection(uint8_t commandCode, uint8_t pinNumber);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
@@ -626,7 +628,7 @@ protected:
 class ArducomGetPinDirection: public ArducomCommand {
 public:
 	ArducomGetPinDirection(uint8_t commandCode, uint8_t pinNumber);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
@@ -638,7 +640,7 @@ protected:
 class ArducomSetPinState: public ArducomCommand {
 public:
 	ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
@@ -649,7 +651,7 @@ protected:
 class ArducomGetPinState: public ArducomCommand {
 public:
 	ArducomGetPinState(uint8_t commandCode,	uint8_t pinNumber);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
@@ -662,7 +664,7 @@ protected:
 class ArducomGetAnalogPin: public ArducomCommand {
 public:
 	ArducomGetAnalogPin(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	volatile uint8_t* pinRegister;
@@ -675,7 +677,7 @@ protected:
 class ArducomSetPWM: public ArducomCommand {
 public:
 	ArducomSetPWM(uint8_t commandCode);
-	
+
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
 
