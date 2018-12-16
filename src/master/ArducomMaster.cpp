@@ -415,6 +415,7 @@ ArducomMaster::ArducomMaster(ArducomMasterTransport* transport) {
 }
 
 ArducomMaster::~ArducomMaster() {
+    close(false);
 	// free the transport object if present
 	if (transport != nullptr)
 		delete transport;
@@ -447,7 +448,8 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 	}
 }
 
-void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size, uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo) {
+void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size,
+                            uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo, bool close) {
 
 	// Sends the command to the slave and returns the response if possible.
 	// Throws exceptions in case of errors. Exceptions that are handled by the standard
@@ -575,9 +577,15 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 		std::throw_with_nested(std::runtime_error((std::string("Error executing command ") + commandStr).c_str()));
 	}
 
-	// cleanup after the transaction
-	done(parameters.debug);
+	if (close)
+        // cleanup after the transaction
+        this->close(parameters.debug);
 }
+
+void ArducomMaster::close(bool verbose) {
+    done(verbose);
+}
+
 
 /*** ArducomMaster internal functions ***/
 
