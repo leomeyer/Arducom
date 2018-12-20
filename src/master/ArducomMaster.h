@@ -36,11 +36,19 @@
 #define Q(str)				#str
 #define QUOTE(str)			Q(str)
 
+namespace Arducom {
+
 class TimeoutException: public std::runtime_error {
 public:
 	TimeoutException(const char* what) : std::runtime_error(what) {}
 };
 
+class FunctionError: public std::runtime_error {
+public:
+	FunctionError(const char* what) : std::runtime_error(what) {}
+};
+
+}
 /** Helper function that throws an error message with system error information */
 void throw_system_error(const char* what, const char* info = NULL, int code = 0);
 

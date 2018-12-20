@@ -58,7 +58,7 @@ ArducomMasterTransportSerial::ArducomMasterTransportSerial() {
 
 void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
-	
+
 	this->filename = parameters->device;
 	this->baudrate = serial_baud_lookup(parameters->baudrate);
 
@@ -66,12 +66,12 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
-	
+
 	// IPC semaphore key is the first four bytes of the hash
 	this->semkey = *(int*)&hash;
 	// std::cout << "Semaphore key:" << this->semkey << std::endl;
-#endif	
-	
+#endif
+
 	// default protocol: 8N1
 	uint8_t byteSize = 8;
 	int parity = 0;
@@ -85,16 +85,16 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	if (hPort == INVALID_HANDLE_VALUE) {
 		throw_system_error("Failed to open serial device", this->filename.c_str());
 	}
-	
+
 	if (this->parameters->debug)
 		std::cout << "Opened serial port." << this->filename.c_str() << std::endl;
-	
+
 	if (this->parameters->initDelayMs > 0) {
 		if (this->parameters->debug)
 			std::cout << "Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		Sleep(this->parameters->initDelayMs);
 	}
-	
+
 	if (!GetCommState(hPort, &dcb))
 		throw_system_error("Error getting serial device attributes (is the device valid?)");
 
@@ -145,7 +145,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	};
 
 	SetCommTimeouts(hPort, &timeouts);
-	
+
 	if (this->parameters->debug)
 		std::cout << "Serial port initialized successfully." << std::endl;
 }
@@ -191,23 +191,23 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 				// in case of no timeout, repeat infinitely
 				continue;
 			}
-			
+
 			throw_system_error("Unable to read from serial device", nullptr, GetLastError());
-		} else 
+		} else
 		if (bytesRead > 1) {
 			throw std::runtime_error("Big trouble! Read returned more than one byte");
 		}
-		
+
 		if (this->parameters->debug) {
 			std::cout << "Byte received: ";
 			ArducomMaster::printBuffer(buffer, 1);
 			std::cout << std::endl;
 		}
-		
+
 		return *buffer;
 	}
-	
-	throw TimeoutException("Timeout reading from serial device");
+
+	throw Arducom::TimeoutException("Timeout reading from serial device");
 
 	return *buffer;
 }

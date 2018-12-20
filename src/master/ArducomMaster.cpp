@@ -562,7 +562,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 				// set errorInfo and throw an exception to signal the caller that a function error occurred
 				if (errorInfo != nullptr)
 					*errorInfo = errInfo;
-				throw std::runtime_error((std::string("Function error ") + resultStr + ": info code: " + errInfoStr).c_str());
+				throw Arducom::FunctionError((std::string("Function error ") + resultStr + ": info code: " + errInfoStr).c_str());
 			}
 
 			// handle unknown errors
@@ -702,7 +702,7 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 
 	try {
 		this->transport->request(expected);
-	} catch (const TimeoutException&) {
+	} catch (const Arducom::TimeoutException&) {
 		this->lastError = ARDUCOM_TIMEOUT;
 		return ARDUCOM_NO_DATA;
 	} catch (const std::exception&) {
