@@ -267,6 +267,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			transportType = "i2c";
 		} else {
 #if defined(_MSC_VER)
+#pragma comment(lib, "Ws2_32.lib")
 			char buffer[4];
 			if (InetPtonA(AF_INET, device.c_str(), &buffer) == 1)
 				transportType = "tcpip";
