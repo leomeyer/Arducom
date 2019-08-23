@@ -30,15 +30,25 @@
 
 /** This class defines the transport mechanism for Arducom commands over 
  * an Ethernet LAN module.
- * Ethernet must be initialized before using this transport by a call to
- * Ethernet.begin(mac, ip, gateway, subnet).
+ * Ethernet must be initialized before using this transport by calling
+ *   Ethernet.init(init_pin);
+ * and
+ *   Ethernet.begin(mac, ip, gateway, subnet);
+ * or equivalent calls. Any board specific setup must also be done beforehand.
+ * For example, the DFRobot W5200 shield requires the following init code:
+ *   pinMode(8, OUTPUT);
+ *   pinMode(9, OUTPUT);
+ *   digitalWrite(8, HIGH);
+ *   digitalWrite(9, LOW);
+ * Consequently those pins cannot be used for IO any more.
+ *
  * This class starts a listening server on the given port. It accepts data
  * from connecting clients and turns it over to Arducom. Returned data
  * is sent back to the client.
  * This class does not close connections. It is the responsibility of the
  * client to do that.
  * Make sure to call Ethernet.maintain() in your loop if using dynamic
- * IP addresses.
+ * IP addresses. However, it may be more useful to use a static IP address.
 */
 class ArducomTransportEthernet: public ArducomTransport {
 
