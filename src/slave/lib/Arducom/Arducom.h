@@ -46,6 +46,7 @@
 #define ARDUCOM_TRANSPORT_ERROR			13
 #define ARDUCOM_HARDWARE_ERROR			14
 #define ARDUCOM_NETWORK_ERROR			15
+#define ARDUCOM_NOT_IMPLEMENTED			16
 
 // Arducom error codes that are being sent back to the master
 #define ARDUCOM_NO_DATA					128
@@ -228,6 +229,8 @@ public:
 	virtual void setFlags(uint8_t mask, uint8_t flags);
 
 	virtual uint8_t getFlags(void);
+	
+	virtual bool isCommandComplete(ArducomTransport* transport);
 
 protected:
 	ArducomTransport* transport;
