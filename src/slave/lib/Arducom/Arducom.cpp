@@ -20,8 +20,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#pragma GCC diagnostic error "-Wall"
+#pragma GCC diagnostic error "-Wextra"
+#pragma GCC diagnostic error "-Werror"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 #include <Arduino.h>
-#ifdef __ESP8266__
+
+#if defined(ESP_H)		// no better way to check for ESP?
 #include <EEPROM.h>
 #endif
 
@@ -329,7 +336,6 @@ bool Arducom::isCommandComplete(ArducomTransport* transport) {
 		return false;
 	
 	// the first byte is the command byte
-	uint8_t commandByte = transport->data[0];
 	// the next byte is the code byte which contains the length
 	uint8_t code = transport->data[1];
 	// check whether the specified number of bytes has already been received
@@ -350,9 +356,11 @@ extern int __heap_start, *__brkval;
 #endif
 
 int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+#if defined(__AVR__)
 	int v; 	
-#ifdef __AVR__
 	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+#elif defined(ESP_H)		// no better way to check for ESP?
+	int16_t freeRam = ESP.getFreeHeap();
 #else
 	int16_t freeRam = 0;
 #endif
