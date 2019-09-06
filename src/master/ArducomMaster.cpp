@@ -534,40 +534,45 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			switch (result) {
 
 			case ARDUCOM_NO_DATA:
-				throw std::runtime_error("No data (not enough data sent or command not yet processed, try to increase --initDelay, delay -l or number of retries -x)");
+				throw std::runtime_error("ARDUCOM_NO_DATA (not enough data sent or command not yet processed, try to increase --initDelay, delay -l or number of retries -x)");
 
 			case ARDUCOM_COMMAND_UNKNOWN:
-				throw std::runtime_error((std::string("Command unknown (") + resultStr + "): " + errInfoStr).c_str());
+				throw std::runtime_error((std::string("ARDUCOM_COMMAND_UNKNOWN (") + resultStr + "): " + errInfoStr).c_str());
 
 			case ARDUCOM_TOO_MUCH_DATA:
-				throw std::runtime_error((std::string("Too much data (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
+				throw std::runtime_error((std::string("ARDUCOM_TOO_MUCH_DATA (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
 
-			case ARDUCOM_PARAMETER_MISMATCH: {
+			case ARDUCOM_PARAMETER_MISMATCH:
 				// sporadic I2C dropouts cause this error (receiver problems?)
 				// seem to be unrelated to baud rate...
-				throw std::runtime_error((std::string("Parameter mismatch (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
-			}
+				throw std::runtime_error((std::string("ARDUCOM_PARAMETER_MISMATCH (") + resultStr + "); expected bytes: " + errInfoStr).c_str());
 
 			case ARDUCOM_BUFFER_OVERRUN:
-				throw std::runtime_error((std::string("Buffer overrun (") + resultStr + "); buffer size is: " + errInfoStr).c_str());
+				throw std::runtime_error((std::string("ARDUCOM_BUFFER_OVERRUN (") + resultStr + "); buffer size is: " + errInfoStr).c_str());
 
-			case ARDUCOM_CHECKSUM_ERROR: {
-				throw std::runtime_error((std::string("Checksum error (") + resultStr + "); calculated checksum: " + errInfoStr).c_str());
-			}
+			case ARDUCOM_CHECKSUM_ERROR:
+				throw std::runtime_error((std::string("ARDUCOM_CHECKSUM_ERROR (") + resultStr + "); calculated checksum: " + errInfoStr).c_str());
 
-			case ARDUCOM_LIMIT_EXCEEDED: {
-				throw std::runtime_error((std::string("Limit exceeded (") + resultStr + "); limit is: " + errInfoStr).c_str());
-			}
+			case ARDUCOM_LIMIT_EXCEEDED:
+				throw std::runtime_error((std::string("ARDUCOM_LIMIT_EXCEEDED (") + resultStr + "); limit is: " + errInfoStr).c_str());
 
-			case ARDUCOM_FUNCTION_ERROR:
+			case ARDUCOM_FUNCTION_ERROR: {
 				// set errorInfo and throw an exception to signal the caller that a function error occurred
 				if (errorInfo != nullptr)
 					*errorInfo = errInfo;
-				throw Arducom::FunctionError((std::string("Function error ") + resultStr + ": info code: " + errInfoStr).c_str());
-			}
+				throw Arducom::FunctionError((std::string("ARDUCOM_FUNCTION_ERROR ") + resultStr + ": info code: " + errInfoStr).c_str());
+			} 
+			
+			case ARDUCOM_NOT_IMPLEMENTED:
+				throw std::runtime_error("ARDUCOM_NOT_IMPLEMENTED: This function is not implemented on the slave device");
+			
+			case ARDUCOM_INVALID_CONFIG:
+				throw std::runtime_error("ARDUCOM_INVALID_CONFIG: The configuration of the slave device is not valid for this function");
 
-			// handle unknown errors
-			throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errInfoStr).c_str());
+			default:
+				// handle unknown errors
+				throw std::runtime_error((std::string("Device error ") + resultStr + "; info code: " + errInfoStr).c_str());
+			}
 		}	// while (retries)
 
 	} catch (const std::exception&) {

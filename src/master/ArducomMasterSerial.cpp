@@ -274,7 +274,7 @@ uint8_t ArducomMasterTransportSerial::readByteInternal(uint8_t* buffer) {
 		return *buffer;
 	}
 	
-	throw TimeoutException("Timeout reading from serial device");
+	throw Arducom::TimeoutException("Timeout reading from serial device");
 }
 
 void ArducomMasterTransportSerial::request(uint8_t expectedBytes) {

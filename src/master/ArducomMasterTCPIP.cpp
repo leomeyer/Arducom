@@ -94,6 +94,16 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 		if (this->sockfd < 0)
 			throw_system_error("Failed to open TCP/IP socket", nullptr, SOCKERR_FUNC);
 
+		// set socket to blocking
+#ifdef WIN32
+		u_long iMode = 0;
+		// If iMode = 0, blocking is enabled; 
+		// If iMode != 0, non-blocking mode is enabled.
+		int iResult = ioctlsocket(this->sockfd, FIONBIO, &iMode);
+		if (iResult != NO_ERROR)
+			throw_system_error("ioctlsocket failed", nullptr, SOCKERR_FUNC);
+#endif
+
 		if (this->parameters->timeoutMs > 0) {
 			struct timeval timeout;
 			timeout.tv_sec = this->parameters->timeoutMs / 1000;
@@ -123,11 +133,13 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 		this->sockcomm = 0;
 	}
 
-	for (uint8_t i = 0; i < size; i++) {
+//	for (uint8_t i = 0; i < size; i++) {
+
 		int my_retries = retries;
 	repeat:
 #ifdef WIN32
-		if ((send(this->sockfd, (const char*)&buffer[i], 1, 0)) != 1) {
+//		if ((send(this->sockfd, (const char*)&buffer[i], 1, 0)) == SOCKET_ERROR) {
+		if ((send(this->sockfd, (const char*)&buffer[0], size, 0)) == SOCKET_ERROR) {
 #else
 		if ((write(this->sockfd, &buffer[i], 1)) != 1) {
 #endif
@@ -138,39 +150,62 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 				goto repeat;
 			}
 		}
-	}
+//	}
+
 }
 
-uint8_t ArducomMasterTransportTCPIP::readByteInternal(uint8_t* buffer) {
 #ifdef WIN32
-	int bytesRead = recv(this->sockfd, (char*)buffer, 1, 0);
+uint8_t ArducomMasterTransportTCPIP::readByteInternal(uint8_t* buffer) {
+	return *buffer;
+}
 #else
+uint8_t ArducomMasterTransportTCPIP::readByteInternal(uint8_t* buffer) {
 	int bytesRead = read(this->sockfd, buffer, 1);
-#endif
 	if (bytesRead < 0) {
 		throw_system_error("Unable to read from network", nullptr, SOCKERR_FUNC);
-	} else
+	}
+	else
 	if (bytesRead == 0) {
-		throw TimeoutException("Timeout");
-	} else
+		throw Arducom::TimeoutException("Timeout");
+	}
+	else
 	if (bytesRead > 1) {
 		throw std::runtime_error("Big trouble! Read returned more than one byte");
-	} else {
-/*
+	}
+	else {
+		/*
 		std::cout << "Byte read: ";
 		ArducomMaster::printBuffer(buffer, 1);
 		std::cout << std::endl;
-*/
+		*/
 		return *buffer;
 	}
 	return 0;
 }
+#endif 
 
 void ArducomMasterTransportTCPIP::request(uint8_t expectedBytes) {
 	if (expectedBytes > TCPIP_BLOCKSIZE_LIMIT)
 		throw std::runtime_error("Error: number of bytes to receive exceeds TCP/IP block size limit");
 	uint8_t pos = 0;
 	memset(&this->buffer, 0, TCPIP_BLOCKSIZE_LIMIT);
+
+#ifdef WIN32
+	int bytesRead = recv(this->sockfd, (char*)buffer, expectedBytes, MSG_WAITALL);
+	if (bytesRead < 0) {
+		throw_system_error("Unable to read from network", nullptr, SOCKERR_FUNC);
+	}
+	else
+	if (bytesRead == 0) {
+		throw Arducom::TimeoutException("Timeout");
+	}
+/*
+	else
+	if (bytesRead != expectedBytes) {
+		throw std::runtime_error("Read didn't return the number of expected bytes");
+	}
+*/
+#endif
 
 	// read the first byte
 	uint8_t resultCode = this->readByteInternal(&this->buffer[pos++]);
