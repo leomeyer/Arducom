@@ -141,7 +141,7 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 //		if ((send(this->sockfd, (const char*)&buffer[i], 1, 0)) == SOCKET_ERROR) {
 		if ((send(this->sockfd, (const char*)&buffer[0], size, 0)) == SOCKET_ERROR) {
 #else
-		if ((write(this->sockfd, &buffer[i], 1)) != 1) {
+		if ((write(this->sockfd, &buffer[0], size)) != 1) {
 #endif
 			if (my_retries <= 0) {
 				throw_system_error("Error sending data via TCP/IP", nullptr, SOCKERR_FUNC);
