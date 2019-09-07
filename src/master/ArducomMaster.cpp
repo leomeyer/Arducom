@@ -499,8 +499,8 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 #else
 			// wait for the specified delay
 			timespec sleeptime;
-			sleeptime.tv_sec = 0;
-			sleeptime.tv_nsec = parameters.delayMs * 1000000;
+			sleeptime.tv_sec = parameters.delayMs / 1000;
+			sleeptime.tv_nsec = (parameters.delayMs % 1000) * 1000000L;
 			nanosleep(&sleeptime, nullptr);
 #endif
 			// try to retrieve the result
@@ -626,7 +626,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	semops[1].sem_flg = SEM_UNDO;
 
 #ifdef linux
-	// try to acquire resource with a one second timeout
+	// try to acquire resource
 	// wait for the specified timeout
 	struct timespec timeout;
 	timeout.tv_sec = timeoutMs / 1000;

@@ -111,13 +111,74 @@ int8_t ArducomTransportStream::doWork(Arducom* arducom) {
 		}
 		#endif
 		this->size++;
-		if (this->size > ARDUCOM_BUFFERSIZE) {
+		if (this->size >= ARDUCOM_BUFFERSIZE) {
 			this->status = TOO_MUCH_DATA;
+			this->size = 0;
 			return ARDUCOM_OVERFLOW;
 		}
 		this->status = HAS_DATA;
 	}
 	return ARDUCOM_OK;
+}
+
+/******************************************************************************************	
+* Arducom proxy transport class implementation
+******************************************************************************************/
+
+ArducomTransportProxy::ArducomTransportProxy(ArducomTransport* transport, Stream* stream): ArducomTransport() {
+	this->transport = transport;
+	this->stream = stream;
+}
+
+int8_t ArducomTransportProxy::send(Arducom* arducom, uint8_t* buffer, uint8_t count) {
+	// if this method is ever called by the master it is an error
+	// because the master should never see the data passing through this proxy
+	return ARDUCOM_TRANSPORT_ERROR;
+}
+
+int8_t ArducomTransportProxy::doWork(Arducom* arducom) {
+	int8_t result = transport->doWork(arducom);
+	// pass errors through
+	if (result != ARDUCOM_OK)
+		return result;
+	// data received by the transport?
+	if (transport->status == HAS_DATA) {
+		// send the data over the stream
+		this->stream->write((const uint8_t *)transport->data, transport->size);
+		this->stream->flush();
+		transport->status = NO_DATA;
+	}
+	// read incoming data
+	if (stream->available()) {
+		// need to collect all data at once because the target transport
+		// may require to send everything out at once. Use a small timeout between bytes
+		uint32_t startTime = millis();
+		while (millis() - startTime < 3) {
+			if (stream->available()) {
+				this->data[this->size] = stream->read();
+				#ifdef ARDUCOM_DEBUG_SUPPORT
+				if (arducom->debug) {
+					arducom->debug->print(F("Recv: "));
+					arducom->debug->print(this->data[this->size], HEX);
+					arducom->debug->println(F(" "));
+				}
+				#endif
+				this->size++;
+				if (this->size >= ARDUCOM_BUFFERSIZE) {
+					this->status = TOO_MUCH_DATA;
+					this->size = 0;
+					return ARDUCOM_OVERFLOW;
+				}
+				startTime = millis();
+			}
+		}
+	}
+	if (this->size > 0) {
+		// send data using underlying transport
+		result = transport->send(arducom, this->data, this->size);
+		this->size = 0;
+	}
+	return result;
 }
 
 /******************************************************************************************	
@@ -151,6 +212,13 @@ uint8_t Arducom::addCommand(ArducomCommand* cmd) {
 }
 	
 uint8_t Arducom::doWork(void) {
+	// do the command housekeeping
+	ArducomCommand* command = this->list;
+	while (command != 0) {
+		command->doWork(this);
+		command = command->next;
+	}
+	
 	// transport data handling
 	uint8_t result = this->transport->doWork(this);
 	if (result != ARDUCOM_OK)
@@ -338,9 +406,11 @@ bool Arducom::isCommandComplete(ArducomTransport* transport) {
 	// the first byte is the command byte
 	// the next byte is the code byte which contains the length
 	uint8_t code = transport->data[1];
+	// checksum expected? highest bit of the code byte
+	bool checksum = (code >> 7);
 	// check whether the specified number of bytes has already been received
 	// the lower six bits of the code denote the payload size
-	if (dataSize - 2 < (code & 0b00111111))
+	if (dataSize - (checksum ? 3 : 2) < (code & 0b00111111))
 		// not enough data
 		return false;
 	return true;

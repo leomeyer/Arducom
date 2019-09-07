@@ -157,6 +157,24 @@ protected:
 	Stream* stream;
 };
 
+/** This class relays communication from an ArducomTransport to a generic Stream.
+*/
+class ArducomTransportProxy: public ArducomTransport {
+
+public:
+	ArducomTransportProxy(ArducomTransport* transport, Stream* stream);
+
+	virtual int8_t doWork(Arducom* arducom);
+
+	/** Prepares the transport to send count bytes from the buffer; returns -1 in case of errors. */
+	virtual int8_t send(Arducom* arducom, uint8_t* buffer, uint8_t count);
+
+protected:
+	ArducomTransport* transport;
+	Stream* stream;
+};
+
+
 /** This class is the base class for command handlers. If the command code and the number of expected bytes
 * matches its definition its handle() method is called. This method can inspect the supplied data and send
 * data back to the master. The number of expected bytes is optional. If it is > -1 the Arducom system will
@@ -189,6 +207,11 @@ protected:
 	* Any other return code is interpreted as an error. Additional error information can be returned in errorInfo.
 	*/
 	virtual int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) = 0;
+	
+	/** This method is routinely called by the Arducom doWork method.
+	* It allows the command to do its own housekeeping.
+	*/
+	virtual void doWork(Arducom* arducom) {};
 
 	// forms a linked list of supported commands (internal data structure)
 	ArducomCommand* next;
