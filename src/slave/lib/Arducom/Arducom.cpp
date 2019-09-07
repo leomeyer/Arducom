@@ -32,7 +32,7 @@
 #include <EEPROM.h>
 #endif
 
-#ifdef __AVR__
+#if defined(__AVR__)
 #include <avr/wdt.h>
 #endif
 
@@ -421,7 +421,7 @@ bool Arducom::isCommandComplete(ArducomTransport* transport) {
 ******************************************************************************************/
 
 // for calculation of free RAM
-#ifdef __AVR__
+#if defined(__AVR__)
 extern int __heap_start, *__brkval; 
 #endif
 
@@ -484,8 +484,16 @@ ArducomWriteEEPROMByte::ArducomWriteEEPROMByte(uint8_t commandCode) : ArducomCom
 int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects three bytes; a two-byte address and a one-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_byte((uint8_t*)address, dataBuffer[2]);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	EEPROM.write(address, dataBuffer[2]);
+	if (!EEPROM.commit())
+		return ARDUCOM_HARDWARE_ERROR;
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -498,8 +506,12 @@ ArducomReadEEPROMByte::ArducomReadEEPROMByte(uint8_t commandCode) : ArducomComma
 int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
 	destBuffer[0] = eeprom_read_byte((uint8_t*)address);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	destBuffer[0] = EEPROM.read(address);
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -512,8 +524,17 @@ ArducomWriteEEPROMInt16::ArducomWriteEEPROMInt16(uint8_t commandCode) : ArducomC
 int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects four bytes; a two-byte address and a two-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 1)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_word((uint16_t*)address, dataBuffer[2] + (dataBuffer[3] << 8));
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 1)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	EEPROM.write(address, dataBuffer[2]);
+	EEPROM.write(address + 1, dataBuffer[3]);
+	if (!EEPROM.commit())
+		return ARDUCOM_HARDWARE_ERROR;
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -526,8 +547,15 @@ ArducomReadEEPROMInt16::ArducomReadEEPROMInt16(uint8_t commandCode) : ArducomCom
 int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 1)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 2);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 1)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	destBuffer[0] = EEPROM.read(address);
+	destBuffer[1] = EEPROM.read(address + 1);
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -540,8 +568,17 @@ ArducomWriteEEPROMInt32::ArducomWriteEEPROMInt32(uint8_t commandCode) : ArducomC
 int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects six bytes; a two-byte address and a four-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 3)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 4);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 3)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < 4; i++)
+		EEPROM.write(address + i, dataBuffer[i + 2]);
+	if (!EEPROM.commit())
+		return ARDUCOM_HARDWARE_ERROR;
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -554,8 +591,15 @@ ArducomReadEEPROMInt32::ArducomReadEEPROMInt32(uint8_t commandCode) : ArducomCom
 int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 3)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 4);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 3)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < 4; i++)
+		destBuffer[i] = EEPROM.read(address + i);
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -568,8 +612,17 @@ ArducomWriteEEPROMInt64::ArducomWriteEEPROMInt64(uint8_t commandCode) : ArducomC
 int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects ten bytes; a two-byte address and an eight-byte value
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 7)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 8);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 7)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < 8; i++)
+		EEPROM.write(address + i, dataBuffer[i + 2]);
+	if (!EEPROM.commit())
+		return ARDUCOM_HARDWARE_ERROR;
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -582,8 +635,15 @@ ArducomReadEEPROMInt64::ArducomReadEEPROMInt64(uint8_t commandCode) : ArducomCom
 int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects a two-byte address
 	uint16_t address = *((uint16_t*)dataBuffer);
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + 7)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 8);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + 7)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < 8; i++)
+		destBuffer[i] = EEPROM.read(address + i);
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -602,8 +662,16 @@ int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, in
 	}
 	uint16_t address = *((uint16_t*)dataBuffer);
 	// write remaining data to the EEPROM
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + *dataSize - 2)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, *dataSize - 2);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + *dataSize - 2)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < *dataSize - 2; i++)
+		EEPROM.write(address + i, dataBuffer[i + 2]);
+	EEPROM.commit();
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
@@ -622,8 +690,15 @@ int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int
 		*errorInfo = maxBufferSize;
 		return ARDUCOM_BUFFER_OVERRUN;
 	}
-	#ifdef __AVR__
+	#if defined(__AVR__)
+	if (E2END < address + * dataSize - 2)
+		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, length);
+	#elif defined(ESP_H)
+	if (EEPROM.length() <= (size_t)address + *dataSize - 2)
+		return ARDUCOM_LIMIT_EXCEEDED;
+	for (uint8_t i = 0; i < *dataSize - 2; i++)
+		destBuffer[i] = EEPROM.read(address + i);
 	#else
 		return ARDUCOM_NOT_IMPLEMENTED;
 	#endif
