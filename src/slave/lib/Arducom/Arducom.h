@@ -23,11 +23,11 @@
 #ifndef __ARDUCOM_H
 #define __ARDUCOM_H
 
-#include <stdint.h>
+#include <Arduino.h>
 
 // If ARDUCOM_DEBUG_SUPPORT is 1 Arducom compiles with support for debug messages.
 // Comment this or set it to 0 to reduce code size.
-#define ARDUCOM_DEBUG_SUPPORT			0
+#define ARDUCOM_DEBUG_SUPPORT			1
 
 // Arducom status codes that are used internally
 #define ARDUCOM_OK						0
@@ -211,7 +211,7 @@ protected:
 	/** This method is routinely called by the Arducom doWork method.
 	* It allows the command to do its own housekeeping.
 	*/
-	virtual void doWork(Arducom* arducom) {};
+	virtual void doWork(Arducom*) {};
 
 	// forms a linked list of supported commands (internal data structure)
 	ArducomCommand* next;
@@ -707,6 +707,28 @@ public:
 
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 };
+
+/** This command switches a digital pin to its opposite state for a given time in milliseconds.
+*   It expects a 16 bit unsigned value. The assigned pin is automatically set to mode OUTPUT.
+*   The pin remains toggled at least for the specified time. It may be longer if there are delays somewhere else
+*   in the system. The function relies on the Arducom.doWork routine being regularly called.
+*/
+class ArducomTimedToggle: public ArducomCommand {
+public:
+	ArducomTimedToggle(uint8_t commandCode, uint8_t pin, uint8_t initialState = LOW);
+
+	void doWork(Arducom* arducom) override;
+  
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) override;
+
+protected:
+  int8_t pin;
+  int8_t initialState;
+  uint32_t switchTime;
+};
+
+
+
 
 #endif		// def ARDUINO
 

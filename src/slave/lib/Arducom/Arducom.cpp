@@ -28,7 +28,7 @@
 
 #include <Arduino.h>
 
-#if defined(ESP_H)		// no better way to check for ESP?
+#if defined(ESP8266)
 #include <EEPROM.h>
 #endif
 
@@ -429,7 +429,7 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8
 #if defined(__AVR__)
 	int v; 	
 	int16_t freeRam = (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-#elif defined(ESP_H)		// no better way to check for ESP?
+#elif defined(ESP8266)		// no better way to check for ESP?
 	int16_t freeRam = ESP.getFreeHeap();
 #else
 	int16_t freeRam = 0;
@@ -488,7 +488,7 @@ int8_t ArducomWriteEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	if (E2END < address)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_byte((uint8_t*)address, dataBuffer[2]);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	EEPROM.write(address, dataBuffer[2]);
@@ -508,7 +508,7 @@ int8_t ArducomReadEEPROMByte::handle(Arducom* arducom, uint8_t* dataBuffer, int8
 	uint16_t address = *((uint16_t*)dataBuffer);
 	#if defined(__AVR__)
 	destBuffer[0] = eeprom_read_byte((uint8_t*)address);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	destBuffer[0] = EEPROM.read(address);
@@ -528,7 +528,7 @@ int8_t ArducomWriteEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, in
 	if (E2END < address + 1)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_word((uint16_t*)address, dataBuffer[2] + (dataBuffer[3] << 8));
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 1)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	EEPROM.write(address, dataBuffer[2]);
@@ -551,7 +551,7 @@ int8_t ArducomReadEEPROMInt16::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	if (E2END < address + 1)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 2);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 1)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	destBuffer[0] = EEPROM.read(address);
@@ -572,7 +572,7 @@ int8_t ArducomWriteEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, in
 	if (E2END < address + 3)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 4);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 3)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < 4; i++)
@@ -595,7 +595,7 @@ int8_t ArducomReadEEPROMInt32::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	if (E2END < address + 3)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 4);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 3)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < 4; i++)
@@ -616,7 +616,7 @@ int8_t ArducomWriteEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, in
 	if (E2END < address + 7)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, 8);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 7)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < 8; i++)
@@ -639,7 +639,7 @@ int8_t ArducomReadEEPROMInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	if (E2END < address + 7)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, 8);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + 7)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < 8; i++)
@@ -666,7 +666,7 @@ int8_t ArducomWriteEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, in
 	if (E2END < address + *dataSize - 2)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_update_block((const void *)&dataBuffer[2], (uint16_t*)address, *dataSize - 2);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + *dataSize - 2)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < *dataSize - 2; i++)
@@ -694,7 +694,7 @@ int8_t ArducomReadEEPROMBlock::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	if (E2END < address + * dataSize - 2)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	eeprom_read_block(destBuffer, (uint16_t*)address, length);
-	#elif defined(ESP_H)
+	#elif defined(ESP8266)
 	if (EEPROM.length() <= (size_t)address + *dataSize - 2)
 		return ARDUCOM_LIMIT_EXCEEDED;
 	for (uint8_t i = 0; i < *dataSize - 2; i++)
@@ -1011,4 +1011,34 @@ int8_t ArducomSetPWM::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* data
 	analogWrite(pin, pwm);
 	*dataSize = 0;
 	return ARDUCOM_OK;
+}
+
+// ArducomTimedToggle
+
+ArducomTimedToggle::ArducomTimedToggle(uint8_t commandCode, uint8_t pin, uint8_t initialState) : ArducomCommand(commandCode, 2) { 
+    this->pin = (pin == 1 ? -1 : pin);
+    this->switchTime = 0;
+	this->initialState = initialState;
+    pinMode(pin, OUTPUT);
+	digitalWrite(pin, this->initialState);
+}
+
+void ArducomTimedToggle::doWork(Arducom* arducom) {
+    if (this->switchTime > 0) {
+		if (millis() > this->switchTime) {
+			digitalWrite(pin, this->initialState);
+			this->switchTime = 0;
+		}
+    }
+}
+  
+int8_t ArducomTimedToggle::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+    if (this->pin < 0)
+      return ARDUCOM_INVALID_CONFIG;
+	uint16_t duration;
+    memcpy(&duration, dataBuffer, 2);
+    digitalWrite(pin, this->initialState == LOW ? HIGH : LOW);
+	this->switchTime = millis() + duration;
+    *dataSize = 0;
+    return ARDUCOM_OK;
 }

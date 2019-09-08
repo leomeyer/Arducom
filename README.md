@@ -1,10 +1,11 @@
 Arducom - Arduino communication library
 =======================================
 
-Current version: 1.0 (2016-08-17)
+Current version: 1.1 (2019-09-08)
 
-Arducom simplifies interaction between Arduinos and Linux devices.
+Arducom simplifies communication between Arduinos and Linux devices.
 It is designed to be versatile and easy to extend. It currently supports serial, I2C and TCP/IP connections.
+Supported boards are AVR boards as well as the ESP8266.
 
 Currently supported functions:
 	
