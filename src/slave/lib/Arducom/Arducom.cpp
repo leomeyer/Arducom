@@ -164,7 +164,11 @@ int8_t ArducomTransportProxy::doWork(Arducom* arducom) {
 				}
 				#endif
 				this->size++;
-				if (this->size >= ARDUCOM_BUFFERSIZE) {
+				// this may cause problems if the buffer size of the proxied device
+				// is larger than this device's buffer size. A solution is to 
+				// increase the buffer size for devices that are only intended
+				// to work as proxies.
+				if (this->size > ARDUCOM_BUFFERSIZE) {
 					this->status = TOO_MUCH_DATA;
 					this->size = 0;
 					return ARDUCOM_OVERFLOW;
@@ -994,8 +998,15 @@ ArducomGetAnalogPin::ArducomGetAnalogPin(uint8_t commandCode) : ArducomCommand(c
 }
 
 int8_t ArducomGetAnalogPin::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	#ifndef NUM_ANALOG_INPUTS
+	return ARDUCOM_NOT_IMPLEMENTED;
+	#endif
 	// this method expects the channel number in the first byte
 	uint8_t channel = dataBuffer[0];
+	if (channel >= NUM_ANALOG_INPUTS) {
+		*errorInfo = (NUM_ANALOG_INPUTS) - 1;
+		return ARDUCOM_LIMIT_EXCEEDED;
+	}
 	*((int16_t*)destBuffer) = analogRead(channel);
 	*dataSize = 2;
 	return ARDUCOM_OK;

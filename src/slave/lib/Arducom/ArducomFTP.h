@@ -58,7 +58,6 @@
 */
 class ArducomFTP {
 public:
-	Arducom* arducom;
 	SdFat* sdFat;
 	SdFile openFile;
  

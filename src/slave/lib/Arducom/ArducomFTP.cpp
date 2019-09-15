@@ -31,7 +31,6 @@ ArducomFTP* _arducomFTP;
 
 int8_t ArducomFTP::init(Arducom* arducom, SdFat* sdFat, uint8_t commandBase) {
 	_arducomFTP = 0;
-	this->arducom = arducom;
 	this->sdFat = sdFat;
 
 	int8_t result = arducom->addCommand(new ArducomFTPInit(ARDUCOM_FTP_COMMAND_INIT + commandBase));
@@ -339,9 +338,9 @@ int8_t ArducomFTPReadFile::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t*
 	uint32_t position = *((uint32_t*)dataBuffer);
 	
 	#if ARDUCOM_DEBUG_SUPPORT == 1
-	if (_arducomFTP->arducom->debug) {
-		_arducomFTP->arducom->debug->print(F("Read pos: "));
-		_arducomFTP->arducom->debug->println(position);
+	if (arducom->debug) {
+		arducom->debug->print(F("Read pos: "));
+		arducom->debug->println(position);
 	}
 	#endif
 
