@@ -116,8 +116,8 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 			std::cout << "Initialization delay: " << this->parameters->initDelayMs << "ms; use --initDelay to reduce" << std::endl;
 		// sleep for the specified time
 		timespec sleeptime;
-		sleeptime.tv_sec = 0;
-		sleeptime.tv_nsec = this->parameters->initDelayMs * 1000000;
+		sleeptime.tv_sec = this->parameters->initDelayMs / 1000;
+		sleeptime.tv_nsec = (this->parameters->initDelayMs % 1000) * 1000000L;
 		nanosleep(&sleeptime, nullptr);
 	}
 	
