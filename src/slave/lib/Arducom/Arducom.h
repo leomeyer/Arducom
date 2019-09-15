@@ -23,11 +23,9 @@
 #ifndef __ARDUCOM_H
 #define __ARDUCOM_H
 
-#include <Arduino.h>
-
 // If ARDUCOM_DEBUG_SUPPORT is 1 Arducom compiles with support for debug messages.
 // Comment this or set it to 0 to reduce code size.
-#define ARDUCOM_DEBUG_SUPPORT			1
+#define ARDUCOM_DEBUG_SUPPORT			0
 
 // Arducom status codes that are used internally
 #define ARDUCOM_OK						0
@@ -84,6 +82,8 @@
 #define ARDUCOM_TCP_DEFAULT_PORT		4152
 
 #ifdef ARDUINO
+
+#include <Arduino.h>
 
 class Arducom;
 

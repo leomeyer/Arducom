@@ -26,6 +26,8 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <ArducomESP8266.h>
+
+#ifdef ESP8266
 	
 ESP8266WifiTransport::ESP8266WifiTransport(WiFiNetwork* networks, WiFiAddresses* addresses, const char* hostname) : ArducomTransport() {
 	this->server = nullptr;
@@ -218,3 +220,5 @@ int8_t ESP8266WifiTransport::doWork(Arducom* arducom) {
 	this->processingStart = millis();    
 	return ARDUCOM_OK;
 }
+
+#endif		// def ESP8266

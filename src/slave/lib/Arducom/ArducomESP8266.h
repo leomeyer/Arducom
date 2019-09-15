@@ -23,11 +23,9 @@
 #ifndef __ARDUCOMESP8266_H
 #define __ARDUCOMESP8266_H
 
-#include "ESP8266WiFi.h"
+#ifdef ESP8266
 
-#ifndef ESP8266
-#error This library requires an ESP8266 board.
-#endif
+#include <ESP8266WiFi.h>
 
 #include <Arducom.h>
 
@@ -82,5 +80,7 @@ public:
 
 	virtual int8_t doWork(Arducom* arducom) override;
 };
+
+#endif		// def ESP8266
 
 #endif		// def __ARDUCOMESP8266_H
