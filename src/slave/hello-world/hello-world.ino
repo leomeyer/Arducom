@@ -21,8 +21,9 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 
-// use SdFat:
-// https://github.com/greiman/SdFat
+// Required library: 
+// - SdFat (by Bill Greiman)
+// Install via library manager
 #include <SdFat.h>
 
 #include <Arducom.h>
@@ -47,15 +48,15 @@
 // 5. Ethernet: Define ETHERNET_PORT. An Ethernet shield is required.
 
 // 1. Hardware Serial
-#define SERIAL_STREAM		  Serial
-#define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
+// #define SERIAL_STREAM		  Serial
+// #define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // 2. Software serial connection (for example with a Bluetooth module)
-// #define SOFTSERIAL_RX_PIN	8
-// #define SOFTSERIAL_TX_PIN	9
-// SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
-// #define SERIAL_STREAM		softSerial
-// #define SERIAL_BAUDRATE		9600
+ #define SOFTSERIAL_RX_PIN	6
+ #define SOFTSERIAL_TX_PIN	7
+ SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+ #define SERIAL_STREAM		softSerial
+ #define SERIAL_BAUDRATE		9600
 
 // 3. Hardware I2C communication: define a slave address
 // #define I2C_SLAVE_ADDRESS	5
@@ -133,8 +134,7 @@
 
 // Define this macro if you are using an SD card.
 // The chip select pin depends on the type of SD card shield.
-// Requires the SdFat library:
-// https://github.com/greiman/SdFat
+// Requires the SdFat library.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
 #define SDCARD_CHIPSELECT		10
@@ -159,6 +159,8 @@
 // Note: This define is for the hello-world test sketch only. To debug Arducom,
 // use the define USE_ARDUCOM_DEBUG below. Arducom debug will also use this output.
 // Debug output may not work with all versions of the Arduino compiler.
+// Using debug output may also cause instability when many commands are defined
+// due to low space for local variables. Use less commands in this case.
 // #define DEBUG_OUTPUT		Serial
 // #define DEBUG_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
@@ -174,7 +176,7 @@
 // Requires Arducom to be compiled with debug support. To enable Arducom debug support
 // set ARDUCOM_DEBUG_SUPPORT to 1 in Arducom.h.
 #if ARDUCOM_DEBUG_SUPPORT == 1
-// #define USE_ARDUCOM_DEBUG
+ #define USE_ARDUCOM_DEBUG
 #endif
 
 // validate setup
@@ -197,12 +199,12 @@
 
 #ifdef USE_DS1307
 
-// use RTClib from Adafruit
-// https://github.com/adafruit/RTClib
-#include <Wire.h>
-#include <RTClib.h>
-
-RTC_DS1307 RTC;  // define the Real Time Clock object
+// Required libraries:
+// - DS1307RTC (by Michael Margolis)
+// - Time (by Michael Margolis)
+// Install via library manager.
+#include <DS1307RTC.h>
+//DS1307RTC RTC;  // defined by library
 
 // RTC time is externally represented as a UNIX timestamp
 // (32 bit integer). These two command classes implement
@@ -214,8 +216,7 @@ public:
 	
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 		// read RTC time
-		DateTime now = RTC.now();
-		long unixTS = now.unixtime();
+		long unixTS = RTC.get();
 		*((int32_t*)destBuffer) = unixTS;
 		*dataSize = 4;
 		return ARDUCOM_OK;
@@ -230,8 +231,7 @@ public:
 		// get parameter
 		long unixTS = *((int32_t*)dataBuffer);
 		// construct and set RTC time
-		DateTime dt(unixTS);
-		RTC.adjust(dt);
+		RTC.set(unixTS);
 		*dataSize = 0;		// returns nothing
 		return ARDUCOM_OK;
 	}
@@ -283,10 +283,6 @@ long lastWriteMs;
 #endif
 
 // RAM variables to expose via Arducom
-uint8_t testByte;
-int16_t testInt16;
-int32_t testInt32;
-int64_t testInt64;
 #define TEST_BLOCK_SIZE	10
 uint8_t testBlock[TEST_BLOCK_SIZE];
 
@@ -297,13 +293,13 @@ uint8_t testBlock[TEST_BLOCK_SIZE];
 #if defined SDCARD_CHIPSELECT && defined USE_DS1307
 // call back for file timestamps
 void dateTime(uint16_t* date, uint16_t* time) {
-  DateTime now = RTC.now();
-
+  time_t now = RTC.get();
+  
   // return date using FAT_DATE macro to format fields
-  *date = FAT_DATE(now.year(), now.month(), now.day());
+  *date = FAT_DATE(year(now), month(now), day(now));
 
   // return time using FAT_TIME macro to format fields
-  *time = FAT_TIME(now.hour(), now.minute(), now.second());
+  *time = FAT_TIME(hour(now), minute(now), second(now));
 }
 #endif
 
@@ -337,26 +333,10 @@ void setup()
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
 
 	// EEPROM access commands
-	arducom.addCommand(new ArducomReadEEPROMByte(1));
-	arducom.addCommand(new ArducomWriteEEPROMByte(2));
-	arducom.addCommand(new ArducomReadEEPROMInt16(3));
-	arducom.addCommand(new ArducomWriteEEPROMInt16(4));
-	arducom.addCommand(new ArducomReadEEPROMInt32(5));
-	arducom.addCommand(new ArducomWriteEEPROMInt32(6));
-	arducom.addCommand(new ArducomReadEEPROMInt64(7));
-	arducom.addCommand(new ArducomWriteEEPROMInt64(8));
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
 	
 	// expose RAM test variables
-	arducom.addCommand(new ArducomReadByte(11, &testByte));
-	arducom.addCommand(new ArducomWriteByte(12, &testByte));
-	arducom.addCommand(new ArducomReadInt16(13, &testInt16));
-	arducom.addCommand(new ArducomWriteInt16(14, &testInt16));
-	arducom.addCommand(new ArducomReadInt32(15, &testInt32));
-	arducom.addCommand(new ArducomWriteInt32(16, &testInt32));
-	arducom.addCommand(new ArducomReadInt64(17, &testInt64));
-	arducom.addCommand(new ArducomWriteInt64(18, &testInt64));
 	arducom.addCommand(new ArducomReadBlock(19, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	arducom.addCommand(new ArducomWriteBlock(20, (uint8_t*)&testBlock, TEST_BLOCK_SIZE));
 	
@@ -371,9 +351,9 @@ void setup()
 	arducom.addCommand(new ArducomGetAnalogPin(35));
 
 	#ifdef USE_DS1307
+  DEBUG(println(F("Setup RTC...")));
 	// connect to RTC
-	Wire.begin();
-	if (!RTC.isrunning()) {
+	if (!RTC.isRunning()) {
 		DEBUG(println(F("RTC setup failure!")));
 	} else {
 		// register example RTC commands
@@ -393,6 +373,7 @@ void setup()
 #endif  // USE_DS1307
 
 #ifdef SDCARD_CHIPSELECT
+  DEBUG(println(F("Setup SD card...")));
 	// initialize SD system
 	if (!sdFat.begin(SDCARD_CHIPSELECT, SPI_HALF_SPEED)) {
 		DEBUG(println(F("SD card setup failure!")));
