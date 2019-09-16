@@ -79,74 +79,57 @@ void ArducomMasterTransportI2C::sendBytes(uint8_t* buffer, uint8_t size, int ret
 	}
 }
 
-uint8_t ArducomMasterTransportI2C::readByteInternal(uint8_t* buffer) {
-	int timeout = this->parameters->timeoutMs;
-	while (timeout >= 0) {
-		int bytesRead = read(this->fileHandle, buffer, 1);
-		if (bytesRead < 0) {
-			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-				if (this->parameters->timeoutMs > 0) {
-					if (timeout <= 0)
-						break;
-					timeout--;
-					// sleep for a ms
-					timespec sleeptime;
-					sleeptime.tv_sec = 0;
-					sleeptime.tv_nsec = 1000000;
-					nanosleep(&sleeptime, nullptr);
-				}
-				// in case of no timeout, repeat infinitely
-				continue;
-			}
-			
-			throw_system_error("Unable to read from I2C");
-		} else 
-		if (bytesRead > 1) {
-			throw std::runtime_error("Big trouble! Read returned more than one byte");
-		}
-		
-		if (this->parameters->debug) {
-			std::cout << "Byte received: ";
-			ArducomMaster::printBuffer(buffer, 1);
-			std::cout << std::endl;
-		}
-		
-		return *buffer;
-	}
-	
-	throw Arducom::TimeoutException("Timeout reading from I2C");
-}
-
 void ArducomMasterTransportI2C::request(uint8_t expectedBytes) {
 	if (expectedBytes > I2C_BLOCKSIZE_LIMIT) {
 		throw std::runtime_error("Error: number of bytes to receive exceeds I2C block size limit");
 	}
-	uint8_t pos = 0;
 	memset(&this->buffer, 0, I2C_BLOCKSIZE_LIMIT);
 
-	// read the first byte
-	uint8_t resultCode = this->readByteInternal(&this->buffer[pos++]);
-	if (expectedBytes > 1) {
-		// inspect first byte of the reply
+	int bytesRead;
+	// read available data from I2C with timeout
+	int timeout = this->parameters->timeoutMs;
+	while (timeout >= 0) {
+		bytesRead = read(this->fileHandle, buffer, I2C_BLOCKSIZE_LIMIT);
 		// error?
-		if (resultCode == ARDUCOM_ERROR_CODE) {
-			// read the next two bytes (error code plus error info)
-			this->readByteInternal(&this->buffer[pos++]);
-			if (expectedBytes > 2)
-				this->readByteInternal(&this->buffer[pos++]);
-		} else {
-			// read code byte
-			uint8_t code = this->readByteInternal(&this->buffer[pos++]);
-			uint8_t length = (code & 0b00111111);
-
-//			std::cout << "Expecting: " << (int)length << " bytes" << std::endl;
-			// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
-			bool checksum = (code & 0x80) == 0x80;
-			while ((pos < expectedBytes) && (pos < length + (checksum ? 3 : 2))) {
-				this->readByteInternal(&this->buffer[pos++]);
-			if (pos > I2C_BLOCKSIZE_LIMIT)
-				throw std::runtime_error("Error: number of received bytes exceeds serial block size limit");
+		if (bytesRead < 0) {
+			if (this->parameters->timeoutMs > 0) {
+				if (timeout <= 0)
+						throw Arducom::TimeoutException("Timeout reading from I2C");
+				timeout--;
+				// sleep for a ms
+				timespec sleeptime;
+				sleeptime.tv_sec = 0;
+				sleeptime.tv_nsec = 1000000;
+				nanosleep(&sleeptime, nullptr);
 			}
+			// in case of no timeout, repeat infinitely
+			continue;
+		} else {
+			if (this->parameters->debug) {
+				std::cout << "Data received after " << (this->parameters->timeoutMs - timeout) << " ms: ";
+				ArducomMaster::printBuffer(buffer, bytesRead);
+				std::cout << std::endl;
+			}
+			break;
+		}
+	}
+  if (bytesRead <= 0)
+		throw_system_error("Unable to read from I2C");
+
+	// inspect first byte of the reply
+	uint8_t resultCode = this->buffer[0];
+	// error?
+	if (resultCode == ARDUCOM_ERROR_CODE) {
+		// expect two bytes more (error code plus error info)
+		if (bytesRead < 3)
+			throw Arducom::TimeoutException("Not enough data");
+	} else {
+		// read code byte
+		uint8_t code = this->buffer[1];
+		uint8_t length = (code & 0b00111111);
+		bool checksum = (code & 0x80) == 0x80;
+		if ((bytesRead < length + (checksum ? 3 : 2))) {
+			throw Arducom::TimeoutException("Not enough data");
 		}
 	}
 	this->pos = 0;
