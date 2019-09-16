@@ -630,7 +630,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	// wait for the specified timeout
 	struct timespec timeout;
 	timeout.tv_sec = timeoutMs / 1000;
-	timeout.tv_nsec = 0;
+	timeout.tv_nsec = (timeoutMs % 1000) * 1000;
 
 	if (semtimedop(this->semid, semops, 2, &timeout) < 0) {
 		// error acquiring semaphore

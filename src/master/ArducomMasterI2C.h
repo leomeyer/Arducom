@@ -24,7 +24,7 @@ public:
 	virtual void init(ArducomBaseParameters* parameters);
 
 	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0);
-
+	
 	virtual void request(uint8_t expectedBytes);
 
 	virtual uint8_t readByte(void);
@@ -52,4 +52,6 @@ protected:
 
 	uint8_t buffer[I2C_BLOCKSIZE_LIMIT];
 	int8_t pos;
+
+	uint8_t readByteInternal(uint8_t* buffer);
 };
