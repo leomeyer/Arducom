@@ -53,5 +53,4 @@ protected:
 	uint8_t buffer[I2C_BLOCKSIZE_LIMIT];
 	int8_t pos;
 
-	uint8_t readByteInternal(uint8_t* buffer);
 };
