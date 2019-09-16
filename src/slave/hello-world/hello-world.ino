@@ -19,7 +19,7 @@
 // This example code is in the public domain.
 
 #include <SPI.h>
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>
 
 // Required library: 
 // - SdFat (by Bill Greiman)
@@ -52,17 +52,17 @@
 // #define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // 2. Software serial connection (for example with a Bluetooth module)
- #define SOFTSERIAL_RX_PIN	6
- #define SOFTSERIAL_TX_PIN	7
- SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
- #define SERIAL_STREAM		softSerial
- #define SERIAL_BAUDRATE		9600
+// #define SOFTSERIAL_RX_PIN	6
+// #define SOFTSERIAL_TX_PIN	7
+// SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
+// #define SERIAL_STREAM		softSerial
+// #define SERIAL_BAUDRATE		9600
 
 // 3. Hardware I2C communication: define a slave address
-// #define I2C_SLAVE_ADDRESS	5
+#define I2C_SLAVE_ADDRESS	5
 
 // 4. For Software I2C, additionally define SOFTWARE_I2C (configuration see below)
-// #define SOFTWARE_I2C
+#define SOFTWARE_I2C
 
 // 5. Ethernet
 // #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
@@ -76,52 +76,52 @@
 	// The buffer size in bytes for the send and receive buffer
 	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
 
-	// The numbers of the Arduino pins to use (in this example, A0 and A1)
-	// Pins 0 - 7 are on PIND
-	// Pins 8 - 13 are on PINB
-	// Pins 14 - 19 are on PINC
-	#define I2C_SLAVE_SCL_PIN		14
-	#define I2C_SLAVE_SDA_PIN		15
+// The numbers of the Arduino pins to use (in this example, A0 and A1)
+// Pins 0 - 7 are on PIND
+// Pins 8 - 13 are on PINB
+// Pins 14 - 19 are on PINC
+#define I2C_SLAVE_SCL_PIN   14
+#define I2C_SLAVE_SDA_PIN   15
 
-	// The pin read command (input port register)
-	// Subsequent definitions mainly depend on this setting.
-	#define I2C_SLAVE_READ_PINS		PINC
+// The pin read command (input port register)
+// Subsequent definitions mainly depend on this setting.
+#define I2C_SLAVE_READ_PINS   PINC
 
-	// The pin data direction register
-	// For PINB, use DDRB
-	// For PINC, use DDRC
-	// For PIND, use DDRD
-	#define I2C_SLAVE_DDR_PINS		DDRC
+// The pin data direction register
+// For PINB, use DDRB
+// For PINC, use DDRC
+// For PIND, use DDRD
+#define I2C_SLAVE_DDR_PINS    DDRC
 
-	// The corresponding bits of the pins on the input and data direction registers
-	#define I2C_SLAVE_SCL_BIT		0
-	#define I2C_SLAVE_SDA_BIT		1
+// The corresponding bits of the pins on the input and data direction registers
+#define I2C_SLAVE_SCL_BIT   0
+#define I2C_SLAVE_SDA_BIT   1
 
-	// The pin change interrupt vector corresponding to the input port.
-	// For PINB, use PCINT0_vect
-	// For PINC, use PCINT1_vect
-	// For PIND, use PCINT2_vect
-	#define I2C_SLAVE_INTVECTOR		PCINT1_vect
+// The pin change interrupt vector corresponding to the input port.
+// For PINB, use PCINT0_vect
+// For PINC, use PCINT1_vect
+// For PIND, use PCINT2_vect
+#define I2C_SLAVE_INTVECTOR   PCINT1_vect
 
-	// The interrupt enable flag for the pin change interrupt
-	// For PINB, use PCIE0
-	// For PINC, use PCIE1
-	// For PIND, use PCIE2
-	#define I2C_SLAVE_INTFLAG		PCIE1
+// The interrupt enable flag for the pin change interrupt
+// For PINB, use PCIE0
+// For PINC, use PCIE1
+// For PIND, use PCIE2
+#define I2C_SLAVE_INTFLAG   PCIE1
 
-	// The clear flag for the pin change interrupt
-	// For PINB, use PCIF0
-	// For PINC, use PCIF1
-	// For PIND, use PCIF2
-	#define I2C_SLAVE_CLEARFLAG		PCIF1
+// The clear flag for the pin change interrupt
+// For PINB, use PCIF0
+// For PINC, use PCIF1
+// For PIND, use PCIF2
+#define I2C_SLAVE_CLEARFLAG   PCIF1
 
-	// The pin mask register for the pin change interrupt
-	// For PINB, use PCMSK0
-	// For PINC, use PCMSK1
-	// For PIND, use PCMSK2
-	#define I2C_SLAVE_PINMASKREG	PCMSK1
+// The pin mask register for the pin change interrupt
+// For PINB, use PCMSK0
+// For PINC, use PCMSK1
+// For PIND, use PCMSK2
+#define I2C_SLAVE_PINMASKREG  PCMSK1
 
-	#include "../lib/SoftwareI2CSlave/SoftwareI2CSlave.h"
+#include <SoftwareI2CSlave.h>
 
 #endif	// SOFTWARE_I2C
 
@@ -161,8 +161,8 @@
 // Debug output may not work with all versions of the Arduino compiler.
 // Using debug output may also cause instability when many commands are defined
 // due to low space for local variables. Use less commands in this case.
-// #define DEBUG_OUTPUT		Serial
-// #define DEBUG_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
+#define DEBUG_OUTPUT		Serial
+#define DEBUG_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // Macro for debug output
 #ifdef DEBUG_OUTPUT
