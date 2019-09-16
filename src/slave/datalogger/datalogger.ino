@@ -367,6 +367,8 @@ raw_upload_hex:
 #define I2C_SLAVE_ADDRESS	5
 
 // 4. Software I2C: additionally define SOFTWARE_I2C
+// Csution: Using a DHT library that blocks execution (disables interrupts)
+// will cause intermittent I2C errors on the master device!
 #define SOFTWARE_I2C
 
 // 5. Ethernet
@@ -477,8 +479,8 @@ raw_upload_hex:
 // #define S0_D_PIN			7
 
 // DHT22 sensor definitions
-#define DHT22_A_PIN					8
-#define DHT22_B_PIN					9
+//#define DHT22_A_PIN					8
+//#define DHT22_B_PIN					9
 #define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
 // invalid value (set if sensor is not used or there is a sensor problem)
 #define DHT22_INVALID				-9999
@@ -489,7 +491,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-// #define OBIS_IR_POWER_PIN	A2
+#define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM		Serial
 #define OBIS_BAUDRATE		9600
@@ -1411,7 +1413,7 @@ void setup() {
 	// It can also test the watchdog and perform a software reset.
 	// Sending 0xffff to this command will cause the shutdownHook to initiate the shutdown
 	// which will store current values in EEPROM and halt the system.
-	arducom.addCommand(new ArducomVersionCommand("Logger", &shutdownHook));
+	// arducom.addCommand(new ArducomVersionCommand("Logger", &shutdownHook));
 
 	// EEPROM access commands
 	// due to RAM constraints we have to expose the whole EEPROM as a block
@@ -1588,6 +1590,7 @@ void loop() {
 	}
 	#endif	
 
+  #ifdef LOG_INTERVAL_MS
 	// log interval reached?
 	if (millis() - lastWriteMs > LOG_INTERVAL_MS) {
 		// can write to SD card?
@@ -1765,6 +1768,7 @@ void loop() {
 		// Periodically reset readings. This allows to detect sensor or communication failures.
 		resetReadings();
 	}
+  #endif LOG_INTERVAL_MS
 	
 	wdt_reset();
 
