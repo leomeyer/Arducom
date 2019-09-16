@@ -1,6 +1,0 @@
-[submodule "src/slave/lib/SdFat"]
-	path = src/slave/lib/SdFat
-	url = https://github.com/greiman/SdFat.git
-[submodule "src/slave/lib/RTClib"]
-	path = src/slave/lib/RTClib
-	url = https://github.com/adafruit/RTClib.git
