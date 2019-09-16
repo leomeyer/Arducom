@@ -15,7 +15,7 @@
 #include <ArducomESP8266.h>
 
 // Machine-specific secrets. Can be put in a folder "Secrets" in your library folder.
-// Delete this line if you don't want to keep the secrets local.
+// Delete this line if you want to put the secrets into this file.
 #include <secrets.h>
 
 // Networks to connect to (in the specified order).
