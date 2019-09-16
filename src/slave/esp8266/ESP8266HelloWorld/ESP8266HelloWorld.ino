@@ -12,6 +12,7 @@
 
 #include <ArducomESP8266.h>
 #include <EEPROM.h>
+#include <DHTesp.h>
 
 // Machine-specific secrets. Can be put in a folder "Secrets" in your library folder.
 // Delete this line if you don't want to keep the secrets local.
