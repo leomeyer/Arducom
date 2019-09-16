@@ -1,5 +1,5 @@
 // Arducom based data logger
-// Copyright (c) 2015-2016 Leo Meyer, leo@leomeyer.de
+// Copyright (c) 2015-2019 Leo Meyer, leo@leomeyer.de
 //
 // This code is in the public domain.
 
@@ -330,7 +330,7 @@ raw_upload_hex:
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include <Arduino.h>
-
+// #include <SoftwareSerial.h>
 #include <SPI.h>
 #include <Wire.h>
 
@@ -354,11 +354,11 @@ raw_upload_hex:
 // Warning! This setting conflicts with the OBIS data parser which also uses the serial port!
 // Undefine OBIS_IR_POWER_PIN if you want to test serial communication.
 // #define SERIAL_STREAM		Serial
-#define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
+// #define SERIAL_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
 
 // 2. Software serial connection (for example with a Bluetooth module)
-// #define SOFTSERIAL_RX_PIN	8
-// #define SOFTSERIAL_TX_PIN	9
+// #define SOFTSERIAL_RX_PIN	6
+// #define SOFTSERIAL_TX_PIN	7
 // SoftwareSerial softSerial(SOFTSERIAL_RX_PIN, SOFTSERIAL_TX_PIN);
 // #define SERIAL_STREAM		softSerial
 // #define SERIAL_BAUDRATE		9600
@@ -385,55 +385,55 @@ raw_upload_hex:
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
 #if defined I2C_SLAVE_ADDRESS && defined SOFTWARE_I2C
 
-	// The buffer size in bytes for the send and receive buffer
-	#define I2C_SLAVE_BUFSIZE		ARDUCOM_BUFFERSIZE
+  // The buffer size in bytes for the send and receive buffer
+  #define I2C_SLAVE_BUFSIZE   ARDUCOM_BUFFERSIZE
 
-	// The numbers of the Arduino pins to use (in this example, A0 and A1)
-	// Pins 0 - 7 are on PIND
-	// Pins 8 - 13 are on PINB
-	// Pins 14 - 19 are on PINC
-	#define I2C_SLAVE_SCL_PIN		14
-	#define I2C_SLAVE_SDA_PIN		15
+// The numbers of the Arduino pins to use (in this example, 2 and 3)
+// Pins 0 - 7 are on PIND
+// Pins 8 - 13 are on PINB
+// Pins 14 - 19 are on PINC
+#define I2C_SLAVE_SCL_PIN   14
+#define I2C_SLAVE_SDA_PIN   15
 
-	// The pin read command (input port register)
-	// Subsequent definitions mainly depend on this setting.
-	#define I2C_SLAVE_READ_PINS		PINC
+// The pin read command (input port register)
+// Subsequent definitions mainly depend on this setting.
+#define I2C_SLAVE_READ_PINS   PINC
 
-	// The pin data direction register
-	// For PINB, use DDRB
-	// For PINC, use DDRC
-	// For PIND, use DDRD
-	#define I2C_SLAVE_DDR_PINS		DDRC
+// The pin data direction register
+// For PINB, use DDRB
+// For PINC, use DDRC
+// For PIND, use DDRD
+#define I2C_SLAVE_DDR_PINS    DDRC
 
-	// The corresponding bits of the pins on the input and data direction registers
-	#define I2C_SLAVE_SCL_BIT		0
-	#define I2C_SLAVE_SDA_BIT		1
+// The corresponding bits of the pins on the input and data direction registers
+#define I2C_SLAVE_SCL_BIT   0
+#define I2C_SLAVE_SDA_BIT   1
 
-	// The pin change interrupt vector corresponding to the input port.
-	// For PINB, use PCINT0_vect
-	// For PINC, use PCINT1_vect
-	// For PIND, use PCINT2_vect
-	#define I2C_SLAVE_INTVECTOR		PCINT1_vect
+// The pin change interrupt vector corresponding to the input port.
+// For PINB, use PCINT0_vect
+// For PINC, use PCINT1_vect
+// For PIND, use PCINT2_vect
+#define I2C_SLAVE_INTVECTOR   PCINT1_vect
 
-	// The interrupt enable flag for the pin change interrupt
-	// For PINB, use PCIE0
-	// For PINC, use PCIE1
-	// For PIND, use PCIE2
-	#define I2C_SLAVE_INTFLAG		PCIE1
+// The interrupt enable flag for the pin change interrupt
+// For PINB, use PCIE0
+// For PINC, use PCIE1
+// For PIND, use PCIE2
+#define I2C_SLAVE_INTFLAG   PCIE1
 
-	// The clear flag for the pin change interrupt
-	// For PINB, use PCIF0
-	// For PINC, use PCIF1
-	// For PIND, use PCIF2
-	#define I2C_SLAVE_CLEARFLAG		PCIF1
+// The clear flag for the pin change interrupt
+// For PINB, use PCIF0
+// For PINC, use PCIF1
+// For PIND, use PCIF2
+#define I2C_SLAVE_CLEARFLAG   PCIF1
 
-	// The pin mask register for the pin change interrupt
-	// For PINB, use PCMSK0
-	// For PINC, use PCMSK1
-	// For PIND, use PCMSK2
-	#define I2C_SLAVE_PINMASKREG	PCMSK1
+// The pin mask register for the pin change interrupt
+// For PINB, use PCMSK0
+// For PINC, use PCMSK1
+// For PIND, use PCMSK2
+#define I2C_SLAVE_PINMASKREG  PCMSK1
 
-	#include <SoftwareI2CSlave.h>
+#include <SoftwareI2CSlave.h>
 	
 #endif	// SOFTWARE_I2C
 
@@ -458,7 +458,7 @@ raw_upload_hex:
 // Requires Arducom to be compiled with debug support. To enable debug support
 // set ARDUCOM_DEBUG_SUPPORT to 1 in Arducom.h.
 #if ARDUCOM_DEBUG_SUPPORT == 1
-// #define USE_ARDUCOM_DEBUG
+ #define USE_ARDUCOM_DEBUG
 #endif
 
 // The chip select pin depends on the type of SD card shield.
@@ -468,7 +468,7 @@ raw_upload_hex:
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-// #define USE_DS1307        1
+#define USE_DS1307        1
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
 #define S0_A_PIN			5
@@ -489,7 +489,7 @@ raw_upload_hex:
 // After reset and during programming (via USB) the pin has high impedance, meaning that no data will 
 // arrive from the external circuitry that could interfere with the flash data being uploaded.
 // Undefining this macro switches off OBIS parsing and logging.
-#define OBIS_IR_POWER_PIN	A2
+// #define OBIS_IR_POWER_PIN	A2
 // serial stream to use for OBIS data
 #define OBIS_STREAM		Serial
 #define OBIS_BAUDRATE		9600
@@ -552,76 +552,75 @@ raw_upload_hex:
 /*******************************************************
 * Global helper routines
 *******************************************************/
+void print64(Print * print, int64_t n) {
+  // code adapted from: http://www.hlevkin.com/C_progr/long64.c
+  int i = 0;
+  int m;
+  int len;
+  char c;
+  char s = '+';
+  char str[21];
+  char *pStr = &str[0];
 
-void print64(Print* print, int64_t n) {
-	// code adapted from: http://www.hlevkin.com/C_progr/long64.c
-	  int i = 0;
-	  int m;
-	  int len;
-	  char c;
-	  char s = '+';
-	char str[21];
-	char *pStr = &str[0];
+  if (n < -9223372036854775807)
+  {
+    print->print(F("-9223372036854775808"));
+    return;
+  }
 
-	  if(n < -9223372036854775807)
-	  {
-		print->print(F("-9223372036854775808"));
-		return;
-	  }
+  if ( n < 0 )
+  {
+    s = '-';
+    n = - n;
+    pStr[0] = '-';
+    i++;
+  }
 
-	  if( n < 0 )
-	  {
-		s = '-';
-		n = - n;
-		pStr[0]='-';
-		i++;
-	  }
+  do
+  {
+    m = n % (int64_t)10;
+    pStr[i] = '0' + m;
+    n = n / (int64_t)10;
+    i++;
+  }
+  while (n != 0);
 
-	  do
-	  {
-		m = n % (int64_t)10;
-		pStr[i] = '0'+ m;
-		n = n / (int64_t)10;
-		i++;
-	  }
-	  while(n != 0);
+  if (s == '+')
+  {
+    len = i;
+  }
+  else /* s=='-' */
+  {
+    len = i - 1;
+    pStr++;
+  }
 
-	  if(s == '+')
-	  {
-		len = i;
-	  }
-	  else /* s=='-' */
-	  {
-		len = i-1;
-		pStr++;
-	  }
+  for (i = 0; i < len / 2; i++)
+  {
+    c = pStr[i];
+    pStr[i]       = pStr[len - 1 - i];
+    pStr[len - 1 - i] = c;
+  }
+  pStr[len] = 0;
 
-	  for(i=0; i<len/2; i++)
-	  {
-		c = pStr[i];
-		pStr[i]       = pStr[len-1-i];
-		pStr[len-1-i] = c;
-	  }
-	  pStr[len] = 0;
-
-	  if(s == '-')
-	  {
-		pStr--;
-	  }
-	print->print(pStr);
+  if (s == '-')
+  {
+    pStr--;
+  }
+  print->print(pStr);
 }
-
 /*******************************************************
 * RTC access command implementation (for getting and
 * setting of RTC time)
 *******************************************************/
 #ifdef USE_DS1307
 
-// use RTClib from Adafruit
-// https://github.com/adafruit/RTClib
-#include <RTClib.h>
-
-RTC_DS1307 RTC;  // define the Real Time Clock object
+// Required libraries:
+// - DS1307RTC (by Michael Margolis)
+// - Time (by Michael Margolis)
+// Install via library manager.
+#include <DS1307RTC.h>
+//DS1307RTC RTC;  // defined by library
 
 // RTC time is externally represented as a UNIX timestamp
 // (32 bit integer, UTC). These two command classes implement
@@ -632,12 +631,11 @@ public:
 	ArducomGetTime(uint8_t commandCode) : ArducomCommand(commandCode, 0) {}		// this command expects zero parameters
 	
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-		// read RTC time
-		DateTime now = RTC.now();
-		uint32_t unixTS = now.unixtime();
-		*((uint32_t*)destBuffer) = unixTS;
-		*dataSize = 4;
-		return ARDUCOM_OK;
+    // read RTC time
+    long unixTS = RTC.get();
+    *((int32_t*)destBuffer) = unixTS;
+    *dataSize = 4;
+    return ARDUCOM_OK;
 	}
 };
 
@@ -646,11 +644,10 @@ public:
 	ArducomSetTime(uint8_t commandCode) : ArducomCommand(commandCode, 4) {}		// this command expects four bytes as parameters
 	
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
-		// get parameter
-		uint32_t unixTS = *((uint32_t*)dataBuffer);
-		// construct and set RTC time
-		DateTime dt(unixTS);
-		RTC.adjust(dt);
+    // get parameter
+    long unixTS = *((int32_t*)dataBuffer);
+    // construct and set RTC time
+    RTC.set(unixTS);
 		// store date in EEPROM (for RTC date validation)
 		eeprom_update_dword((uint32_t*)EEPROM_RTCDATETIME, unixTS);
 		*dataSize = 0;		// returns nothing
@@ -940,8 +937,9 @@ ArducomFTP arducomFTP;
 // SD card and logging related variables
 #ifdef SDCARD_CHIPSELECT
 
-// SdFat:
-// https://github.com/greiman/SdFat
+// Required library: 
+// - SdFat (by Bill Greiman)
+// Install via library manager
 #include <SdFat.h>
 
 SdFat sdFat;
@@ -954,12 +952,20 @@ bool initiateShutdown;		// set to true by callback to command 0
 
 #if defined DHT22_A_PIN || defined DHT22_B_PIN
 
-// DHTlib:
-// https://github.com/RobTillaart/Arduino
-#include <dht.h>
+// Required libraries:
+// - DHT sensor library (by Adafruit)
+// - Adafruit Unified Sensor
+#include <DHT.h>
 
-// DHT sensor 
-dht DHT;
+// DHT sensors
+#if defined DHT22_A_PIN
+DHT dhtA(DHT22_A_PIN, DHT22);
+#endif
+#if defined DHT22_B_PIN
+DHT dhtB(DHT22_B_PIN, DHT22);
+#endif
+
+
 uint32_t lastDHT22poll;
 #endif
 
@@ -1001,12 +1007,14 @@ volatile uint16_t wdt_token __attribute__ ((section(".noinit")));
 // taken from SdFat examples
 // call back for file timestamps, used by the SdFat library
 void dateTime(uint16_t* date, uint16_t* time) {
-	if (RTC.isrunning()) {
-		DateTime now = RTC.now();
-		// return date using FAT_DATE macro to format fields
-		*date = FAT_DATE(now.year(), now.month(), now.day());
-		// return time using FAT_TIME macro to format fields
-		*time = FAT_TIME(now.hour(), now.minute(), now.second());
+	if (RTC.isRunning()) {
+    time_t now = RTC.get();
+    
+    // return date using FAT_DATE macro to format fields
+    *date = FAT_DATE(year(now), month(now), day(now));
+  
+    // return time using FAT_TIME macro to format fields
+    *time = FAT_TIME(hour(now), minute(now), second(now));
 	} else {
 		// fallback
 		*date = FAT_DATE(2001, 1, 1);
@@ -1183,28 +1191,28 @@ void log(const __FlashStringHelper* message, bool ln = true, bool timestamp = tr
 			if (timestamp) {
 				if (rtcOK) {
 					// write timestamp to file
-					DateTime now(utcToLocal(RTC.now().unixtime()));
-					f.print(now.year());
+					time_t now = utcToLocal(RTC.get());
+					f.print(year(now));
 					f.print(F("-"));
-					if (now.month() < 10)
+					if (month(now) < 10)
 						f.print(F("0"));
-					f.print(now.month());
+					f.print(month(now));
 					f.print(F("-"));
-					if (now.day() < 10)
+					if (day(now) < 10)
 						f.print(F("0"));
-					f.print(now.day());
+					f.print(day(now));
 					f.print(F(" "));
-					if (now.hour() < 10)
+					if (hour(now) < 10)
 						f.print(F("0"));
-					f.print(now.hour());
+					f.print(hour(now));
 					f.print(F(":"));
-					if (now.minute() < 10)
+					if (minute(now) < 10)
 						f.print(F("0"));
-					f.print(now.minute());
+					f.print(minute(now));
 					f.print(F(":"));
-					if (now.second() < 10)
+					if (second(now) < 10)
 						f.print(F("0"));
-					f.print(now.second());
+					f.print(second(now));
 					f.print(F(" "));
 				} else {
 					f.print(F("<time unknown>      "));
@@ -1280,7 +1288,7 @@ void setup() {
 	// connect to RTC (try three times)
 	int repeat = 3;
 	while (!rtcOK && (repeat > 0))  {
-		rtcOK = RTC.isrunning();
+		rtcOK = RTC.isRunning();
 		repeat--;
 		delay(10);
 	}
@@ -1515,26 +1523,18 @@ void loop() {
 		// read sensor values
 		#ifdef DHT22_A_PIN
 		{
-			int chk = DHT.read22(DHT22_A_PIN);
-			if (chk == DHTLIB_OK) {
-				*(int16_t*)&readings[DHT22_A_HUMID] = DHT.humidity;
-				*(int16_t*)&readings[DHT22_A_TEMP] = DHT.temperature * 10.0;
-			} else {
-				*(int16_t*)&readings[DHT22_A_HUMID] = DHT22_INVALID;
-				*(int16_t*)&readings[DHT22_A_TEMP] = DHT22_INVALID;
-			}
+      float humid = dhtA.readHumidity();
+      float temp = dhtA.readTemperature();
+			*(int16_t*)&readings[DHT22_A_HUMID] = humid != NAN ? humid : DHT22_INVALID;
+			*(int16_t*)&readings[DHT22_A_TEMP] = temp != NAN ? temp * 10.0 : DHT22_INVALID;
 		}
 		#endif
 		#ifdef DHT22_B_PIN
 		{
-			int chk = DHT.read22(DHT22_B_PIN);
-			if (chk == DHTLIB_OK) {
-				*(uint16_t*)&readings[DHT22_B_HUMID] = DHT.humidity;
-				*(uint16_t*)&readings[DHT22_B_TEMP] = DHT.temperature * 10.0;
-			} else {
-				*(int16_t*)&readings[DHT22_B_HUMID] = DHT22_INVALID;
-				*(int16_t*)&readings[DHT22_B_TEMP] = DHT22_INVALID;
-			}
+      float humid = dhtB.readHumidity();
+      float temp = dhtB.readTemperature();
+      *(int16_t*)&readings[DHT22_B_HUMID] = humid != NAN ? humid : DHT22_INVALID;
+      *(int16_t*)&readings[DHT22_B_TEMP] = temp != NAN ? temp * 10.0 : DHT22_INVALID;
 		}
 		#endif
 
@@ -1616,7 +1616,6 @@ void loop() {
 			// With baud rate assumed to be 100 kHz, byte size = 10 bits and 
 			// max length = 32 we get a worst case transfer length of 3.2 ms. 
 			int8_t getDateRetries = 10;
-			DateTime nowUTC;
 			uint32_t nowUnixtime;
 			uint32_t lastUnixtime = 0;
 			int8_t goodCounter = 0;
@@ -1624,14 +1623,13 @@ void loop() {
 			while (!dateOK && (getDateRetries > 0)) {
 				// try to get the time
 				// condition: RTC must be running
-				if (RTC.isrunning()) {
-					nowUTC = RTC.now();
-					nowUnixtime = nowUTC.unixtime();
+				if (RTC.isRunning()) {
+          nowUnixtime = RTC.get();
 
 					// check plausibility
 					// RTC year must not be lower than the creation year of this program
 					// month and day values must be valid (it's possible to have invalid values which RTClib will not complain about)
-					if ((nowUTC.year() >= 2015) && (nowUTC.month() >= 1) && (nowUTC.month() <= 12) && (nowUTC.day() >= 1) && (nowUTC.day() <= 31)) {
+					if ((year(nowUnixtime) >= 2015) && (month(nowUnixtime) >= 1) && (month(nowUnixtime) <= 12) && (day(nowUnixtime) >= 1) && (day(nowUnixtime) <= 31)) {
 					
 						// check: if there is a valid last known ok date, and the new date is not too far off, assume it's ok
 						// allow some delta which is three times the log interval (convert to seconds)
@@ -1687,7 +1685,7 @@ void loop() {
 					// remember last known or assumed good date
 					lastOKDateFromRTC = nowUnixtime;
 			}
-			DateTime now;
+			time_t now;
 			#endif	// use RTC
 			
 			char filename[14];
@@ -1701,8 +1699,8 @@ void loop() {
 			#ifdef USE_DS1307
 			else {
 				// convert to local time
-				now = DateTime(utcToLocal(nowUTC.unixtime()));
-				sprintf(filename, "/%04d%02d%02d.log", now.year(), now.month(), now.day());
+				now = utcToLocal(nowUnixtime);
+				sprintf(filename, "/%04d%02d%02d.log", year(now), month(now), day(now));
 			}
 			#endif
 
@@ -1711,7 +1709,7 @@ void loop() {
 			if (logFile.open(filename, O_RDWR | O_CREAT | O_AT_END)) {
 				// write timestamp in UTC
 				#ifdef USE_DS1307
-				logFile.print(nowUTC.unixtime());
+				logFile.print(nowUnixtime);
 				#endif
 				logFile.print(";");
 				
