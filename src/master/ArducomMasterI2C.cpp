@@ -11,6 +11,7 @@
 	#warning I2C is not supported on Windows
 #else
 
+#include <string.h>
 #include <exception>
 #include <stdexcept>
 #include <stdio.h>
