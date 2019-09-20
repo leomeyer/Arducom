@@ -24,6 +24,7 @@
 #pragma GCC diagnostic error "-Wextra"
 #pragma GCC diagnostic error "-Werror"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"^
 
 #include "ArducomFTP.h"
 

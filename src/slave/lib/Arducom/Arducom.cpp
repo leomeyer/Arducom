@@ -33,6 +33,7 @@
 #endif
 
 #if defined(__AVR__)
+#include <avr/eeprom.h>
 #include <avr/wdt.h>
 #endif
 
@@ -426,7 +427,7 @@ bool Arducom::isCommandComplete(ArducomTransport* transport) {
 
 // for calculation of free RAM
 #if defined(__AVR__)
-extern int __heap_start, *__brkval; 
+extern char __heap_start, *__brkval; 
 #endif
 
 int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
@@ -443,7 +444,7 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8
 		uint8_t mask = dataBuffer[0];
 		uint8_t flags = dataBuffer[1];
 		
-		if ((mask + (flags << 8) == ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
+		if ((mask + (flags << 8) == (uint8_t)ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
 			(this->shutdownHook)();
 		else
 			arducom->setFlags(mask, flags);

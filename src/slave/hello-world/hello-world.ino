@@ -59,15 +59,15 @@
 // #define SERIAL_BAUDRATE		9600
 
 // 3. Hardware I2C communication: define a slave address
-#define I2C_SLAVE_ADDRESS	5
+// #define I2C_SLAVE_ADDRESS	5
 
 // 4. For Software I2C, additionally define SOFTWARE_I2C (configuration see below)
-#define SOFTWARE_I2C
+// #define SOFTWARE_I2C
 
 // 5. Ethernet
-// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP			192, 168, 0, 177
+#define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+#define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+#define ETHERNET_IP			  192, 168, 0, 201
 
 // If using software I2C specify the configuration here
 // (see ../lib/SoftwareI2CSlave/SoftwareI2CSlave.h).
@@ -121,7 +121,7 @@
 // For PIND, use PCMSK2
 #define I2C_SLAVE_PINMASKREG  PCMSK1
 
-#include <SoftwareI2CSlave.h>
+#include "SoftwareI2CSlave.h"
 
 #endif	// SOFTWARE_I2C
 
@@ -137,7 +137,7 @@
 // Requires the SdFat library.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT		10
+#define SDCARD_CHIPSELECT		4
 
 // If an SD card is present, periodically appends simulated log data to the file
 // specified in this macro.
@@ -150,7 +150,7 @@
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-#define USE_DS1307
+// #define USE_DS1307
 
 // Specifies a Print object to use for the debug output.
 // You cannot use the same Print object for Arducom serial communication
@@ -309,6 +309,7 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 void setup()
 {
+  Ethernet.init(10);
 #ifdef LED
 	pinMode(LED, OUTPUT); 
 #endif
@@ -331,7 +332,7 @@ void setup()
 	// reserved version command (it's recommended to leave this in
 	// except if you really have to save flash/RAM)
 	arducom.addCommand(new ArducomVersionCommand("HelloWorld"));
-
+/*
 	// EEPROM access commands
 	arducom.addCommand(new ArducomReadEEPROMBlock(9));
 	arducom.addCommand(new ArducomWriteEEPROMBlock(10));
@@ -349,7 +350,7 @@ void setup()
 	
 	// expose the analog ports
 	arducom.addCommand(new ArducomGetAnalogPin(35));
-
+*/
 	#ifdef USE_DS1307
   DEBUG(println(F("Setup RTC...")));
 	// connect to RTC
