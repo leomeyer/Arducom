@@ -75,7 +75,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	// default protocol: 8N1
 	uint8_t byteSize = 8;
 	int parity = 0;
-	uint8_t stopBits = 1;
+	uint8_t stopBits = 1;		// FTDI problem???
 
 	// initialize the serial device
 	DCB dcb;
@@ -113,7 +113,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 		dcb.Parity = EVENPARITY;
 	else
 		throw_system_error("Invalid parity value", std::to_string(parity).c_str());
-	dcb.StopBits = stopBits;
+	// dcb.StopBits = stopBits;
 
 	if (!SetCommState(hPort, &dcb)) {
 		throw_system_error("Error setting serial device attributes (is the device valid?)");

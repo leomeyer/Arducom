@@ -166,7 +166,7 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				} catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Int32");
 				}
-				if ((value < -2147483648) || (value > 2147483647))
+				if ((value < -2147483648ll) || (value > 2147483647ll))
 					throw std::invalid_argument("Input value for format Int32 must be in range -2147483648..2147483647");
 				params.push_back((uint8_t)value);
 				params.push_back((uint8_t)(value >> 8));
