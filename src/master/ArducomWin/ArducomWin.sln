@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31624.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArducomWin", "ArducomWin.vcxproj", "{7DB5CF04-6605-40D2-8098-6723D0EB4E2E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arducom", "Arducom.vcxproj", "{7DB5CF04-6605-40D2-8098-6723D0EB4E2E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ArducomFTP", "ArducomFTP.vcxproj", "{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +23,19 @@ Global
 		{7DB5CF04-6605-40D2-8098-6723D0EB4E2E}.Release|x64.Build.0 = Release|x64
 		{7DB5CF04-6605-40D2-8098-6723D0EB4E2E}.Release|x86.ActiveCfg = Release|Win32
 		{7DB5CF04-6605-40D2-8098-6723D0EB4E2E}.Release|x86.Build.0 = Release|Win32
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Debug|x64.ActiveCfg = Debug|x64
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Debug|x64.Build.0 = Debug|x64
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Debug|x86.ActiveCfg = Debug|Win32
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Debug|x86.Build.0 = Debug|Win32
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Release|x64.ActiveCfg = Release|x64
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Release|x64.Build.0 = Release|x64
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Release|x86.ActiveCfg = Release|Win32
+		{9633C3FE-840D-4D8B-ADCB-D41EAA31644C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C04307C2-21EA-4A1B-91C8-84E235B93281}
 	EndGlobalSection
 EndGlobal

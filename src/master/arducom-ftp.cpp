@@ -17,7 +17,6 @@
 #include <exception>
 #include <stdexcept>
 #include <cstdint>
-#include <unistd.h>
 #include <algorithm> 
 #include <functional> 
 #include <cctype>
@@ -28,13 +27,41 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <bitset>
 
 #include "../slave/lib/Arducom/Arducom.h"
 #include "../slave/lib/Arducom/ArducomFTP.h"
 
 #include "ArducomMaster.h"
+#ifndef WIN32
 #include "ArducomMasterI2C.h"
+#endif
 #include "ArducomMasterSerial.h"
+#ifdef WIN32
+#include <io.h>
+#ifndef S_IRUSR
+#define S_IRUSR _S_IREAD
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR _S_IWRITE
+#endif
+#ifndef F_OK
+#define F_OK 0
+#define S_IRGRP 0040
+#define S_IROTH 0004
+#endif
+
+#else
+#include <unistd.h>
+#endif
+
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
 
 /* Trim from start */
 static inline std::string& ltrim(std::string& s) {
@@ -243,14 +270,14 @@ void initSlaveFAT(ArducomMaster& master, ArducomMasterTransport* transport) {
 	// send INIT message
 	execute(master, ARDUCOM_FTP_COMMAND_INIT, payload, transport->getDefaultExpectedBytes(), result, true);
 
-	struct __attribute__((packed)) CardInfo {
+	PACK(struct CardInfo {
 		char cardType[4];
 		uint8_t fatType;
 		uint8_t size1;	// size is little-endian
 		uint8_t size2;
 		uint8_t size3;
 		uint8_t size4;
-	} cardInfo;
+	}) cardInfo;
 
 	memcpy(&cardInfo, result.data(), sizeof(cardInfo));
 
@@ -437,7 +464,7 @@ int main(int argc, char *argv[]) {
 	ArducomBaseParameters::convertCmdLineArgs(argc, argv, args);
 
 	try {
-		interactive = isatty(fileno(stdin));
+		interactive = _isatty(fileno(stdin));
 		parameters.setFromArguments(args);
 
 		ArducomMasterTransport* transport = parameters.validate();
@@ -483,7 +510,7 @@ int main(int argc, char *argv[]) {
 				} else
 				if ((parts.at(0) == "ls") || (parts.at(0) == "dir")) {
 					// directory listing data structure
-					struct __attribute__((packed)) FileInfo {
+					PACK(struct FileInfo {
 						char name[13];
 						uint8_t isDir;
 						uint8_t size1;	// size is little-endian
@@ -494,7 +521,7 @@ int main(int argc, char *argv[]) {
 						uint8_t lastWriteDate2;
 						uint8_t lastWriteTime1;
 						uint8_t lastWriteTime2;
-					} fileInfo;
+					}) fileInfo;
 
 					std::vector<FileInfo> fileInfos;
 					payload.clear();	// no payload
@@ -662,12 +689,12 @@ int main(int argc, char *argv[]) {
 						if (result.size() < 4) {
 							std::cout << "Error: device did not send a proper file size" << std::endl;
 						} else {
-							struct __attribute__((packed)) FileSize {
+							PACK(struct FileSize {
 								uint8_t size1;	// size is little-endian
 								uint8_t size2;
 								uint8_t size3;
 								uint8_t size4;
-							} fileSize;
+							}) fileSize;
 							memcpy(&fileSize, result.data(), sizeof(fileSize));
 							int32_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
 							std::cout << "File size: " << totalSize << " bytes" << std::endl;
