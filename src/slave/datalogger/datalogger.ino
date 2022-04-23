@@ -364,7 +364,7 @@ raw_upload_hex:
 // #define SERIAL_BAUDRATE		9600
 
 // 3. Hardware I2C communication: define a slave address
-#define I2C_SLAVE_ADDRESS	5
+// #define I2C_SLAVE_ADDRESS	5
 
 // 4. Software I2C: additionally define SOFTWARE_I2C
 // Csution: Using a DHT library that blocks execution (disables interrupts)
@@ -372,9 +372,9 @@ raw_upload_hex:
 #define SOFTWARE_I2C
 
 // 5. Ethernet
-// #define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
-// #define ETHERNET_MAC			0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-// #define ETHERNET_IP			192, 168, 0, 177
+#define ETHERNET_PORT			ARDUCOM_TCP_DEFAULT_PORT
+#define ETHERNET_MAC			0x98, 0x6C, 0x30, 0x46, 0xD7, 0x95
+#define ETHERNET_IP			192, 168, 0, 250
 
 // If this macro is defined the internal I2C pullups on SDA and SCL are activated.
 // This will cause those lines to have a voltage of 5 V which may damage connected equipment
@@ -466,20 +466,20 @@ raw_upload_hex:
 // The chip select pin depends on the type of SD card shield.
 // The Keyes Data Logger Shield uses pin 10 for chip select.
 // The W5100 Ethernet shield uses pin 4 for chip select.
-#define SDCARD_CHIPSELECT	10
+// #define SDCARD_CHIPSELECT	10
 
 // Specifies whether the DS1307 Real Time Clock should be used.
 // If you don't have a DS1307 connected (via I2C), comment this define.
-#define USE_DS1307        1
+// #define USE_DS1307        1
 
 // S0 pin definitions. If you do not use a pin comment it out for performance.
-#define S0_A_PIN			5
+#define S0_A_PIN			4
 // #define S0_B_PIN			5
 // #define S0_C_PIN			6
 // #define S0_D_PIN			7
 
 // DHT22 sensor definitions
-//#define DHT22_A_PIN					8
+#define DHT22_A_PIN					7
 //#define DHT22_B_PIN					9
 #define DHT22_POLL_INTERVAL_MS		3000		// not below 2000 ms (sensor limit)
 // invalid value (set if sensor is not used or there is a sensor problem)
@@ -515,7 +515,7 @@ raw_upload_hex:
 #define EEPROM_INTERVAL_S	3600
 
 // Undefine this if you are not using a shutdown button (not recommended).
-#define SHUTDOWN_BUTTON		A3
+// #define SHUTDOWN_BUTTON		A3
 // LED pin to blink to indicate successful shutdown
 #define LED_PIN				13
 
@@ -1413,7 +1413,7 @@ void setup() {
 	// It can also test the watchdog and perform a software reset.
 	// Sending 0xffff to this command will cause the shutdownHook to initiate the shutdown
 	// which will store current values in EEPROM and halt the system.
-	// arducom.addCommand(new ArducomVersionCommand("Logger", &shutdownHook));
+	arducom.addCommand(new ArducomVersionCommand("Logger", &shutdownHook));
 
 	// EEPROM access commands
 	// due to RAM constraints we have to expose the whole EEPROM as a block

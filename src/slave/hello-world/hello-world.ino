@@ -309,7 +309,7 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 void setup()
 {
-  Ethernet.init(10);
+  //Ethernet.init(10);
 #ifdef LED
 	pinMode(LED, OUTPUT); 
 #endif
