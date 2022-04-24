@@ -442,9 +442,9 @@ int8_t ArducomVersionCommand::handle(Arducom* arducom, uint8_t* dataBuffer, int8
 	if (*dataSize >= 2) {
 		uint8_t mask = dataBuffer[0];
 		uint8_t flags = dataBuffer[1];
-		
-		if ((mask + (flags << 8) == (uint8_t)ARDUCOM_SHUTDOWN) && (this->shutdownHook != NULL))
-			(this->shutdownHook)();
+		// shutdown?
+		if ((this->shutdownHook != NULL) && ((uint16_t)(mask + (flags << 8)) == ARDUCOM_SHUTDOWN))
+			(*this->shutdownHook)(dataBuffer);
 		else
 			arducom->setFlags(mask, flags);
 	}

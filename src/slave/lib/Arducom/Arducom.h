@@ -72,8 +72,8 @@
 #define ARDUCOM_VERSION_COMMAND         0
 
 // Interpreted by command 0; calls the shutdown hook if provided
-// as command line parameter, this reads "DEAD" as input is LSB first
-#define ARDUCOM_SHUTDOWN				0xADDE
+// as command line parameter, specify "ADEE" as input is LSB first
+#define ARDUCOM_SHUTDOWN				((uint16_t)0xEEAD)
 
 #define ARDUCOM_DEFAULT_BAUDRATE		57600
 
@@ -283,7 +283,7 @@ protected:
 *   Bit 6 of the flags causes an infinite loop (to test a watchdog).
 *   Bit 7 of the flags causes a software restart (using the watchdog).
 *   These two bytes have to be specified together.
-*   If both bytes are 0xff, and there is a shutdownHook function provided, this function is called.
+*   If both bytes are 0xADEE, and there is a shutdownHook function provided, this function is called.
 *   This indicates that the system should halt, but this function takes no further action in this regard.
 *   It returns the following info:
 *	Byte 0: Arducom version number
@@ -293,10 +293,9 @@ protected:
 *   Bytes 8 - n: character data (for example, the slave name)
 */
 class ArducomVersionCommand: public ArducomCommand {
-typedef void (*shutdownHook_t)();
 public:
 	/** Initialize the command with a null-terminated data string. */
-	ArducomVersionCommand(const char* data, shutdownHook_t shutdownHook = NULL) : ArducomCommand(0) {
+	ArducomVersionCommand(const char* data, void (*shutdownHook)(uint8_t* dataBuffer) = NULL) : ArducomCommand(0) {
 		this->data = data;
 		this->shutdownHook = shutdownHook;
 	}
@@ -304,7 +303,7 @@ public:
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 private:
 	const char *data;
-	shutdownHook_t shutdownHook;
+	void (*shutdownHook)(uint8_t* dataBuffer);
 };
 
 /***************************************
