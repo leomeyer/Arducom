@@ -37,7 +37,8 @@ enum Format {
 	FMT_BYTE,
 	FMT_INT16,
 	FMT_INT32,
-	FMT_INT64
+	FMT_INT64,
+	FMT_FLOAT
 };
 
 uint8_t char2byte(const char input) {
@@ -71,6 +72,9 @@ Format parseFormat(const std::string& arg, const std::string& argName) {
 	else
 	if (arg == "Int64")
 		return FMT_INT64;
+	else
+	if (arg == "Float")
+		return FMT_FLOAT;
 	else
 		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64");
 }
@@ -178,7 +182,8 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				long long value;
 				try {
 					value = std::stoll(arg);
-				} catch (std::exception&) {
+				}
+				catch (std::exception&) {
 					throw std::invalid_argument("Expected numeric value for input format Int64");
 				}
 				params.push_back((uint8_t)value);
@@ -189,6 +194,21 @@ void parsePayload(const std::string& arg, Format format, char separator, std::ve
 				params.push_back((uint8_t)(value >> 40));
 				params.push_back((uint8_t)(value >> 48));
 				params.push_back((uint8_t)(value >> 56));
+				break;
+			}
+			case FMT_FLOAT: {
+				float fvalue;
+				try {
+					fvalue = std::stof(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Float");
+				}
+				uint32_t value = *((int*)&fvalue);
+				params.push_back((uint8_t)value);
+				params.push_back((uint8_t)(value >> 8));
+				params.push_back((uint8_t)(value >> 16));
+				params.push_back((uint8_t)(value >> 24));
 				break;
 			}
 			default:
@@ -537,8 +557,19 @@ int main(int argc, char* argv[]) {
 					if (size % 8 != 0)
 						throw std::invalid_argument("Output size must fit into eight byte blocks for output format Int64");
 					for (uint8_t i = 0; i < size; i += 8) {
-						std::cout << ((long long)buffer[0] + ((long long)buffer[i + 1] << 8) + ((long long)buffer[i + 2] << 16) + ((long long)buffer[i + 3] << 24) + ((long long)buffer[i + 4] << 32) + ((long long)buffer[i + 5] << 40) + ((long long)buffer[i + 6] << 48) + ((long long)buffer[i + 7] << 56));
+						std::cout << ((long long)buffer[i] + ((long long)buffer[i + 1] << 8) + ((long long)buffer[i + 2] << 16) + ((long long)buffer[i + 3] << 24) + ((long long)buffer[i + 4] << 32) + ((long long)buffer[i + 5] << 40) + ((long long)buffer[i + 6] << 48) + ((long long)buffer[i + 7] << 56));
 						if ((i < size - 8) && (parameters.outputSeparator > '\0'))
+							std::cout << parameters.outputSeparator;
+					}
+					break;
+				}
+				case FMT_FLOAT: {
+					if (size % 4 != 0)
+						throw std::invalid_argument("Output size must fit into four byte blocks for output format Float");
+					for (uint8_t i = 0; i < size; i += 4) {
+						float fvalue = *((float*)&buffer[i]);
+						std::cout << fvalue;
+						if ((i < size - 4) && (parameters.outputSeparator > '\0'))
 							std::cout << parameters.outputSeparator;
 					}
 					break;

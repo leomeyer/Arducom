@@ -464,7 +464,11 @@ int main(int argc, char *argv[]) {
 	ArducomBaseParameters::convertCmdLineArgs(argc, argv, args);
 
 	try {
+#ifdef WIN32
 		interactive = _isatty(fileno(stdin));
+#else
+		interactive = isatty(fileno(stdin));
+#endif
 		parameters.setFromArguments(args);
 
 		ArducomMasterTransport* transport = parameters.validate();
