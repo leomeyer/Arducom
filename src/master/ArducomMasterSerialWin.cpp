@@ -87,7 +87,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	}
 
 	if (this->parameters->debug)
-		std::cout << "Opened serial port." << this->filename.c_str() << std::endl;
+		std::cout << "Opened serial port: " << this->filename.c_str() << std::endl;
 
 	if (this->parameters->initDelayMs > 0) {
 		if (this->parameters->debug)
@@ -114,6 +114,9 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	else
 		throw_system_error("Invalid parity value", std::to_string(parity).c_str());
 	// dcb.StopBits = stopBits;
+	// avoid auto-reset (works on CH340)
+	dcb.fDtrControl = 0;
+	dcb.fRtsControl = 0;
 
 	if (!SetCommState(hPort, &dcb)) {
 		throw_system_error("Error setting serial device attributes (is the device valid?)");

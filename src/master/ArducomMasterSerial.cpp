@@ -144,7 +144,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 
 	tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
 
-	tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+	tty.c_cflag |= (HUPCL | CLOCAL | CREAD);// ignore modem controls,
 									// enable reading
 	if (parity == 0)
 		tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
@@ -182,7 +182,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	}
 
 	tty.c_cflag &= ~CRTSCTS;
-	tty.c_cflag &= ~HUPCL;          // disable hang up on close (toggling DTR)
+	// tty.c_cflag &= ~HUPCL;          // disable hang up on close (toggling DTR)
 	
 	cfmakeraw(&tty);
 

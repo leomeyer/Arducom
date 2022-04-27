@@ -11,6 +11,7 @@
 #include <sstream>
 #include <vector>
 #include <stdio.h>
+#include <stdlib.h>
 #include <exception>
 #include <stdexcept>
 #include <cstdint>
@@ -339,20 +340,29 @@ public:
 		if ((command < 0) || (command > 126))
 			throw std::invalid_argument("Expected command number within range 0..126 (argument -c)");
 
-		if (readInputSpecified && paramSpecified)
-			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
+//		if (readInputSpecified && paramSpecified)
+//			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
 
 		if (readInputSpecified) {
+			std::string line;
+			std::getline(std::cin, line);
+/*
+			// this should be enough for all input formats
+			int bufSize = transport->getMaximumCommandSize() * 4;
 			// fill buffer from stdin
 #ifdef WIN32
-			char* buffer = (char*)alloca(sizeof(char) * transport->getMaximumCommandSize() * 4);	// this should be enough for all input formats
+			char* buffer = (char*)alloca(sizeof(char) * bufSize);
 #else
-			char buffer[transport->getMaximumCommandSize() * 4];	// this should be enough for all input formats
+			char buffer[bufSize];
 #endif
-			size_t readBytes = fread(buffer, 1, sizeof buffer - 1, stdin);
+			size_t readBytes = fread(buffer, 1, bufSize - 1, stdin);
 
 			buffer[readBytes] = '\0';
-			parsePayload(std::string(buffer), inputFormat, inputSeparator, payload);
+*/
+			if (debug)
+				std::cout << "stdin: " << line << std::endl;
+
+			parsePayload(line, inputFormat, inputSeparator, payload);
 		}
 
 		if (payload.size() > transport->getMaximumCommandSize()) {

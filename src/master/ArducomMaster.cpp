@@ -260,7 +260,7 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 		// try to figure out transport type from device name
 		if ((device.find("/dev/tty") == 0)
 			|| (device.find("/dev/rfcomm") == 0)
-			|| (device.find("COM") == 0)) {
+			|| (device.find("COM") == 0) || (device.find("\\\\.\\COM") == 0)) {
 			transportType = "serial";
 		} else
 		if (device.find("/dev/i2c") == 0) {
