@@ -734,7 +734,7 @@ int main(int argc, char *argv[]) {
 							if (parameters.continueFile && (position >= 0) && (position < totalSize)) {
 								std::cout << "Appending data to existing file (to overwrite, use 'set continue off')" << std::endl;
 								// open local file for appending
-								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
@@ -755,7 +755,7 @@ int main(int argc, char *argv[]) {
 									}
 								}
 								// open local file for writing; create from scratch
-								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
 									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
