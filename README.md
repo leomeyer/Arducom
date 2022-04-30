@@ -1,7 +1,7 @@
 Arducom - Arduino communication library
 =======================================
 
-Current version: 1.1 (2019-09-08)
+Current version: 1.2 (2022-04-30)
 
 Arducom simplifies communication between Arduinos and Linux devices.
 It is designed to be versatile and easy to extend. It currently supports serial, I2C and TCP/IP connections.
@@ -11,7 +11,7 @@ Currently supported functions:
 	
 	- Read and write data from and to EEPROM
 	- Read and write data from and to RAM
-	- Set and read a Real Time Clock (DS1307 is supported)
+	- Set and read Real Time Clock data
 	- "FTP-style" SD card file access
 	- Access Arduino digital pins (read and set state)
 	- Read the values of analog inputs
@@ -127,7 +127,7 @@ For the most current parameter information, use
 	$ ./arducom -?
 		
 For input and output formats the following values are recognized:
-Hex, Raw, Bin, Byte, Int16, Int32, Int64.
+Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float.
 
 * Hex input/output consists of groups of two characters matching [0-9a-fA-F], optionally
 separated by the respective separator. This is the default setting.
@@ -147,6 +147,9 @@ separated by the respective separator.
 separated by the respective separator.
 
 * Int64 input/output consists of a sequence of numeric values in range -2^63..2^63-1, 
+separated by the respective separator.
+
+* Float input/output consists of a sequence of numeric values in 32 bit float (IEEE 754/binary32) format, 
 separated by the respective separator.
 
 Examples:
