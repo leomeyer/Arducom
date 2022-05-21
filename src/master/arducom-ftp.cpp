@@ -166,8 +166,8 @@ public:
 	
 	virtual std::string getVersion(void) {
 		std::string result;
-		result.append("Arducom FTP tool version 1.0\n");
-		result.append("Copyright (c) Leo Meyer 2015-16\n");
+		result.append("Arducom FTP tool v1.2\n");
+		result.append("https://github.com/leomeyer/Arducom\n");
 		result.append("Build: " __DATE__ " " __TIME__ "\n");
 		return result;
 	}

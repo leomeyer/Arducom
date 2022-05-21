@@ -77,7 +77,7 @@ Format parseFormat(const std::string& arg, const std::string& argName) {
 	if (arg == "Float")
 		return FMT_FLOAT;
 	else
-		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64");
+		throw std::invalid_argument("Expected one of the following values after argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float");
 }
 
 /* Split string into parts at specified delimiter */
@@ -406,9 +406,9 @@ protected:
 		result.append("  -c: Arducom command number between 0 and 127. Required.\n");
 		result.append("  -e: Number of expected response payload bytes. Default depends on transport.\n");
 		result.append("  -i: Input format of command payload. Default: Hex.\n");
-		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64.\n");
+		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float.\n");
 		result.append("  -o: Output format of response payload. Default: Hex.\n");
-		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64.\n");
+		result.append("    One of: Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float.\n");
 		result.append("  -s: Input and output separator character. Default: comma (,).\n");
 		result.append("  -si: Input separator character.\n");
 		result.append("  -so: Output separator character.\n");
@@ -440,8 +440,8 @@ protected:
 	
 	virtual std::string getVersion(void) {
 		std::string result;
-		result.append("Arducom command line tool version 1.0\n");
-		result.append("Copyright (c) Leo Meyer 2015-16\n");
+		result.append("Arducom command line tool v1.2\n");
+		result.append("https://github.com/leomeyer/Arducom\n");
 		result.append("Build: " __DATE__ " " __TIME__ "\n");
 		return result;
 	}
