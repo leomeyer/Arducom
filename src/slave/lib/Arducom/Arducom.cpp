@@ -966,17 +966,20 @@ int8_t ArducomGetPinDirection::handle(Arducom* arducom, uint8_t* dataBuffer, int
 	return ARDUCOM_OK;
 }
 */	
-ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 1) {
+ArducomSetPinState::ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert) : ArducomCommand(commandCode, 1) {
 	this->pinNumber = pinNumber;
+	this->invert = invert;
 }
 
 int8_t ArducomSetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects one byte
 	uint8_t state = dataBuffer[0];
 	// set new state
-	digitalWrite(this->pinNumber, (state == 0 ? LOW : HIGH));
+	digitalWrite(this->pinNumber, (invert ?
+		(state == 0 ? HIGH : LOW) : (state == 0 ? LOW : HIGH)));
 	// return the state of the pn
-	destBuffer[0] = digitalRead(this->pinNumber);
+	destBuffer[0] = (digitalRead(this->pinNumber) == 0 ?
+		(invert ? HIGH : LOW) : (invert ? LOW : HIGH));
 	*dataSize = 1;
 	return ARDUCOM_OK;
 }
@@ -988,7 +991,7 @@ ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber) :
 int8_t ArducomGetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current port values
-	// return the state of the pn
+	// return the state of the pin
 	destBuffer[0] = digitalRead(this->pinNumber);
 	*dataSize = 1;
 	return ARDUCOM_OK;

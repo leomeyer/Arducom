@@ -660,16 +660,17 @@ protected:
 	uint8_t pinNumber;
 };
 */
-/** This class implements a command to set the state of the pin defined during creation.
+/** This class implements a command to set the state of the digital pin defined during creation. The operation can optionally be inverted.
 *   Returns the current value of the pin.
 */
 class ArducomSetPinState: public ArducomCommand {
 public:
-	ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber);
+	ArducomSetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert = false);
 
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
+	uint8_t invert;
 };
 
 /** This class implements a command to get the state of the pin defined during creation.
