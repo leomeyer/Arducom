@@ -55,6 +55,11 @@
 #include <unistd.h>
 #endif
 
+// no O_BINARY on *nix
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+
 #ifdef __GNUC__
 #define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 #endif
