@@ -505,6 +505,33 @@ protected:
 	int32_t* address;
 };
 
+/** This class implements a command to write a four-byte float value to a specified RAM address.
+*   The address must be specified at creation time.
+*   It expects the four-byte value to write. All values are LSB first.
+*/
+class ArducomWriteFloat: public ArducomCommand {
+public:
+	ArducomWriteFloat(uint8_t commandCode, float* address);
+
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	float* address;
+};
+
+/** This class implements a command to read a four-byte float value from a specified RAM address.
+*   The address must be specified at creation time.
+*   It returns the following info:
+*   Bytes 0 - 3: result (LSB first)
+*/
+class ArducomReadFloat: public ArducomCommand {
+public:
+	ArducomReadFloat(uint8_t commandCode, float* address);
+
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	float* address;
+};
+
 /** This class implements a command to write an eight-byte integer value to a specified RAM address.
 *   The address must be specified at creation time.
 *   It expects the eight-byte value to write. All values are LSB first.

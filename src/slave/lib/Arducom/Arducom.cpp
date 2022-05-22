@@ -802,6 +802,27 @@ int8_t ArducomReadInt64::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* d
 	return ARDUCOM_OK;
 }
 
+ArducomWriteFloat::ArducomWriteFloat(uint8_t commandCode, float* address) : ArducomCommand(commandCode, 4) {
+	this->address = address;
+}
+	
+int8_t ArducomWriteFloat::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects a four-byte value
+	*this->address = *((float*)dataBuffer);
+	*dataSize = 0;	// no return value
+	return ARDUCOM_OK;
+}
+
+ArducomReadFloat::ArducomReadFloat(uint8_t commandCode, float* address) : ArducomCommand(commandCode, 0) {
+	this->address = address;
+}	
+int8_t ArducomReadFloat::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects no parameters
+	*dataSize = 4;
+	memcpy(destBuffer, this->address, *dataSize);
+	return ARDUCOM_OK;
+}
+
 ArducomWriteBlock::ArducomWriteBlock(uint8_t commandCode, uint8_t* address, uint16_t maxBlockSize) : ArducomCommand(commandCode, -1) {
 	this->address = address;
 	this->maxBlockSize = maxBlockSize;
