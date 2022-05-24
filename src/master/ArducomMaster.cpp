@@ -404,6 +404,13 @@ std::string ArducomBaseParameters::getHelp() {
 	return result;
 }
 
+
+void ArducomBaseParameters::showVersion(void) {}
+
+void ArducomBaseParameters::showHelp(void) {
+	std::cout << getHelp();
+}
+
 /** ArducomMaster implementation */
 
 ArducomMaster::ArducomMaster(ArducomMasterTransport* transport) {

@@ -156,10 +156,10 @@ public:
 	virtual std::string toString(void);
 
 	/** Display version information and exit. */
-	virtual void showVersion(void) = 0;
+	virtual void showVersion(void);
 
 	/** Display help text and exit. */
-	virtual void showHelp(void) = 0;
+	virtual void showHelp(void);
 
 protected:
 	/** Returns the parameter help for this object. */
