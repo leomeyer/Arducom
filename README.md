@@ -3,7 +3,7 @@ Arducom - Arduino communication library
 
 Current version: 1.2 (2022-04-30)
 
-Arducom simplifies communication between Arduinos and Linux devices.
+Arducom simplifies communication between Arduinos and Windows/Linux devices.
 It is designed to be versatile and easy to extend. It currently supports serial, I2C and TCP/IP connections.
 Supported boards are AVR boards as well as the ESP8266.
 
@@ -36,12 +36,13 @@ without interrupting real-time operation.
 
 Arducom currently supports I2C, serial and TCP/IP communication. It also contains a software
 implementation of an I2C slave for Arduinos. There is also an implementation of a versatile data logger
-that supports up to four S0 lines, DHT22 temperature sensors, and an OBIS parser for metering data (D0).
+that supports up to four S0 lines, two DHT22 temperature sensors, and an OBIS parser for metering data (D0 protocol).
 
 The library provides command line tools for testing and integration as well as a C++ API
 for use in your own programs.
 
-The example sketches can be built on Linux on the command line as well as on Windows with the Arduino IDE. The command line tools can also be built on Windows using Cygwin.
+The example sketches can be built on Linux on the command line as well as on Windows with the Arduino IDE.
+The command line tools can be built on Linux with g++. On Windows they can be built using Visual Studio or Cygwin.
 
 Quick start
 -----------
