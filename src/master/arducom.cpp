@@ -15,8 +15,7 @@
 #include <exception>
 #include <stdexcept>
 #include <cstdint>
-#ifdef WIN32
-#else
+#ifndef _MSC_VER
 #include <unistd.h>
 #endif
 #include <cstring>
@@ -25,10 +24,10 @@
 #include "../slave/lib/Arducom/Arducom.h"
 
 #include "ArducomMaster.h"
-#ifndef WIN32
+#include "ArducomMasterSerial.h"
+#ifndef ARDUCOM_NO_I2C
 #include "ArducomMasterI2C.h"
 #endif
-#include "ArducomMasterSerial.h"
 
 /* Input and output data formats */
 enum Format {
@@ -340,25 +339,9 @@ public:
 		if ((command < 0) || (command > 126))
 			throw std::invalid_argument("Expected command number within range 0..126 (argument -c)");
 
-//		if (readInputSpecified && paramSpecified)
-//			throw std::invalid_argument("You cannot read parameters from input (-r) and specify parameters (-p) at the same time");
-
 		if (readInputSpecified) {
 			std::string line;
 			std::getline(std::cin, line);
-/*
-			// this should be enough for all input formats
-			int bufSize = transport->getMaximumCommandSize() * 4;
-			// fill buffer from stdin
-#ifdef WIN32
-			char* buffer = (char*)alloca(sizeof(char) * bufSize);
-#else
-			char buffer[bufSize];
-#endif
-			size_t readBytes = fread(buffer, 1, bufSize - 1, stdin);
-
-			buffer[readBytes] = '\0';
-*/
 			if (debug)
 				std::cout << "stdin: " << line << std::endl;
 
@@ -479,7 +462,7 @@ int main(int argc, char* argv[]) {
 		if (size > 0) {
 			// interpret version command?
 			if (parameters.tryInterpret && (parameters.command == ARDUCOM_VERSION_COMMAND)) {
-#ifndef WIN32
+#ifndef _MSC_VER
 				struct __attribute__((packed))
 #else
 					__pragma(pack(push, 1))
@@ -492,7 +475,7 @@ int main(int argc, char* argv[]) {
 					uint16_t freeRAM;
 					char info[64];
 				} versionInfo;
-#ifdef WIN32
+#ifdef _MSC_VER
 					__pragma(pack(pop))
 #endif
 				// clear structure

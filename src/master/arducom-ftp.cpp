@@ -33,12 +33,18 @@
 #include "../slave/lib/Arducom/ArducomFTP.h"
 
 #include "ArducomMaster.h"
-#ifndef WIN32
+#include "ArducomMasterSerial.h"
+#ifndef ARDUCOM_NO_I2C
 #include "ArducomMasterI2C.h"
 #endif
-#include "ArducomMasterSerial.h"
-#ifdef WIN32
+
+#ifdef _MSC_VER
 #include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+// missing defines on MSC
 #ifndef S_IRUSR
 #define S_IRUSR _S_IREAD
 #endif
@@ -49,10 +55,6 @@
 #define F_OK 0
 #define S_IRGRP 0040
 #define S_IROTH 0004
-#endif
-
-#else
-#include <unistd.h>
 #endif
 
 // no O_BINARY on *nix
@@ -195,7 +197,7 @@ void execute(ArducomMaster& master, uint8_t command, std::vector<uint8_t>& paylo
 	while (retries >= 0) {
 		try {
 			uint8_t buffer[255];
-			uint8_t size = payload.size();
+			uint8_t size = (uint8_t)payload.size();
 			errorInfo = 0;
 			
 			master.execute(parameters, parameters.commandBase + command, payload.data(), &size, expectedBytes, buffer, &errorInfo);
@@ -402,7 +404,7 @@ void setParameter(std::vector<std::string> parts, bool print = true) {
 				if (m_retries < 0)
 					throw std::invalid_argument("");
 				parameters.retries = m_retries;
-			} catch (std::exception& e) {
+			} catch (std::exception&) {
 				throw std::invalid_argument("Expected non-negative number of retries");
 			}
 		}
@@ -417,7 +419,7 @@ void setParameter(std::vector<std::string> parts, bool print = true) {
 				if (m_delayMs < 0)
 					throw std::invalid_argument("");
 				parameters.delayMs = m_delayMs;
-			} catch (std::exception& e) {
+			} catch (std::exception&) {
 				throw std::invalid_argument("Expected non-negative delay in ms");
 			}
 		}
@@ -469,11 +471,7 @@ int main(int argc, char *argv[]) {
 	ArducomBaseParameters::convertCmdLineArgs(argc, argv, args);
 
 	try {
-#ifdef WIN32
-		interactive = _isatty(fileno(stdin));
-#else
 		interactive = isatty(fileno(stdin));
-#endif
 		parameters.setFromArguments(args);
 
 		ArducomMasterTransport* transport = parameters.validate();
@@ -495,7 +493,7 @@ int main(int argc, char *argv[]) {
 				std::string command;
 				getline(std::cin, command);
 				// stdin is a file or a pipe?
-				if (!isatty(fileno(stdin)))
+				if (!interactive)
 					// print non-interactive command (for debugging)
 					std::cout << command << std::endl;
 

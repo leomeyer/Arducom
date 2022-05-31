@@ -13,7 +13,7 @@
 #include <exception>
 #include <stdexcept>
 #include <iostream>
-#ifndef WIN32
+#ifndef _MSC_VER
 #include <unistd.h>
 #include <arpa/inet.h>
 #else
@@ -22,16 +22,16 @@
 #include <sstream>
 
 #include "../slave/lib/Arducom/Arducom.h"
-#ifndef WIN32
+#include "ArducomMasterSerial.h"
+#ifndef ARDUCOM_NO_I2C
 #include "ArducomMasterI2C.h"
 #endif
-#include "ArducomMasterSerial.h"
 #ifndef ARDUCOM_DISABLE_TCPIP
 #include "ArducomMasterTCPIP.h"
 #endif
 
-#ifdef WIN32
-//Returns the last Win32 error, in string format. Returns an empty string if there is no error.
+#ifdef _MSC_VER
+//Returns the last Windows error, in string format. Returns an empty string if there is no error.
 // https://stackoverflow.com/a/17387176
 std::string GetLastErrorAsString(int errorCode = 0) {
 	// Get the error message, if any.
@@ -59,7 +59,7 @@ void throw_system_error(const char* what, const char* info, int code) {
 	std::stringstream fullWhatSS;
 	fullWhatSS << what << ": " << (info != NULL ? info : "") << (info != NULL ? ": " : "");
 	// special treatment for certain errors
-#ifdef WIN32
+#ifdef _MSC_VER
 		fullWhatSS << GetLastErrorAsString(code);
 #else
 	if (errno == EINPROGRESS)

@@ -16,7 +16,8 @@
 #include <sstream>
 #include <string>
 
-#if defined(__CYGWIN__) || defined(WIN32)
+#if defined(__CYGWIN__) || defined(_MSC_VER)
+#define ARDUCOM_NO_I2C
 #define __NO_LOCK_MECHANISM 1
 #endif
 

@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#ifndef WIN32
-#include <openssl/sha.h>
+#ifndef _MSC_VER
+#include <openssl/sha.h>		// requires libssl-devel
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -37,7 +37,7 @@
 
 #include "../slave/lib/Arducom/Arducom.h"
 
-#ifdef WIN32
+#ifdef _MSC_VER
 #define SOCKERR_FUNC WSAGetLastError()
 #else
 #define SOCKERR_FUNC errno
@@ -52,7 +52,7 @@ void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
 	this->parameters = parameters;
 	this->host = parameters->device;
 	this->port = parameters->deviceAddress;
-#ifndef WIN32
+#ifndef _MSC_VER
 	// calculate SHA1 hash of host:port
 	std::stringstream fullNameSS;
 	fullNameSS << this->host << ":" << this->port;
@@ -95,7 +95,7 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 			throw_system_error("Failed to open TCP/IP socket", nullptr, SOCKERR_FUNC);
 
 		// set socket to blocking
-#ifdef WIN32
+#ifdef _MSC_VER
 		u_long iMode = 0;
 		// If iMode = 0, blocking is enabled; 
 		// If iMode != 0, non-blocking mode is enabled.
@@ -133,28 +133,23 @@ void ArducomMasterTransportTCPIP::sendBytes(uint8_t* buffer, uint8_t size, int r
 		this->sockcomm = 0;
 	}
 
-//	for (uint8_t i = 0; i < size; i++) {
-
-		int my_retries = retries;
+	int my_retries = retries;
 	repeat:
-#ifdef WIN32
-//		if ((send(this->sockfd, (const char*)&buffer[i], 1, 0)) == SOCKET_ERROR) {
-		if ((send(this->sockfd, (const char*)&buffer[0], size, 0)) == SOCKET_ERROR) {
+#ifdef _MSC_VER
+	if ((send(this->sockfd, (const char*)&buffer[0], size, 0)) == SOCKET_ERROR) {
 #else
-		if ((write(this->sockfd, &buffer[0], size)) != size) {
+	if ((write(this->sockfd, &buffer[0], size)) != size) {
 #endif
-			if (my_retries <= 0) {
-				throw_system_error("Error sending data via TCP/IP", nullptr, SOCKERR_FUNC);
-			} else {
-				my_retries--;
-				goto repeat;
-			}
+		if (my_retries <= 0) {
+			throw_system_error("Error sending data via TCP/IP", nullptr, SOCKERR_FUNC);
+		} else {
+			my_retries--;
+			goto repeat;
 		}
-//	}
-
+	}
 }
 
-#ifdef WIN32
+#ifdef _MSC_VER
 uint8_t ArducomMasterTransportTCPIP::readByteInternal(uint8_t* buffer) {
 	return *buffer;
 }
@@ -190,7 +185,7 @@ void ArducomMasterTransportTCPIP::request(uint8_t expectedBytes) {
 	uint8_t pos = 0;
 	memset(&this->buffer, 0, TCPIP_BLOCKSIZE_LIMIT);
 
-#ifdef WIN32
+#ifdef _MSC_VER
 	int bytesRead = recv(this->sockfd, (char*)buffer, expectedBytes, MSG_WAITALL);
 	if (bytesRead < 0) {
 		throw_system_error("Unable to read from network", nullptr, SOCKERR_FUNC);
@@ -199,12 +194,6 @@ void ArducomMasterTransportTCPIP::request(uint8_t expectedBytes) {
 	if (bytesRead == 0) {
 		throw Arducom::TimeoutException("Timeout");
 	}
-/*
-	else
-	if (bytesRead != expectedBytes) {
-		throw std::runtime_error("Read didn't return the number of expected bytes");
-	}
-*/
 #endif
 
 	// read the first byte
@@ -244,7 +233,7 @@ uint8_t ArducomMasterTransportTCPIP::readByte(void) {
 }
 
 void ArducomMasterTransportTCPIP::done() {
-#ifdef WIN32
+#ifdef _MSC_VER
 	closesocket(this->sockfd);
 #else
 	close(this->sockfd);
