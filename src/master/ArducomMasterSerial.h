@@ -20,30 +20,30 @@ public:
 
 	ArducomMasterTransportSerial();
 
-	virtual void init(ArducomBaseParameters* parameters);
+	virtual void init(ArducomBaseParameters* parameters) override;
 
-	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0);
+	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0) override;
 
-	virtual void request(uint8_t expectedBytes);
+	virtual void request(uint8_t expectedBytes) override;
 
-	virtual uint8_t readByte(void);
+	virtual uint8_t readByte(void) override;
 
-	virtual void done(void);
+	virtual void done(void) override;
 
-	virtual size_t getMaximumCommandSize(void);
+	virtual uint8_t getMaximumCommandSize(void) override;
 
-	virtual size_t getDefaultExpectedBytes(void);
+	virtual uint8_t getDefaultExpectedBytes(void) override;
 
-	virtual int getSemkey(void);
+	virtual int getSemkey(void) override;
 
-	virtual void printBuffer(void);
+	virtual void printBuffer(void) override;
 
 protected:
 	std::string filename;
 	int baudrate;
 	ArducomBaseParameters* parameters;
 	
-#ifndef __NO_LOCK_MECHANISM
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	// semaphore key
 	key_t semkey;
 #endif
@@ -54,7 +54,7 @@ protected:
 	int fileHandle;
 #endif
 
-	uint8_t buffer[SERIAL_BLOCKSIZE_LIMIT];
+	uint8_t buffer[SERIAL_BLOCKSIZE_LIMIT] = { };
 	int8_t pos;
 
 	uint8_t readByteInternal(uint8_t* buffer);

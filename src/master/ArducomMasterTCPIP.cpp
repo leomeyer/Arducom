@@ -13,22 +13,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#ifndef _MSC_VER
-#include <openssl/sha.h>		// requires libssl-devel
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#else
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
-#ifdef _MSC_VER
-#pragma comment(lib, "ws2_32.lib")
-#endif
-#endif
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -46,6 +30,9 @@
 ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP() {
 	this->pos = -1;
 	this->sockfd = -1;
+	this->parameters = nullptr;
+	this->port = ARDUCOM_TCP_DEFAULT_PORT;
+	this->sockcomm = NULL;
 }
 
 void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
@@ -58,7 +45,7 @@ void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
 	fullNameSS << this->host << ":" << this->port;
 	std::string fullName = fullNameSS.str();
 
-#ifndef __NO_LOCK_MECHANISM
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)fullName.c_str(), fullName.size(), hash);
 
@@ -241,16 +228,16 @@ void ArducomMasterTransportTCPIP::done() {
 	this->sockfd = -1;
 }
 
-size_t ArducomMasterTransportTCPIP::getMaximumCommandSize(void) {
+uint8_t ArducomMasterTransportTCPIP::getMaximumCommandSize(void) {
 	return TCPIP_BLOCKSIZE_LIMIT;
 }
 
-size_t ArducomMasterTransportTCPIP::getDefaultExpectedBytes(void) {
+uint8_t ArducomMasterTransportTCPIP::getDefaultExpectedBytes(void) {
 	return TCPIP_BLOCKSIZE_LIMIT;
 }
 
 int ArducomMasterTransportTCPIP::getSemkey(void) {
-#ifdef __NO_LOCK_MECHANISM
+#ifdef ARDUCOM__NO_LOCK_MECHANISM
 	return 0;
 #else
 	return this->semkey;

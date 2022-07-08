@@ -301,7 +301,7 @@ void initSlaveFAT(ArducomMaster& master, ArducomMasterTransport* transport) {
 	pathComponents.push_back("/");
 }
 
-void printProgress(uint32_t total, uint32_t current, uint8_t width) {
+void printProgress(size_t total, size_t current, uint8_t width) {
 	std::cout << '\r';
 	float val = current / (float)total;
 	int percent = (int)(val * 100.0);
@@ -703,14 +703,14 @@ int main(int argc, char *argv[]) {
 								uint8_t size4;
 							}) fileSize;
 							memcpy(&fileSize, result.data(), sizeof(fileSize));
-							int32_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
+							size_t totalSize = (fileSize.size1 + (fileSize.size2 << 8) + (fileSize.size3 << 16) + (fileSize.size4 << 24));
 							std::cout << "File size: " << totalSize << " bytes" << std::endl;
 							if (totalSize < 0)  {
 								std::cout << "File size is negative, cannot download" << std::endl;
 								continue;	// next command
 							}
 							int fd;
-							int32_t position = -1;
+							size_t position = -1;
 							bool fileExists = false;
 							// check whether the file already exists on the master
 							if (access(parts.at(1).c_str(), F_OK) != -1) {
@@ -718,7 +718,7 @@ int main(int argc, char *argv[]) {
 								// open local file for reading
 								fd = open(parts.at(1).c_str(), O_RDONLY);
 								if (fd < 0) {
-									throw std::runtime_error((std::string("Unable to read output file: ") + parts.at(1)).c_str());
+									throw_system_error((std::string("Unable to read output file: ") + parts.at(1)).c_str());
 								}
 
 								// get file size; this is the position to continue reading from
@@ -727,7 +727,7 @@ int main(int argc, char *argv[]) {
 								if (stat(parts.at(1).c_str(), &st) == 0)
 									position = st.st_size;
 								else {
-									throw std::runtime_error((std::string("Unable to get file size: ") + parts.at(1)).c_str());
+									throw_system_error((std::string("Unable to get file size: ") + parts.at(1)).c_str());
 								}
 
 								close(fd);
@@ -739,7 +739,7 @@ int main(int argc, char *argv[]) {
 								// open local file for appending
 								fd = open(parts.at(1).c_str(), O_APPEND | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
-									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
+									throw_system_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 							} else {
 								if (fileExists) {
@@ -760,7 +760,7 @@ int main(int argc, char *argv[]) {
 								// open local file for writing; create from scratch
 								fd = open(parts.at(1).c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (fd < 0) {
-									throw std::runtime_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
+									throw_system_error((std::string("Unable to create output file: ") + parts.at(1)).c_str());
 								}
 								// start downloading from beginning
 								position = 0;
@@ -787,7 +787,9 @@ int main(int argc, char *argv[]) {
 								position += result.size();
 
 								// write data to local file
-								write(fd, result.data(), result.size());
+								if (write(fd, result.data(), (unsigned int)result.size()) < 0) {
+									throw_system_error((std::string("Unable to write output file: ") + parts.at(1)).c_str());
+								}
 
 								// show "progress bar" only in interactive mode
 								if (interactive)

@@ -18,26 +18,46 @@
 
 #if defined(__CYGWIN__) || defined(_MSC_VER)
 #define ARDUCOM_NO_I2C
-#define __NO_LOCK_MECHANISM 1
+#define ARDUCOM__NO_LOCK_MECHANISM 1
 #endif
 
 // Default slave reaction delay for processing and sending
 // Only relevant for I2C transport (I2C data request fails immediately if there is not data).
-#define DEFAULT_DELAY_MS		10
+#define ARDUCOM_DEFAULT_DELAY_MS		10
+
 // The default timeout for I/O should not be less than 500 because with TCP/IP, if it is less,
 // an error message for an unknown host would be "timeout" rather than "no route to host",
 // which is slightly confusing. To avoid this confusion, set the default rather high.
-#define DEFAULT_TIMEOUT_MS		5000
-#define DEFAULT_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
+// The constant is already defined in the slave library (Arducom.h).
+#undef ARDUCOM_DEFAULT_TIMEOUT_MS
+#define ARDUCOM_DEFAULT_TIMEOUT_MS		5000
+
+#define ARDUCOM_TRANSPORT_DEFAULT_BAUDRATE		ARDUCOM_DEFAULT_BAUDRATE
+
 // The init delay is only relevant for serial transports in case an Arduino is being reset
 // by the serial driver on connection. This constant allows for some startup time.
-#define DEFAULT_INIT_DELAY_MS	3000
+#define ARDUCOM_DEFAULT_INIT_DELAY_MS	3000
 
 // helper macros
-#define Q(str)				#str
-#define QUOTE(str)			Q(str)
+#define ARDUCOM_Q(str)				#str
+#define ARDUCOM_QUOTE(str)			ARDUCOM_Q(str)
 
 namespace Arducom {
+
+/* Input and output data formats */
+enum Format {
+	FMT_HEX,
+	FMT_RAW,
+	FMT_BIN,
+	FMT_BYTE,
+	FMT_INT16,
+	FMT_INT32,
+	FMT_INT64,
+	FMT_FLOAT
+};
+
+
+Format parseFormat(const std::string& arg, const std::string& argName);
 
 class TimeoutException: public std::runtime_error {
 public:
@@ -82,10 +102,10 @@ public:
 	virtual uint8_t readByte(void) = 0;
 
 	/** Returns the maximum command size supported by this transport. */
-	virtual size_t getMaximumCommandSize(void) = 0;
+	virtual uint8_t getMaximumCommandSize(void) = 0;
 
 	/** Returns the default number of expected bytes for this transport. */
-	virtual size_t getDefaultExpectedBytes(void) = 0;
+	virtual uint8_t getDefaultExpectedBytes(void) = 0;
 
 	/** For interprocess communication. Returns the semaphore key to use for this
 	 * transport. If 0, no sempahore locking is to be used. */
@@ -118,15 +138,15 @@ public:
 
 	/** Standard constructor. Applies the default values. */
 	ArducomBaseParameters() {
-		baudrate = DEFAULT_BAUDRATE;
+		baudrate = ARDUCOM_TRANSPORT_DEFAULT_BAUDRATE;
 		deviceAddress = 0;
 		verbose = false;
 		debug = false;
 		initDelayMs = 0;	// set by the transport (only really required for serial)
 		initDelaySetManually = false;
-		delayMs = DEFAULT_DELAY_MS;
+		delayMs = ARDUCOM_DEFAULT_DELAY_MS;
 		delaySetManually = false;
-		timeoutMs = DEFAULT_TIMEOUT_MS;
+		timeoutMs = ARDUCOM_DEFAULT_TIMEOUT_MS;
 		retries = 0;
 		useChecksum = true;
 		semkey = -1;

@@ -105,6 +105,37 @@ static uint8_t calculateChecksum(uint8_t commandByte, uint8_t code, uint8_t* dat
 	return ~(uint8_t)sum;
 }
 
+namespace Arducom {
+
+	Format parseFormat(const std::string& arg, const std::string& argName) {
+		if (arg == "Hex")
+			return FMT_HEX;
+		else
+			if (arg == "Raw")
+				return FMT_RAW;
+			else
+				if (arg == "Bin")
+					return FMT_BIN;
+				else
+					if (arg == "Byte")
+						return FMT_BYTE;
+					else
+						if (arg == "Int16")
+							return FMT_INT16;
+						else
+							if (arg == "Int32")
+								return FMT_INT32;
+							else
+								if (arg == "Int64")
+									return FMT_INT64;
+								else
+									if (arg == "Float")
+										return FMT_FLOAT;
+									else
+										throw std::invalid_argument("Expected one of the following values for argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float");
+	}
+}		// namespace Arducom
+
 /** ArducomMasterTransport implementation */
 
 ArducomMasterTransport::~ArducomMasterTransport() {}
@@ -114,7 +145,7 @@ ArducomMasterTransport::~ArducomMasterTransport() {}
 void ArducomBaseParameters::setFromArguments(std::vector<std::string>& args) {
 	// evaluate arguments
 	for (size_t i = 1; i < args.size(); i++) {
-		evaluateArgument(args,  &i);
+		evaluateArgument(args, &i);
 	}
 }
 
@@ -122,128 +153,158 @@ void ArducomBaseParameters::evaluateArgument(std::vector<std::string>& args, siz
 	if (args.at(*i) == "-h" || args.at(*i) == "-?") {
 		this->showHelp();
 		exit(0);
-	} else
-	if (args.at(*i) == "--version") {
-		this->showVersion();
-		exit(0);
-	} else
-	if (args.at(*i) == "-v") {
-		this->verbose = true;
-	} else
-	if (args.at(*i) == "-vv") {
-		this->verbose = true;
-		this->debug = true;
-	} else
-	if (args.at(*i) == "-n") {
-		useChecksum = false;
-	} else
-	if (args.at(*i) == "-t") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected transport type after argument -t");
-		} else {
-			transportType = args.at(*i);
+	}
+	else
+		if (args.at(*i) == "--version") {
+			this->showVersion();
+			exit(0);
 		}
-	} else
-	if (args.at(*i) == "-d") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected device name or IP address after argument -d");
-		} else {
-			device = args.at(*i);
-		}
-	} else
-	if (args.at(*i) == "-a") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected address or port number after argument -a");
-		} else {
-			try {
-				deviceAddress = std::stoi(args.at(*i));
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected numeric address or port after argument -a");
+		else
+			if (args.at(*i) == "-v") {
+				this->verbose = true;
 			}
-		}
-	} else
-	if (args.at(*i) == "-u") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected timeout value in milliseconds after argument -u");
-		} else {
-			try {
-				timeoutMs = std::stoi(args.at(*i));
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected numeric timeout value in milliseconds after argument -u");
-			}
-		}
-	} else
-	if (args.at(*i) == "-b") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected baud rate after argument -b");
-		} else {
-			try {
-				baudrate = std::stoi(args.at(*i));
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected numeric baudrate after argument -b");
-			}
-		}
-	} else
-	if (args.at(*i) == "--initDelay") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected initialization delay in milliseconds after argument --initDelay");
-		} else {
-			try {
-				initDelayMs = std::stol(args.at(*i));
-				initDelaySetManually = true;
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected numeric initialization delay in milliseconds after argument --initDelay");
-			}
-		}
-	} else
-	if (args.at(*i) == "-l") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected delay in milliseconds after argument -l");
-		} else {
-			try {
-				delayMs = std::stol(args.at(*i));
-				delaySetManually = true;
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected numeric delay in milliseconds after argument -l");
-			}
-		}
-	} else
-	if (args.at(*i) == "-x") {
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected number of retries after argument -x");
-		} else {
-			try {
-				retries = std::stoi(args.at(*i));
-			} catch (std::exception&) {
-				throw std::invalid_argument("Expected number after argument -x");
-			}
-		}
-	} else
-	if (args.at(*i) == "-k") {
-		#if defined(__CYGWIN__) || defined(WIN32)
-		throw std::invalid_argument("Sorry, System V semaphore locking is not supported under Windows");
-		#else
-		(*i)++;
-		if (args.size() == *i) {
-			throw std::invalid_argument("Expected semaphore key (integer) after argument -k");
-		} else {
-			try {
-				semkey = std::stoi(args.at(*i));
-			} catch (std::exception& e) {
-				throw std::invalid_argument("Expected integer number after argument -k");
-			}
-		}
-		#endif
-	} else
-		throw std::invalid_argument("Unknown argument: " + args.at(*i));
+			else
+				if (args.at(*i) == "-vv") {
+					this->verbose = true;
+					this->debug = true;
+				}
+				else
+					if (args.at(*i) == "-n") {
+						useChecksum = false;
+					}
+					else
+						if (args.at(*i) == "-t") {
+							(*i)++;
+							if (args.size() == *i) {
+								throw std::invalid_argument("Expected transport type after argument -t");
+							}
+							else {
+								transportType = args.at(*i);
+							}
+						}
+						else
+							if (args.at(*i) == "-d") {
+								(*i)++;
+								if (args.size() == *i) {
+									throw std::invalid_argument("Expected device name or IP address after argument -d");
+								}
+								else {
+									device = args.at(*i);
+								}
+							}
+							else
+								if (args.at(*i) == "-a") {
+									(*i)++;
+									if (args.size() == *i) {
+										throw std::invalid_argument("Expected address or port number after argument -a");
+									}
+									else {
+										try {
+											deviceAddress = std::stoi(args.at(*i));
+										}
+										catch (std::exception&) {
+											throw std::invalid_argument("Expected numeric address or port after argument -a");
+										}
+									}
+								}
+								else
+									if (args.at(*i) == "-u") {
+										(*i)++;
+										if (args.size() == *i) {
+											throw std::invalid_argument("Expected timeout value in milliseconds after argument -u");
+										}
+										else {
+											try {
+												timeoutMs = std::stoi(args.at(*i));
+											}
+											catch (std::exception&) {
+												throw std::invalid_argument("Expected numeric timeout value in milliseconds after argument -u");
+											}
+										}
+									}
+									else
+										if (args.at(*i) == "-b") {
+											(*i)++;
+											if (args.size() == *i) {
+												throw std::invalid_argument("Expected baud rate after argument -b");
+											}
+											else {
+												try {
+													baudrate = std::stoi(args.at(*i));
+												}
+												catch (std::exception&) {
+													throw std::invalid_argument("Expected numeric baudrate after argument -b");
+												}
+											}
+										}
+										else
+											if (args.at(*i) == "--initDelay") {
+												(*i)++;
+												if (args.size() == *i) {
+													throw std::invalid_argument("Expected initialization delay in milliseconds after argument --initDelay");
+												}
+												else {
+													try {
+														initDelayMs = std::stol(args.at(*i));
+														initDelaySetManually = true;
+													}
+													catch (std::exception&) {
+														throw std::invalid_argument("Expected numeric initialization delay in milliseconds after argument --initDelay");
+													}
+												}
+											}
+											else
+												if (args.at(*i) == "-l") {
+													(*i)++;
+													if (args.size() == *i) {
+														throw std::invalid_argument("Expected delay in milliseconds after argument -l");
+													}
+													else {
+														try {
+															delayMs = std::stol(args.at(*i));
+															delaySetManually = true;
+														}
+														catch (std::exception&) {
+															throw std::invalid_argument("Expected numeric delay in milliseconds after argument -l");
+														}
+													}
+												}
+												else
+													if (args.at(*i) == "-x") {
+														(*i)++;
+														if (args.size() == *i) {
+															throw std::invalid_argument("Expected number of retries after argument -x");
+														}
+														else {
+															try {
+																retries = std::stoi(args.at(*i));
+															}
+															catch (std::exception&) {
+																throw std::invalid_argument("Expected number after argument -x");
+															}
+														}
+													}
+													else
+														if (args.at(*i) == "-k") {
+#if defined(__CYGWIN__) || defined(WIN32)
+															throw std::invalid_argument("Sorry, System V semaphore locking is not supported under Windows");
+#else
+															(*i)++;
+															if (args.size() == *i) {
+																throw std::invalid_argument("Expected semaphore key (integer) after argument -k");
+															}
+															else {
+																try {
+																	semkey = std::stoi(args.at(*i));
+																}
+																catch (std::exception& e) {
+																	throw std::invalid_argument("Expected integer number after argument -k");
+																}
+															}
+#endif
+														}
+														else
+															throw std::invalid_argument("Unknown argument: " + args.at(*i));
 }
 
 ArducomMasterTransport* ArducomBaseParameters::validate() {
@@ -262,30 +323,32 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			|| (device.find("/dev/rfcomm") == 0)
 			|| (device.find("COM") == 0) || (device.find("\\\\.\\COM") == 0)) {
 			transportType = "serial";
-		} else
-		if (device.find("/dev/i2c") == 0) {
-			transportType = "i2c";
-		} else {
+		}
+		else
+			if (device.find("/dev/i2c") == 0) {
+				transportType = "i2c";
+			}
+			else {
 #if defined(_MSC_VER)
 #pragma comment(lib, "Ws2_32.lib")
-			char buffer[4];
-			if (InetPtonA(AF_INET, device.c_str(), &buffer) == 1)
-				transportType = "tcpip";
+				char buffer[4];
+				if (InetPtonA(AF_INET, device.c_str(), &buffer) == 1)
+					transportType = "tcpip";
 #elif not defined(__MINGW32__)
-			// check whether the device represents a valid IP address
-			struct sockaddr_in sa;
-			if (inet_pton(AF_INET, device.c_str(), &(sa.sin_addr)) == 1)
-				transportType = "tcpip";
+				// check whether the device represents a valid IP address
+				struct sockaddr_in sa;
+				if (inet_pton(AF_INET, device.c_str(), &(sa.sin_addr)) == 1)
+					transportType = "tcpip";
 #endif
-		}
+			}
 	}
 
 	ArducomMasterTransport* transport;
 
 	if (transportType == "i2c") {
-		#if defined(__CYGWIN__) || defined(WIN32)
+#if defined(__CYGWIN__) || defined(WIN32)
 		throw std::invalid_argument("Sorry, the I2C transport is not supported under Windows");
-		#else
+#else
 		if (device == "")
 			throw std::invalid_argument("Expected I2C transport device file name (argument -d)");
 
@@ -293,42 +356,46 @@ ArducomMasterTransport* ArducomBaseParameters::validate() {
 			throw std::invalid_argument("Expected I2C slave device address within range 1..127 (argument -a)");
 
 		transport = new ArducomMasterTransportI2C();
-		#endif
-	} else
-	if (transportType == "serial") {
-		if (device == "")
-			throw std::invalid_argument("Expected serial transport device file name (argument -d)");
-
-		transport = new ArducomMasterTransportSerial();
-	} else
-	if (transportType == "tcpip") {
-#ifdef ARDUCOM_DISABLE_TCPIP
-			throw std::invalid_argument("Sorry, TCP/IP is not supported in this build");
-#else
-		if (device == "")
-			throw std::invalid_argument("Expected TCP/IP host name or IP (argument -d)");
-
-		if ((deviceAddress < 0) || (deviceAddress > 65535))
-			throw std::invalid_argument("TCP/IP port number must be within 0 (default) and 65535");
-
-		if (deviceAddress == 0)
-			deviceAddress = ARDUCOM_TCP_DEFAULT_PORT;
-
-		transport = new ArducomMasterTransportTCPIP();
-#endif // ARDUCOM_DISABLE_TCPIP
-	} else
-	if (transportType != "")
-		throw std::invalid_argument("Transport type unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
-	else {
-		if (device != "")
-			throw std::invalid_argument("Transport type could not be determined, use 'i2c', 'serial', or 'tcpip' (argument -t)");
-		else
-			throw std::invalid_argument("Expected a device name (argument -d)");
+#endif
 	}
+	else
+		if (transportType == "serial") {
+			if (device == "")
+				throw std::invalid_argument("Expected serial transport device file name (argument -d)");
+
+			transport = new ArducomMasterTransportSerial();
+		}
+		else
+			if (transportType == "tcpip") {
+#ifdef ARDUCOM_DISABLE_TCPIP
+				throw std::invalid_argument("Sorry, TCP/IP is not supported in this build");
+#else
+				if (device == "")
+					throw std::invalid_argument("Expected TCP/IP host name or IP (argument -d)");
+
+				if ((deviceAddress < 0) || (deviceAddress > 65535))
+					throw std::invalid_argument("TCP/IP port number must be within 0 (default) and 65535");
+
+				if (deviceAddress == 0)
+					deviceAddress = ARDUCOM_TCP_DEFAULT_PORT;
+
+				transport = new ArducomMasterTransportTCPIP();
+#endif // ARDUCOM_DISABLE_TCPIP
+			}
+			else
+				if (transportType != "")
+					throw std::invalid_argument("Transport type unsupported (argument -t), use 'i2c', 'serial', or 'tcpip'");
+				else {
+					if (device != "")
+						throw std::invalid_argument("Transport type could not be determined, use 'i2c', 'serial', or 'tcpip' (argument -t)");
+					else
+						throw std::invalid_argument("Expected a device name (argument -d)");
+				}
 
 	try {
 		transport->init(this);
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		std::throw_with_nested(std::runtime_error("Error initializing transport"));
 	}
 
@@ -384,22 +451,22 @@ std::string ArducomBaseParameters::getHelp() {
 	result.append("    Only required if it can't be guessed from the device.\n");
 	result.append("  -a <address>: Specifies the device address.\n");
 	result.append("    For I2C, the slave address number (2 - 127). Required for I2C.\n");
-	result.append("    For TCP/IP, the destination port number. Optional; default: " QUOTE(ARDUCOM_TCP_DEFAULT_PORT) ".\n");
+	result.append("    For TCP/IP, the destination port number. Optional; default: " ARDUCOM_QUOTE(ARDUCOM_TCP_DEFAULT_PORT) ".\n");
 	result.append("    Not used for serial transport.\n");
-	result.append("  -b <baudrate>: Specifies the baud rate (serial only). Default: " QUOTE(DEFAULT_BAUDRATE) ".\n");
+	result.append("  -b <baudrate>: Specifies the baud rate (serial only). Default: " ARDUCOM_QUOTE(ARDUCOM_TRANSPORT_DEFAULT_BAUDRATE) ".\n");
 	result.append("  -n: Do not use checksums. Not recommended.\n");
 	result.append("  --initDelay <value>: Delay in milliseconds after transport init.\n");
 	result.append("    Only relevant for serial transport (e. g. for Arduino resets).\n");
-	result.append("    Default: " QUOTE(DEFAULT_INIT_DELAY_MS) ".\n");
-	result.append("  -u <value>: Timeout in milliseconds. Optional; default: " QUOTE(DEFAULT_TIMEOUT_MS) ".\n");
+	result.append("    Default: " ARDUCOM_QUOTE(ARDUCOM_DEFAULT_INIT_DELAY_MS) ".\n");
+	result.append("  -u <value>: Timeout in milliseconds. Optional; default: " ARDUCOM_QUOTE(ARDUCOM_DEFAULT_TIMEOUT_MS) ".\n");
 	result.append("  -l <value>: Delay in milliseconds between send and receive.\n");
-	result.append("    Optional; default: " QUOTE(DEFAULT_DELAY_MS) ". Gives the device time to process.\n");
+	result.append("    Optional; default: " ARDUCOM_QUOTE(ARDUCOM_DEFAULT_DELAY_MS) ". Gives the device time to process.\n");
 	result.append("  -x <value>: Number of retries should sending or retrieving fail.\n");
 	result.append("    Optional; default: 0. A sensible value would be about 3.\n");
-	#ifndef	__CYGWIN__
+#ifndef	__CYGWIN__
 	result.append("  -k <value>: The semaphore key used to synchronize between different\n");
 	result.append("    processes. A value of 0 disables semaphore synchronization.\n");
-	#endif
+#endif
 
 	return result;
 }
@@ -423,14 +490,14 @@ ArducomMaster::ArducomMaster(ArducomMasterTransport* transport) {
 }
 
 ArducomMaster::~ArducomMaster() {
-    close(false);
+	close(false);
 	// free the transport object if present
 	if (transport != nullptr)
 		delete transport;
 }
 
 std::string ArducomMaster::getExceptionMessage(const std::exception& e) {
-    return get_what(e);
+	return get_what(e);
 }
 
 void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool noRAW) {
@@ -457,7 +524,7 @@ void ArducomMaster::printBuffer(uint8_t* buffer, uint8_t size, bool noHex, bool 
 }
 
 void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, uint8_t* buffer, uint8_t* size,
-                            uint8_t expected, uint8_t* destBuffer, uint8_t *errorInfo, bool close) {
+	uint8_t expected, uint8_t* destBuffer, uint8_t* errorInfo, bool close) {
 
 	// Sends the command to the slave and returns the response if possible.
 	// Throws exceptions in case of errors. Exceptions that are handled by the standard
@@ -471,15 +538,15 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	// determine the semaphore key to use
 	// If the parameters specify a value < 0 (default), use the transport's semaphore key.
 	// A value of 0 disables the semaphore mechanism.
-	#if defined(__CYGWIN__) || defined(WIN32)
-	// disable semaphores under Windows (not supported)
+#if defined(__CYGWIN__) || defined(WIN32)
+// disable semaphores under Windows (not supported)
 	this->semkey = 0;
-	#else
+#else
 	if (parameters.semkey < 0)
 		this->semkey = transport->getSemkey();
 	else
 		this->semkey = parameters.semkey;
-	#endif
+#endif
 
 	try {
 		this->lock(parameters.debug, parameters.timeoutMs);
@@ -511,7 +578,7 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			nanosleep(&sleeptime, nullptr);
 #endif
 			// try to retrieve the result
-			*size = 0;
+			* size = 0;
 			uint8_t result = receive(expected, parameters.useChecksum, destBuffer, size, &errInfo, parameters.verbose);
 
 			// no error?
@@ -568,11 +635,11 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 				if (errorInfo != nullptr)
 					*errorInfo = errInfo;
 				throw Arducom::FunctionError((std::string("ARDUCOM_FUNCTION_ERROR ") + resultStr + ": info code: " + errInfoStr).c_str());
-			} 
-			
+			}
+
 			case ARDUCOM_NOT_IMPLEMENTED:
 				throw std::runtime_error("ARDUCOM_NOT_IMPLEMENTED: This function is not implemented on the slave device");
-			
+
 			case ARDUCOM_INVALID_CONFIG:
 				throw std::runtime_error("ARDUCOM_INVALID_CONFIG: The configuration of the slave device is not valid for this function");
 
@@ -582,7 +649,8 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 			}
 		}	// while (retries)
 
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		// cleanup after the transaction
 		done(parameters.debug);
 		char commandStr[21];
@@ -591,12 +659,12 @@ void ArducomMaster::execute(ArducomBaseParameters& parameters, uint8_t command, 
 	}
 
 	if (close)
-        // cleanup after the transaction
-        this->close(parameters.debug);
+		// cleanup after the transaction
+		this->close(parameters.debug);
 }
 
 void ArducomMaster::close(bool verbose) {
-    done(verbose);
+	done(verbose);
 }
 
 
@@ -606,7 +674,7 @@ void ArducomMaster::lock(bool verbose, long timeoutMs) {
 	if (this->semkey == 0)
 		return;
 
-#ifndef __NO_LOCK_MECHANISM
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	// acquire interprocess semaphore to avoid contention
 	if (verbose)
 		std::cout << "Acquiring interprocess communication semaphore with key 0x" << std::hex << this->semkey << "..." << std::dec << std::endl;
@@ -661,7 +729,7 @@ void ArducomMaster::unlock(bool verbose) {
 		return;
 	if (!this->hasLock)
 		return;
-#ifndef __NO_LOCK_MECHANISM
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	if (verbose)
 		std::cout << "Releasing interprocess communication semaphore..." << std::endl;
 
@@ -692,20 +760,21 @@ void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_
 	if (checksum)
 		data[2] = calculateChecksum(data[0], data[1], &data[3], size);
 	if (verbose) {
-		std::cout << "Sending bytes: " ;
+		std::cout << "Sending bytes: ";
 		this->printBuffer(data, size + (checksum ? 3 : 2));
 		std::cout << std::endl;
 	}
 	try {
 		this->transport->sendBytes(data, size + (checksum ? 3 : 2), retries);
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error sending data"));
 	}
 	this->lastCommand = command;
 }
 
-uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* destBuffer, uint8_t* size, uint8_t *errorInfo, bool verbose) {
+uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* destBuffer, uint8_t* size, uint8_t* errorInfo, bool verbose) {
 	this->lastError = ARDUCOM_OK;
 
 	if (this->lastCommand > 127) {
@@ -715,10 +784,12 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 
 	try {
 		this->transport->request(expected);
-	} catch (const Arducom::TimeoutException&) {
+	}
+	catch (const Arducom::TimeoutException&) {
 		this->lastError = ARDUCOM_TIMEOUT;
 		return ARDUCOM_NO_DATA;
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error requesting data"));
 	}
@@ -731,9 +802,10 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 
 	// read first byte of the reply
 	uint8_t resultCode;
-	try	{
+	try {
 		resultCode = this->transport->readByte();
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error reading data"));
 	}
@@ -742,9 +814,10 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 	if (resultCode == ARDUCOM_ERROR_CODE) {
 		if (verbose)
 			std::cout << "Received error code 0xff" << std::endl;
-		try	{
+		try {
 			resultCode = this->transport->readByte();
-		} catch (const std::exception&) {
+		}
+		catch (const std::exception&) {
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
@@ -752,9 +825,10 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 			std::cout << "Error: ";
 			this->printBuffer(&resultCode, 1);
 		}
-		try	{
+		try {
 			*errorInfo = this->transport->readByte();
-		} catch (const std::exception&) {
+		}
+		catch (const std::exception&) {
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
@@ -765,11 +839,12 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 		}
 		this->lastError = resultCode;
 		return resultCode;
-	} else
-	if (resultCode == 0) {
-		this->lastError = ARDUCOM_INVALID_REPLY;
-		throw std::runtime_error("Communication error: Didn't receive a valid reply");
 	}
+	else
+		if (resultCode == 0) {
+			this->lastError = ARDUCOM_INVALID_REPLY;
+			throw std::runtime_error("Communication error: Didn't receive a valid reply");
+		}
 
 	// device reacted to different command (result command code has highest bit set)?
 	if (resultCode != (this->lastCommand | 0x80)) {
@@ -783,9 +858,10 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 
 	// read code byte
 	uint8_t code;
-	try	{
+	try {
 		code = this->transport->readByte();
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		this->lastError = ARDUCOM_TRANSPORT_ERROR;
 		std::throw_with_nested(std::runtime_error("Error reading data"));
 	}
@@ -810,19 +886,21 @@ uint8_t ArducomMaster::receive(uint8_t expected, bool useChecksum, uint8_t* dest
 	// checksum expected?
 	uint8_t checkbyte = 0;
 	if (checksum)
-		try	{
-			checkbyte = this->transport->readByte();
-		} catch (const std::exception&) {
-			this->lastError = ARDUCOM_TRANSPORT_ERROR;
-			std::throw_with_nested(std::runtime_error("Error reading data"));
-		}
+		try {
+		checkbyte = this->transport->readByte();
+	}
+	catch (const std::exception&) {
+		this->lastError = ARDUCOM_TRANSPORT_ERROR;
+		std::throw_with_nested(std::runtime_error("Error reading data"));
+	}
 
 	*size = 0;
 	// read payload into the buffer; up to expected bytes or returned bytes, whatever is lower
 	for (uint8_t i = 0; (i < expected) && (i < length); i++) {
 		try {
 			destBuffer[i] = this->transport->readByte();
-		} catch (const std::exception&) {
+		}
+		catch (const std::exception&) {
 			this->lastError = ARDUCOM_TRANSPORT_ERROR;
 			std::throw_with_nested(std::runtime_error("Error reading data"));
 		}
@@ -860,4 +938,3 @@ void ArducomMaster::invalidResponse(uint8_t commandByte) {
 	std::cout << std::endl;
 	throw std::runtime_error("Invalid response");
 }
-
