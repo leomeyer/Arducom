@@ -56,7 +56,6 @@ enum Format {
 	FMT_FLOAT
 };
 
-
 Format parseFormat(const std::string& arg, const std::string& argName);
 
 class TimeoutException: public std::runtime_error {
