@@ -32,7 +32,7 @@ ArducomMasterTransportTCPIP::ArducomMasterTransportTCPIP() {
 	this->sockfd = -1;
 	this->parameters = nullptr;
 	this->port = ARDUCOM_TCP_DEFAULT_PORT;
-	this->sockcomm = NULL;
+	this->sockcomm = 0;
 }
 
 void ArducomMasterTransportTCPIP::init(ArducomBaseParameters* parameters) {
@@ -173,7 +173,7 @@ void ArducomMasterTransportTCPIP::request(uint8_t expectedBytes) {
 	memset(&this->buffer, 0, TCPIP_BLOCKSIZE_LIMIT);
 
 #ifdef _MSC_VER
-	int bytesRead = recv(this->sockfd, (char*)buffer, expectedBytes, MSG_WAITALL);
+	int bytesRead = recv(this->sockfd, (char*)buffer, expectedBytes, 0);
 	if (bytesRead < 0) {
 		throw_system_error("Unable to read from network", nullptr, SOCKERR_FUNC);
 	}

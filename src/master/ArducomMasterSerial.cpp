@@ -73,7 +73,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	this->filename = parameters->device;
 	this->baudrate = parameters->baudrate;
 	
-#ifndef __NO_LOCK_MECHANISM
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
@@ -91,7 +91,7 @@ void ArducomMasterTransportSerial::init(ArducomBaseParameters* parameters) {
 	if (!parameters->initDelaySetManually) {
 		if ((this->filename.find("ttyUSB") != std::string::npos)
 			|| (this->filename.find("ttyACM") != std::string::npos)) {
-			parameters->initDelayMs = DEFAULT_INIT_DELAY_MS;
+			parameters->initDelayMs = ARDUCOM_DEFAULT_INIT_DELAY_MS;
 		}
 	}
 	
@@ -323,16 +323,16 @@ void ArducomMasterTransportSerial::done() {
 	// nothing to do (file remains open)
 }
 
-size_t ArducomMasterTransportSerial::getMaximumCommandSize(void) {
+uint8_t ArducomMasterTransportSerial::getMaximumCommandSize(void) {
 	return SERIAL_BLOCKSIZE_LIMIT;
 }
 
-size_t ArducomMasterTransportSerial::getDefaultExpectedBytes(void) {
+uint8_t ArducomMasterTransportSerial::getDefaultExpectedBytes(void) {
 	return SERIAL_BLOCKSIZE_LIMIT;
 }
 
 int ArducomMasterTransportSerial::getSemkey(void) {
-#ifdef __NO_LOCK_MECHANISM
+#ifdef ARDUCOM__NO_LOCK_MECHANISM
 	return 0;
 #else
 	return this->semkey;

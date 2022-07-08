@@ -134,6 +134,158 @@ namespace Arducom {
 									else
 										throw std::invalid_argument("Expected one of the following values for argument " + argName + ": Hex, Raw, Bin, Byte, Int16, Int32, Int64, Float");
 	}
+
+	uint8_t char2byte(const char input) {
+		if ((input >= '0') && (input <= '9'))
+			return input - '0';
+		if ((input >= 'A') && (input <= 'F'))
+			return input - 'A' + 10;
+		if ((input >= 'a') && (input <= 'f'))
+			return input - 'a' + 10;
+		throw std::invalid_argument(std::string("Invalid hex character in input: ") + input);
+	}
+
+	/* Split string into parts at specified delimiter */
+	std::vector<std::string>& split(const std::string& s, char delim, std::vector<std::string>& elems) {
+		std::stringstream ss(s);
+		std::string item;
+		while (std::getline(ss, item, delim)) {
+			elems.push_back(item);
+		}
+		return elems;
+	}
+
+	/* Parse parameter and add to payload; convert depending on specified format */
+	void parsePayload(const std::string& arg, Format format, char separator, std::vector<uint8_t>& params) {
+		// for all formats but raw: does the string contain the separator?
+		if ((format != FMT_RAW) && (separator != '\0') && (arg.find(separator) != std::string::npos)) {
+			// split along the separators
+			std::vector<std::string> parts;
+			split(arg, separator, parts);
+			// parse each part
+			std::vector<std::string>::const_iterator it = parts.cbegin();
+			std::vector<std::string>::const_iterator ite = parts.cend();
+			while (it != ite) {
+				// pass empty separator to avoid searching a second time
+				parsePayload(*it, format, '\0', params);
+				++it;
+			}
+		}
+		else {
+			// parse the string
+			switch (format) {
+			case FMT_HEX: {
+				if (arg.size() % 2 == 1)
+					throw std::invalid_argument("Expected parameter string of even length for input format Hex");
+				const char* paramStr = arg.c_str();
+				for (size_t p = 0; p < arg.size() - 1; p += 2) {
+					params.push_back(char2byte(paramStr[p]) * 16 + char2byte(paramStr[p + 1]));
+				}
+				break;
+			}
+			case FMT_RAW: {
+				for (size_t p = 0; p < arg.size(); p++) {
+					params.push_back(arg.at(p));
+				}
+				break;
+			}
+			case FMT_BIN: {
+				if (arg.size() != 8)
+					throw std::invalid_argument("Expected parameter string of length 8 for input format Bin");
+				const char* paramStr = arg.c_str();
+				uint8_t value = 0;
+				for (size_t p = 0; p < arg.size(); p += 1) {
+					if (paramStr[p] == '1')
+						value |= 1 << (7 - p);
+					else
+						if (paramStr[p] != '0')
+							throw std::invalid_argument(std::string("Invalid binary character in input (expected '0' or '1'): ") + paramStr);
+				}
+				params.push_back(value);
+				break;
+			}
+			case FMT_BYTE: {
+				int value;
+				try {
+					value = std::stoi(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Byte");
+				}
+				if ((value < 0) || (value > 255))
+					throw std::invalid_argument("Input value for format Byte must be in range 0..255");
+				params.push_back((uint8_t)value);
+				break;
+			}
+			case FMT_INT16: {
+				int value;
+				try {
+					value = std::stoi(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Int16");
+				}
+				if ((value < -32768) || (value > 32767))
+					throw std::invalid_argument("Input value for format Int16 must be in range -32768..32767");
+				params.push_back((uint8_t)value);
+				params.push_back((uint8_t)(value >> 8));
+				break;
+			}
+			case FMT_INT32: {
+				long long value;
+				try {
+					value = std::stoll(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Int32");
+				}
+				if ((value < -2147483648ll) || (value > 2147483647ll))
+					throw std::invalid_argument("Input value for format Int32 must be in range -2147483648..2147483647");
+				params.push_back((uint8_t)value);
+				params.push_back((uint8_t)(value >> 8));
+				params.push_back((uint8_t)(value >> 16));
+				params.push_back((uint8_t)(value >> 24));
+				break;
+			}
+			case FMT_INT64: {
+				long long value;
+				try {
+					value = std::stoll(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Int64");
+				}
+				params.push_back((uint8_t)value);
+				params.push_back((uint8_t)(value >> 8));
+				params.push_back((uint8_t)(value >> 16));
+				params.push_back((uint8_t)(value >> 24));
+				params.push_back((uint8_t)(value >> 32));
+				params.push_back((uint8_t)(value >> 40));
+				params.push_back((uint8_t)(value >> 48));
+				params.push_back((uint8_t)(value >> 56));
+				break;
+			}
+			case FMT_FLOAT: {
+				float fvalue;
+				try {
+					fvalue = std::stof(arg);
+				}
+				catch (std::exception&) {
+					throw std::invalid_argument("Expected numeric value for input format Float");
+				}
+				uint32_t value = *((int*)&fvalue);
+				params.push_back((uint8_t)value);
+				params.push_back((uint8_t)(value >> 8));
+				params.push_back((uint8_t)(value >> 16));
+				params.push_back((uint8_t)(value >> 24));
+				break;
+			}
+			default:
+				throw std::invalid_argument("Parse format not supported");
+			}
+		}
+	}
+
 }		// namespace Arducom
 
 /** ArducomMasterTransport implementation */

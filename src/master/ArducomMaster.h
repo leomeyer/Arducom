@@ -38,6 +38,8 @@
 // by the serial driver on connection. This constant allows for some startup time.
 #define ARDUCOM_DEFAULT_INIT_DELAY_MS	3000
 
+#define ARDUCOM_DEFAULT_SEPARATOR		','
+
 // helper macros
 #define ARDUCOM_Q(str)				#str
 #define ARDUCOM_QUOTE(str)			ARDUCOM_Q(str)
@@ -56,8 +58,11 @@ enum Format {
 	FMT_FLOAT
 };
 
-
 Format parseFormat(const std::string& arg, const std::string& argName);
+
+/* Parse parameter and add to payload; convert depending on specified format */
+void parsePayload(const std::string& arg, Format format, char separator, std::vector<uint8_t>& params);
+
 
 class TimeoutException: public std::runtime_error {
 public:

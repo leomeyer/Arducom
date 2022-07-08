@@ -63,7 +63,7 @@ protected:
 	key_t semkey;
 #endif
 
-	SOCKET sockfd;
+	int sockfd;
 	int sockcomm;
 
 	uint8_t buffer[TCPIP_BLOCKSIZE_LIMIT];
