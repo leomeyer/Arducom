@@ -21,23 +21,23 @@ public:
 
 	ArducomMasterTransportI2C();
 
-	virtual void init(ArducomBaseParameters* parameters);
+	virtual void init(ArducomBaseParameters* parameters) override;
 
-	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0);
-	
-	virtual void request(uint8_t expectedBytes);
+	virtual void sendBytes(uint8_t* buffer, uint8_t size, int retries = 0) override;
 
-	virtual uint8_t readByte(void);
+	virtual void request(uint8_t expectedBytes) override;
 
-	virtual void done(void);
+	virtual uint8_t readByte(void) override;
 
-	virtual size_t getMaximumCommandSize(void);
+	virtual void done(void) override;
 
-	virtual size_t getDefaultExpectedBytes(void);
+	virtual uint8_t getMaximumCommandSize(void) override;
 
-	virtual int getSemkey(void);
+	virtual uint8_t getDefaultExpectedBytes(void) override;
 
-	virtual void printBuffer(void);
+	virtual int getSemkey(void) override;
+
+	virtual void printBuffer(void) override;
 
 protected:
 	std::string filename;
@@ -45,7 +45,7 @@ protected:
 	ArducomBaseParameters* parameters;
 
 	int fileHandle;
-#ifndef __NO_LOCK_MECHANISM	
+#ifndef ARDUCOM__NO_LOCK_MECHANISM
 	// semaphore key
 	key_t semkey;
 #endif

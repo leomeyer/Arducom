@@ -35,12 +35,12 @@ void ArducomMasterTransportI2C::init(ArducomBaseParameters* parameters) {
 
 	this->filename = parameters->device;
 	this->slaveAddress = parameters->deviceAddress;
-	
-#ifdef __NO_LOCK_MECHANISM
+
+#ifdef ARDUCOM__NO_LOCK_MECHANISM
 	// calculate SHA1 hash of the filename
 	unsigned char hash[SHA_DIGEST_LENGTH];
 	SHA1((const unsigned char*)filename.c_str(), filename.size(), hash);
-	
+
 	// IPC semaphore key is the first four bytes of the hash
 	this->semkey = *(int*)&hash;
 #endif
@@ -151,16 +151,16 @@ void ArducomMasterTransportI2C::done(void) {
 	}
 }
 
-size_t ArducomMasterTransportI2C::getMaximumCommandSize(void) {
+uint8_t ArducomMasterTransportI2C::getMaximumCommandSize(void) {
 	return I2C_BLOCKSIZE_LIMIT;
 }
 
-size_t ArducomMasterTransportI2C::getDefaultExpectedBytes(void) {
+uint8_t ArducomMasterTransportI2C::getDefaultExpectedBytes(void) {
 	return I2C_BLOCKSIZE_LIMIT;
 }
 
 int ArducomMasterTransportI2C::getSemkey(void) {
-#ifdef __NO_LOCK_MECHANISM
+#ifdef ARDUCOM__NO_LOCK_MECHANISM
 	return 0;
 #else
 	return this->semkey;
