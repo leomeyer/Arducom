@@ -900,7 +900,7 @@ void ArducomMaster::unlock(bool verbose) {
 void ArducomMaster::send(uint8_t command, bool checksum, uint8_t* buffer, uint8_t size, int retries, bool verbose) {
 	this->lastError = ARDUCOM_OK;
 #if defined(WIN32) && !defined(__MINGW32__)
-	uint8_t* data = (uint8_t*)alloca(size + (checksum ? 3 : 2));
+	uint8_t data[ARDUCOM_BUFFERSIZE];
 #else
 	uint8_t data[size + (checksum ? 3 : 2)];
 #endif

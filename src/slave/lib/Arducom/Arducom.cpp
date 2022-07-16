@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#pragma GCC diagnostic error "-Wall"
-#pragma GCC diagnostic error "-Wextra"
+//#pragma GCC diagnostic error "-Wall"
+//#pragma GCC diagnostic error "-Wextra"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
@@ -268,10 +268,10 @@ uint8_t Arducom::doWork(void) {
 				// clear error info before executing a command (if handle() does not set it no garbage will be returned)
 				errorInfo = 0;
 				bool handle = true;
-				// if specified, the number of payload bytes must match the number of expected bytes
+				// if specified, the number of payload bytes must be at least the number of expected bytes
 				if (command->expectedBytes >= 0) {
-					// has the expected number of bytes been received?
-					if (dataSize != command->expectedBytes) {
+					// has at least the expected number of bytes been received?
+					if (dataSize < command->expectedBytes) {
 						result = ARDUCOM_PARAMETER_MISMATCH;
 						errorInfo = command->expectedBytes;		// return number of expected bytes
 						handle = false;							// do not handle the command
@@ -996,28 +996,66 @@ int8_t ArducomSetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t*
 	// this method expects one byte
 	uint8_t state = dataBuffer[0];
 	// set new state
-	digitalWrite(this->pinNumber, (invert ?
+	digitalWrite(this->pinNumber, (this->invert ?
 		(state == 0 ? HIGH : LOW) : (state == 0 ? LOW : HIGH)));
 	// return the state of the pn
 	destBuffer[0] = (digitalRead(this->pinNumber) == 0 ?
-		(invert ? HIGH : LOW) : (invert ? LOW : HIGH));
+		(this->invert ? HIGH : LOW) : (this->invert ? LOW : HIGH));
 	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 	
-ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber) : ArducomCommand(commandCode, 0) {
+ArducomGetPinState::ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert) : ArducomCommand(commandCode, 0) {
 	this->pinNumber = pinNumber;
+	this->invert = invert;
 }
 
 int8_t ArducomGetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
 	// this method expects nothing
 	// get current port values
 	// return the state of the pin
-	destBuffer[0] = digitalRead(this->pinNumber);
+	destBuffer[0] = (digitalRead(this->pinNumber) == 0 ?
+		(this->invert ? HIGH : LOW) : (this->invert ? LOW : HIGH));
 	*dataSize = 1;
 	return ARDUCOM_OK;
 }
 
+ArducomGetSetPinState::ArducomGetSetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert) : ArducomCommand(commandCode, 1) {
+	this->pinNumber = pinNumber;
+	this->invert = invert;
+}
+
+int8_t ArducomGetSetPinState::handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) {
+	// this method expects at least one byte
+	uint8_t mode = dataBuffer[0];
+	// write?
+	if (mode == 1) {
+		// an additional byte for the state is required
+		if (*dataSize < 2) {
+			*errorInfo = 2;
+			return ARDUCOM_PARAMETER_MISMATCH;
+		}
+		uint8_t state = dataBuffer[1];
+		if (state != 0 && state != 1) {
+			*errorInfo = state;
+			return ARDUCOM_ILLEGAL_ARGUMENT;
+		}
+		// set the new state
+		digitalWrite(this->pinNumber, (this->invert ?
+			(state == 0 ? HIGH : LOW) : (state == 0 ? LOW : HIGH)));
+	} else
+	// not a read command?
+	if (mode != 0) {
+		*errorInfo = mode;
+		return ARDUCOM_ILLEGAL_ARGUMENT;
+	}		
+	// always return the state of the pn
+	destBuffer[0] = (digitalRead(this->pinNumber) == 0 ?
+		(this->invert ? HIGH : LOW) : (this->invert ? LOW : HIGH));
+	*dataSize = 1;
+	return ARDUCOM_OK;
+}
+	
 ArducomGetAnalogPin::ArducomGetAnalogPin(uint8_t commandCode) : ArducomCommand(commandCode, 1) {
 }
 

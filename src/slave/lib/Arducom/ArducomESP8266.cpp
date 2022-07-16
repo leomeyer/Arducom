@@ -20,20 +20,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#pragma GCC diagnostic error "-Wall"
-#pragma GCC diagnostic error "-Wextra"
+//#pragma GCC diagnostic error "-Wall"
+//#pragma GCC diagnostic error "-Wextra"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <ArducomESP8266.h>
 
 #ifdef ESP8266
 	
-ESP8266WifiTransport::ESP8266WifiTransport(WiFiNetwork* networks, WiFiAddresses* addresses, const char* hostname) : ArducomTransport() {
+ESP8266WifiTransport::ESP8266WifiTransport(WiFiNetwork* networks, const char* hostname, WiFiAddresses* staticIPs) : ArducomTransport() {
 	this->server = nullptr;
 	this->port = ARDUCOM_TCP_DEFAULT_PORT;
 	this->networks = networks;
 	this->currentNetwork = networks;
-	this->addresses = addresses;
+	this->staticIPs = staticIPs;
 	this->hostname = hostname;
 	this->processingStart = 0;
 	this->timeoutMs = ARDUCOM_DEFAULT_TIMEOUT_MS;
@@ -84,12 +84,12 @@ bool ESP8266WifiTransport::connect(WiFiNetwork* network, Arducom* arducom) {
 	if (this->hostname)
 		WiFi.hostname(this->hostname);
 		// set static IP if specified (otherwise use DHCP)
-	if (this->addresses) {
+	if (this->staticIPs) {
 		#if ARDUCOM_DEBUG_SUPPORT == 1
 		if (arducom->debug)
 			arducom->debug->println(F("Configuring static IP address"));
 		#endif
-		if (!WiFi.config(this->addresses->staticIP, this->addresses->gateway, this->addresses->subnet, this->addresses->dnsServer)) {
+		if (!WiFi.config(this->staticIPs->staticIP, this->staticIPs->gateway, this->staticIPs->subnet, this->staticIPs->dnsServer)) {
 			#if ARDUCOM_DEBUG_SUPPORT == 1
 			if (arducom->debug)
 				arducom->debug->println(F("Static address configuration failed"));

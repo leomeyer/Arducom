@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#pragma GCC diagnostic error "-Wall"
-#pragma GCC diagnostic error "-Wextra"
+//#pragma GCC diagnostic error "-Wall"
+//#pragma GCC diagnostic error "-Wextra"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <Stream.h>

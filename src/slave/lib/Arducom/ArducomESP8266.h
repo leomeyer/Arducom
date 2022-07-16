@@ -55,7 +55,7 @@ protected:
 	WiFiClient client;
 	WiFiNetwork* networks;
 	WiFiNetwork* currentNetwork;
-	WiFiAddresses* addresses;
+	WiFiAddresses* staticIPs;
 	const char* hostname;
 	uint32_t processingStart;  // important for proxy functionality
 	uint32_t timeoutMs;
@@ -64,7 +64,7 @@ protected:
 	virtual bool connect(WiFiNetwork* network, Arducom* arducom);
 	
 public:
-	ESP8266WifiTransport(WiFiNetwork* networks, WiFiAddresses* addresses = nullptr, const char* hostname = nullptr);
+	ESP8266WifiTransport(WiFiNetwork* networks, const char* hostname = nullptr, WiFiAddresses* staticIPs = nullptr);
 
 	virtual void setHostname(const char* hostname);
 

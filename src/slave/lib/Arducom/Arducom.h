@@ -55,6 +55,7 @@
 #define ARDUCOM_LIMIT_EXCEEDED			134
 #define ARDUCOM_NOT_IMPLEMENTED			135
 #define ARDUCOM_INVALID_CONFIG			136
+#define ARDUCOM_ILLEGAL_ARGUMENT		137
 #define ARDUCOM_FUNCTION_ERROR			254
 
 #define ARDUCOM_ERROR_CODE				255
@@ -688,7 +689,7 @@ protected:
 };
 */
 /** This class implements a command to set the state of the digital pin defined during creation. The operation can optionally be inverted.
-*   Returns the current value of the pin.
+*   The command returns one byte containing the logical state of the pin.
 */
 class ArducomSetPinState: public ArducomCommand {
 public:
@@ -700,15 +701,33 @@ protected:
 	uint8_t invert;
 };
 
-/** This class implements a command to get the state of the pin defined during creation.
+/** This class implements a command to get the state of the pin defined during creation. The state can optionally be inverted.
+*   The command returns one byte containing the logical state of the pin.
 */
 class ArducomGetPinState: public ArducomCommand {
 public:
-	ArducomGetPinState(uint8_t commandCode,	uint8_t pinNumber);
+	ArducomGetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert = false);
 
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
 protected:
 	uint8_t pinNumber;
+	uint8_t invert;
+};
+
+/** This class implements a command to get or set the state of the pin defined during creation.
+*   It accepts at least one byte that specifies whether to get (0) or set (1) the state of the pin.
+*   If this is byte is 1 it requires a second byte that specifies whether to set the pin to logical LOW (0) or HIGH (1).
+*   The pin state can optionally be inverted (logical LOW means physical HIGH and vice versa).
+*   The command always returns one byte containing the logical state of the pin.
+*/
+class ArducomGetSetPinState: public ArducomCommand {
+public:
+	ArducomGetSetPinState(uint8_t commandCode, uint8_t pinNumber, uint8_t invert = false);
+
+	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo);
+protected:
+	uint8_t pinNumber;
+	uint8_t invert;
 };
 
 /** This class implements a command to get the value of an analog pin.
@@ -747,7 +766,6 @@ public:
 	void doWork(Arducom* arducom) override;
   
 	int8_t handle(Arducom* arducom, uint8_t* dataBuffer, int8_t* dataSize, uint8_t* destBuffer, const uint8_t maxBufferSize, uint8_t* errorInfo) override;
-
 protected:
   int8_t pin;
   int8_t initialState;
